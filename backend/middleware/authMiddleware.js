@@ -3,7 +3,7 @@ import User from "../models/user.js";
 
 export const authMiddleware = async (req, res, next) => {
   const token = req.header("Authorization");
-  console.log("Token:", token); // Add this to debug
+  // console.log("Token:", token); // thisis used to check the generated token it wll print the token in terminal
 
   if (!token) return res.status(400).json({ message: "Unauthorized" });
 
