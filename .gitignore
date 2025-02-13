@@ -1216,3 +1216,13 @@ backend/node_modules/yallist/LICENSE
 backend/node_modules/yallist/package.json
 backend/node_modules/yallist/README.md
 backend/node_modules/yallist/yallist.js
+code.js
+my-blockchain-project/truffle-config.js
+.gitignore
+my-blockchain-project/build/contracts/SimpleStorage.json
+my-blockchain-project/migrations/.gitkeep
+.gitignore
+my-blockchain-project/contracts/SimpleStorage.sol
+my-blockchain-project/migrations/2_deploy_contracts.js
+my-blockchain-project/contracts/.gitkeep
+my-blockchain-project/test/.gitkeep
