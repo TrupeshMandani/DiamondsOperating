@@ -1,0 +1,12 @@
+FrontEnd
+
+
+
+
+
+backend
+
+npm i
+npm install express dotenv cors mongoose bcrypt jsonwebtoken
+
+
