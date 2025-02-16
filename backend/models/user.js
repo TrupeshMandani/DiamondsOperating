@@ -21,6 +21,7 @@ const userSchema = new mongoose.Schema({
     default: "Employee",
   },
 });
+
 userSchema.pre("save", async function (next) {
   if (!this.isModified("password")) {
     next();
