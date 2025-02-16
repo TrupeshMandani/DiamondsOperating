@@ -6,7 +6,7 @@ import authRoutes from "./routes/authRoutes.js";
 import employeeRoutes from "./routes/employeeRoutes.js";
 import batchRoutes from "./routes/batchRoutes.js"; // Import batch routes
 import { authMiddleware } from "./middleware/authMiddleware.js";
-
+import taskRoutes from "./routes/tasks.js";
 
 dotenv.config();
 
@@ -19,7 +19,7 @@ app.use(express.json());
 // Routes
 app.use("/api/auth", authRoutes);
 app.use("/api/employees", authMiddleware, employeeRoutes);
-
+app.use("/tasks", taskRoutes); // Use the task routes
 // Define the route for generating QR code
 
 
