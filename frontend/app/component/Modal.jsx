@@ -15,7 +15,7 @@ const Modal = ({ isOpen, onClose, title, data }) => {
   const filteredData = data.filter((item) =>
     (item.name || item.task || "").toLowerCase().includes(searchTerm.toLowerCase())
   );
-
+// return 
   return (
     <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50">
       <div className="bg-[#002A4E] p-6 rounded-lg shadow-lg w-[400px] relative max-h-[80vh] overflow-y-auto">
