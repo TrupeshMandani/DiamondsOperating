@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import AssignTask from "../component/AssignTask";
-import TaskList from "../component/TaskList";
+import AssignTask from "../../component/AssignTask";
+import TaskList from "../../component/TaskList";
 import { useRouter } from "next/navigation";
 
 const TasksPage = () => {

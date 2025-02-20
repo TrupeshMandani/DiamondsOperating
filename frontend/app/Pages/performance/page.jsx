@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import PerformanceChart from "../component/PerformanceChart";
+import PerformanceChart from "../../component/PerformanceChart";
 
 const PerformancePage = () => {
   const [employees, setEmployees] = useState([]);
