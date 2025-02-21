@@ -1,13 +1,11 @@
-import Dashboard from "@/app/component/Dashboard";
-import React from "react";
+import Dashboard from "./components/Dashboard";
 
-const page = () => {
+function Manager() {
   return (
-    <div>
-      {" "}
+    <div className="min-h-screen bg-[#001F3F] text-white">
       <Dashboard />
     </div>
   );
-};
+}
 
-export default page;
+export default Manager;
