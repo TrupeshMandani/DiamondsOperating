@@ -1,4 +1,3 @@
-import Dashboard from "./component/Dashboard.jsx";
 
 export default function Home() {
   return (

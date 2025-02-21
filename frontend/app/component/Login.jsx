@@ -40,7 +40,7 @@ function LoginForm() {
   };
 
   return (
-    <div className="fixed inset-0 flex items-center justify-center bg-gradient-to-br from-navy-900 via-navy-800 to-navy-700">
+    <div className="fixed inset-0 flex items-center justify-center bg-gray-900">
       <motion.div
         className="p-8 rounded-xl backdrop-blur-lg bg-white/10 shadow-2xl border border-white/20"
         style={{ width: "800px", height: "400px" }}
@@ -55,7 +55,8 @@ function LoginForm() {
             whileHover={{ scale: 1.02 }}
           >
             <motion.img
-              src="/public/images/logo.png"
+              src="Diamond.avif
+              "
               alt="Company Logo"
               className="w-24 h-24 rounded-full mb-4 backdrop-blur-sm border-2 border-white/30"
               whileHover={{ rotate: 360 }}
