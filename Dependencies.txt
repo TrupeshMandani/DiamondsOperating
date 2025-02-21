@@ -1,5 +1,13 @@
 FrontEnd
 npm install react-icons
+npm install lucide-react recharts
+npm install @shadcn/ui
+npm install next-themes
+npm install framer-motion
+
+
+
+
 
 
 
