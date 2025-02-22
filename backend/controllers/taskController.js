@@ -4,7 +4,7 @@ import Task from "../models/taskModel.js";
 export const assignTask = async (req, res) => {
   try {
     const { batch_id, assigned_by, assigned_to, stage, description } = req.body;
-    
+
     const newTask = new Task({
       batch_id,
       assigned_by,
@@ -15,7 +15,9 @@ export const assignTask = async (req, res) => {
     });
 
     await newTask.save();
-    res.status(201).json({ message: "Task assigned successfully", task: newTask });
+    res
+      .status(201)
+      .json({ message: "Task assigned successfully", task: newTask });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -46,15 +48,36 @@ export const getBatchTasks = async (req, res) => {
 // Update task status (Only assigned employee can update)
 export const updateTaskStatus = async (req, res) => {
   try {
-    const { id } = req.params;
-    const { status } = req.body;
+    const { batchId } = req.params;
+    const { taskId } = req.body; // Get task ID
+    const batch = await Batch.findOne({ batchId });
+    if (!batch) {
+      return res.status(404).json({ message: "Batch not found" });
+    }
 
-    const task = await Task.findByIdAndUpdate(id, { status }, { new: true });
+    const task = await Task.findById(taskId);
+    if (!task) {
+      return res.status(404).json({ message: "Task not found" });
+    }
 
-    if (!task) return res.status(404).json({ message: "Task not found" });
+    // If the batch has moved to the next stage, update the task status
+    if (batch.currentProcess === "Sarin") {
+      task.status = "In Progress"; // Mark task as in progress when it's at Sarin
+    } else if (batch.currentProcess === "Stitching") {
+      task.status = "In Progress"; // Mark task as in progress when it's at Stitching
+    } else if (batch.currentProcess === "4P Cutting") {
+      task.status = "Completed"; // Mark task as complete when it's finished
+    }
 
-    res.json({ message: "Task status updated", task });
+    await task.save();
+    res.json({
+      message: `Task status updated for batch ${batchId}`,
+      task,
+    });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error(error);
+    res
+      .status(500)
+      .json({ message: "Error updating task status", error: error.message });
   }
 };
