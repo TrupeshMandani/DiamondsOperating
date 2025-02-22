@@ -1,5 +1,6 @@
 import QRCode from "qrcode";
 import Batch from "../models/batchModel.js";
+import Task from "../models/taskModel.js";
 
 // Generate QR code for batch details
 export const generateQRCode = async (req, res) => {
@@ -35,7 +36,13 @@ export const generateQRCode = async (req, res) => {
 
 // Create a new batch
 export const createBatch = async (req, res) => {
-  const { batchId, materialType, customerName, customerContact, currentProcess } = req.body;
+  const {
+    batchId,
+    materialType,
+    customerName,
+    customerContact,
+    currentProcess,
+  } = req.body;
 
   try {
     const newBatch = new Batch({
@@ -47,8 +54,135 @@ export const createBatch = async (req, res) => {
     });
 
     await newBatch.save();
-    res.status(201).json({ message: "Batch created successfully", batch: newBatch });
+    res
+      .status(201)
+      .json({ message: "Batch created successfully", batch: newBatch });
   } catch (error) {
-    res.status(500).json({ message: "Failed to create batch", error: error.message });
+    res
+      .status(500)
+      .json({ message: "Failed to create batch", error: error.message });
+  }
+};
+
+// Get all batches
+export const getBatches = async (req, res) => {
+  try {
+    const batches = await Batch.find();
+    res.json(batches);
+  } catch (error) {
+    res
+      .status(500)
+      .json({ message: "Error fetching batches", error: error.message });
+  }
+};
+// Get Batch By Id
+export const getBatchByID = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // Fetch batch by batchId (string) instead of _id (ObjectId)
+    const batch = await Batch.findOne({ batchId: id });
+
+    if (!batch) {
+      return res.status(404).json({ message: "Batch not found" });
+    }
+
+    res.json(batch);
+  } catch (error) {
+    res
+      .status(500)
+      .json({ message: "Error fetching batch", error: error.message });
+  }
+};
+// Get batch progress dynamically
+export const getBatchProgress = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const batch = await Batch.findOne({ batchId: id });
+
+    if (!batch) {
+      return res.status(404).json({ message: "Batch not found" });
+    }
+
+    // Fetch tasks related to the batch
+    const tasks = await Task.find({ batch_id: batch._id });
+
+    // Count completed tasks
+    const completedTasks = tasks.filter(
+      (task) => task.status === "Completed"
+    ).length;
+    const totalTasks = tasks.length;
+
+    // Calculate progress percentage
+    const progress =
+      totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+
+    res.json({
+      batchId: batch.batchId,
+      materialType: batch.materialType,
+      currentProcess: batch.currentProcess,
+      status: batch.status,
+      totalTasks,
+      completedTasks,
+      progress: `${progress}%`,
+    });
+  } catch (error) {
+    res
+      .status(500)
+      .json({ message: "Error fetching batch progress", error: error.message });
+  }
+};
+// Update batch details
+export const updateBatch = async (req, res) => {
+  try {
+    const { id } = req.params; // Batch ID from URL
+    const { stage, progress } = req.body; // Stage and progress value from body
+
+    // Fetch the batch by batchId
+    const batch = await Batch.findOne({ batchId: id });
+    if (!batch) {
+      return res.status(404).json({ message: "Batch not found" });
+    }
+
+    const validStages = ["Sarin", "Stitching", "4P Cutting"];
+
+    // Validate if the stage is valid
+    if (!validStages.includes(stage)) {
+      return res.status(400).json({
+        message: "Invalid stage",
+        validStages: validStages,
+      });
+    }
+
+    // Update the batch progress for the specific stage
+    batch.progress[stage] = progress;
+
+    // If progress for the current stage is 100%, move to the next stage
+    if (progress === 100) {
+      // Determine the next stage
+      const currentIndex = validStages.indexOf(stage);
+      if (currentIndex < validStages.length - 1) {
+        batch.currentProcess = validStages[currentIndex + 1]; // Set the next process
+      } else {
+        batch.status = "Completed"; // Mark the batch as completed if all stages are finished
+      }
+    }
+
+    // Save the batch with updated progress and status
+    await batch.save();
+
+    // Send response with the updated batch
+    res.json({
+      message: `Batch progress updated for stage ${stage}`,
+      batch,
+    });
+  } catch (error) {
+    console.error(error);
+    res
+      .status(500)
+      .json({
+        message: "Error updating the batch progress",
+        error: error.message,
+      });
   }
 };
