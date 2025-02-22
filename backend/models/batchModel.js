@@ -9,12 +9,14 @@ const batchSchema = new mongoose.Schema({
     type: String,
     enum: ["Sarin", "Stitching", "4P Cutting"],
     required: true,
+    index: true,
   },
   processStartDate: { type: Date, default: Date.now },
   status: {
     type: String,
     enum: ["Pending", "In Progress", "Completed"],
     default: "Pending",
+    index: true,
   },
   progress: {
     Sarin: { type: Number, default: 0 },
