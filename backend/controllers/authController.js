@@ -25,20 +25,19 @@ export const login = async (req, res) => {
       return res.status(400).json({ message: "User not found" });
     }
 
-    console.log("Password from request:", password);
-    console.log("Password in database:", checkuser.password);
-
     if (!(await bcrypt.compare(password, checkuser.password))) {
       return res.status(400).json({ message: "Invalid Credentials" });
     }
 
     const token = jwt.sign(
-      { email: checkuser.email, id: checkuser._id },
+      { email: checkuser.email, id: checkuser._id, role: checkuser.role },
       process.env.JWT_SECRET,
       { expiresIn: "1h" }
     );
+
     res.status(200).json({ result: checkuser, token });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
+
