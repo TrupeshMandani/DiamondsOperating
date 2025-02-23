@@ -1,10 +1,10 @@
-import LoginForm from "./component/Login";
+import EmployeeDashboard from "./Pages/employees/dashboard/page";
+
 export default function Home() {
   return (
-    <div className="h-screen w-screen flex">
-    
-        <LoginForm />
-        
+    <div>
+      <EmployeeDashboard />
+
     </div>
   );
 }
