@@ -1,4 +1,4 @@
-import EmployeeDashboard from "./Pages/employees/page";
+import EmployeeDashboard from "./Pages/employees/dashboard/page";
 
 export default function Home() {
   return (
