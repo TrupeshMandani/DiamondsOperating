@@ -1,9 +1,9 @@
-import Dashboard from "./component/Dashboard";
+import EmployeeDashboard from "./Pages/employees/page";
 
 export default function Home() {
   return (
-    <div className="h-screen w-screen flex">
-      <Dashboard />
+    <div>
+      <EmployeeDashboard />
     </div>
   );
 }
