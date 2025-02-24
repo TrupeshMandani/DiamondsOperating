@@ -7,6 +7,7 @@ import employeeRoutes from "./routes/employeeRoutes.js";
 import batchRoutes from "./routes/batchRoutes.js"; // Import batch routes
 import { authMiddleware } from "./middleware/authMiddleware.js";
 import taskRoutes from "./routes/tasks.js";
+import Employee from "./models/Employee.js";
 
 dotenv.config();
 
@@ -26,6 +27,34 @@ app.use("/tasks", taskRoutes); // Use the task routes
 // Protect batch-related routes
 app.use("/api/batches",  batchRoutes);
 
+app.post('/api/employee', async (req, res) => {
+  const { firstName, lastName, email, phoneNumber, address, dateOfBirth } = req.body;
+
+  if (!firstName || !lastName || !email || !phoneNumber || !address || !dateOfBirth) {
+    return res.status(400).json({ message: "All fields are required" });
+  }
+
+  try {
+    const newEmployee = new Employee({ firstName, lastName, email, phoneNumber, address, dateOfBirth });
+    await newEmployee.save();
+    res.status(201).json(newEmployee);
+  } catch (err) {
+    console.error(err); // Log the error to the console
+    res.status(500).json({ message: "Error adding employee", error: err.message });
+  }
+});
+
+app.get('/api/employee', async (req, res) => {
+  try {
+      const employees = await Employee.find();
+      res.status(200).json(employees);
+  } catch (err) {
+      res.status(500).json({ message: "Error fetching employees", error: err.message });
+  }
+});
+
+
+
 const PORT = process.env.PORT || 5000;
 
 app.listen(PORT, () => console.log(`Connected to the port ${PORT}`));
@@ -33,3 +62,4 @@ app.listen(PORT, () => console.log(`Connected to the port ${PORT}`));
 app.get("/", (req, res) => {
   res.send("Welcome to the Diamond Management System API!");
 });
+
