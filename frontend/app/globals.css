@@ -2,14 +2,6 @@
 @tailwind components;
 @tailwind utilities;
 
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-body {
-  background-color: rgb(5, 5, 71);
-}
-=======
-=======
->>>>>>> Stashed changes
 @layer base {
   :root {
     --background: 0 0% 100%;
@@ -83,7 +75,3 @@ body {
   }
 }
 
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
