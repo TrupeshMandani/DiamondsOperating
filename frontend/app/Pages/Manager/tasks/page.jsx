@@ -1,66 +1,111 @@
 "use client";
+import { useState } from "react";
+import { toast } from "react-hot-toast";
+import { Button } from "../../../component/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import Sidebar from "../../../component/Sidebar"; // Ensure this is your existing Sidebar
 
-import { useState, useEffect } from "react";
-import AssignTask from "../../../component/AssignTask";
-import TaskList from "../../../component/TaskList";
-import Sidebar from "@/app/component/Sidebar";
-import { useRouter } from "next/navigation";
+export default function BatchCreationForm() {
+  const [formData, setFormData] = useState({
+    customerName: "",
+    contactInfo: "",
+    materialType: "",
+    batchSize: "",
+  });
 
-const TasksPage = () => {
-  const [tasks, setTasks] = useState([]);
-  const [employees, setEmployees] = useState([]);
-  const router = useRouter();
+  const handleChange = (e) => {
+    setFormData({ ...formData, [e.target.name]: e.target.value });
+  };
 
-  useEffect(() => {
-    setTasks([
-      { id: 1, taskName: "Review Reports", assignedTo: "John Doe", status: "Pending" },
-      { id: 2, taskName: "Approve Budget", assignedTo: "Jane Smith", status: "Completed" },
-    ]);
-
-    setEmployees([
-      { id: 1, name: "John Doe" },
-      { id: 2, name: "Jane Smith" },
-      { id: 3, name: "Michael Johnson" },
-    ]);
-  }, []);
-
-  const assignTask = (newTask) => {
-    setTasks((prevTasks) => [...prevTasks, newTask]);
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    toast.success("Batch Created Successfully!");
+    console.log("Batch Data:", formData);
   };
 
   return (
-    <div className="min-h-screen p-8 text-white bg-gradient-to-br from-[#001F3F] to-[#002A5E]">
+    <div className="flex h-screen">
+      {/* Sidebar (Dark Blue) */}
       <Sidebar />
-      <button 
-        className="bg-[#0056A3] text-white px-4 py-2 rounded hover:bg-[#004080] mb-6"
-        onClick={() => router.push("/")}
-      >
-        ← Back to Dashboard
-      </button>
-      
-      <h1 className="text-3xl font-bold mb-6 text-center">Task Management</h1>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Assign Task Form */}
-        <div className="bg-[#002A4E] p-6 rounded-lg shadow-lg">
-          <h2 className="text-xl font-semibold mb-3">Assign Task</h2>
-          <AssignTask employees={employees} onAssign={assignTask} />
-        </div>
+      {/* Main Content */}
+      <div className="flex-1 bg-gray-100 p-6">
+        <Card className="w-full max-w-2xl mx-auto shadow-lg rounded-xl border text-black border-gray-200 bg-white">
+          <CardHeader>
+            <CardTitle className="text-2xl font-semibold text-gray-800">
+              Create New Batch
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleSubmit} className="space-y-4">
+              {/* Customer Name */}
+              <div>
+                <Label htmlFor="customerName">Customer Name</Label>
+                <Input
+                  id="customerName"
+                  name="customerName"
+                  type="text"
+                  placeholder="Enter customer name"
+                  value={formData.customerName}
+                  onChange={handleChange}
+                  required
+                />
+              </div>
 
-        {/* Pending & Completed Tasks */}
-        <div className="space-y-6">
-          <div className="bg-[#002A4E] p-6 rounded-lg shadow-lg">
-            <h2 className="text-xl font-semibold mb-3">Pending Tasks</h2>
-            <TaskList tasks={tasks} filter="pending" />
-          </div>
-          <div className="bg-[#002A4E] p-6 rounded-lg shadow-lg">
-            <h2 className="text-xl font-semibold mb-3">Completed Tasks</h2>
-            <TaskList tasks={tasks} filter="completed" />
-          </div>
-        </div>
+              {/* Contact Info */}
+              <div>
+                <Label htmlFor="contactInfo">Contact Info</Label>
+                <Input
+                  id="contactInfo"
+                  name="contactInfo"
+                  type="text"
+                  placeholder="Enter contact info"
+                  value={formData.contactInfo}
+                  onChange={handleChange}
+                  required
+                />
+              </div>
+
+              {/* Material Type */}
+              <div>
+                <Label htmlFor="materialType">Material Type</Label>
+                <Input
+                  id="materialType"
+                  name="materialType"
+                  type="text"
+                  placeholder="Enter material type"
+                  value={formData.materialType}
+                  onChange={handleChange}
+                  required
+                />
+              </div>
+
+              {/* Batch Size */}
+              <div>
+                <Label htmlFor="batchSize">Batch Size</Label>
+                <Input
+                  id="batchSize"
+                  name="batchSize"
+                  type="number"
+                  placeholder="Enter batch size"
+                  value={formData.batchSize}
+                  onChange={handleChange}
+                  required
+                />
+              </div>
+
+              {/* Submit Button */}
+              <div className="flex justify-end">
+                <Button type="submit" className="bg-blue-700 hover:bg-blue-800 text-white px-6 py-2 rounded-lg">
+                  Create Batch
+                </Button>
+              </div>
+            </form>
+          </CardContent>
+        </Card>
       </div>
     </div>
   );
-};
-
-export default TasksPage;
+}
