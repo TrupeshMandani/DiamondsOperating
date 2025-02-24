@@ -1,38 +1,82 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { toast } from "react-hot-toast";
 import { Button } from "../../../component/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import Sidebar from "../../../component/Sidebar"; // Ensure this is your existing Sidebar
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import Sidebar  from "../../../component/Sidebar"; // Ensure Sidebar is already created
+import axios from "axios";
+
+// Function to generate random Batch ID
+const generateBatchId = () => "BATCH-" + Math.floor(Math.random() * 1000000);
 
 export default function BatchCreationForm() {
   const [formData, setFormData] = useState({
-    customerName: "",
-    contactInfo: "",
+    batchId: generateBatchId(),
     materialType: "",
-    batchSize: "",
+    firstName: "",
+    lastName: "",
+    email: "",
+    phone: "",
+    address: "",
+    currentProcess: "",
   });
+
+  useEffect(() => {
+    setFormData((prev) => ({ ...prev, batchId: generateBatchId() }));
+  }, []);
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    toast.success("Batch Created Successfully!");
-    console.log("Batch Data:", formData);
+
+    const payload = {
+      batchId: formData.batchId,
+      materialType: formData.materialType,
+      customerName: `${formData.firstName} ${formData.lastName}`,
+      customerContact: {
+        email: formData.email,
+        phone: formData.phone,
+        address: formData.address,
+      },
+      currentProcess: formData.currentProcess,
+    };
+
+    try {
+      await axios.post("/api/batches", payload);
+      toast.success("Batch Created Successfully!");
+      console.log("Batch Data:", payload);
+
+      // Reset form with new Batch ID
+      setFormData({
+        batchId: generateBatchId(),
+        materialType: "",
+        firstName: "",
+        lastName: "",
+        email: "",
+        phone: "",
+        address: "",
+        currentProcess: "",
+      });
+    } catch (error) {
+      toast.error("Error Creating Batch!");
+      console.error(error);
+    }
   };
 
   return (
     <div className="flex h-screen">
-      {/* Sidebar (Dark Blue) */}
+      {/* Sidebar */}
       <Sidebar />
 
       {/* Main Content */}
-      <div className="flex-1 bg-gray-100 p-6">
-        <Card className="w-full max-w-2xl mx-auto shadow-lg rounded-xl border text-black border-gray-200 bg-white">
+      <div className="flex-1 bg-gray-100 p-8 text-black">
+        <Card className="w-full max-w-3xl mx-auto shadow-lg rounded-xl border border-gray-200 bg-white">
           <CardHeader>
             <CardTitle className="text-2xl font-semibold text-gray-800">
               Create New Batch
@@ -40,60 +84,70 @@ export default function BatchCreationForm() {
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
-              {/* Customer Name */}
+              {/* Batch ID (Read-only) */}
               <div>
-                <Label htmlFor="customerName">Customer Name</Label>
-                <Input
-                  id="customerName"
-                  name="customerName"
-                  type="text"
-                  placeholder="Enter customer name"
-                  value={formData.customerName}
-                  onChange={handleChange}
-                  required
-                />
+                <Label htmlFor="batchId">Batch ID</Label>
+                <Input id="batchId" name="batchId" value={formData.batchId} readOnly className="bg-gray-200 cursor-not-allowed" />
               </div>
 
-              {/* Contact Info */}
-              <div>
-                <Label htmlFor="contactInfo">Contact Info</Label>
-                <Input
-                  id="contactInfo"
-                  name="contactInfo"
-                  type="text"
-                  placeholder="Enter contact info"
-                  value={formData.contactInfo}
-                  onChange={handleChange}
-                  required
-                />
-              </div>
-
-              {/* Material Type */}
+              {/* Material Type Dropdown */}
               <div>
                 <Label htmlFor="materialType">Material Type</Label>
-                <Input
-                  id="materialType"
-                  name="materialType"
-                  type="text"
-                  placeholder="Enter material type"
-                  value={formData.materialType}
-                  onChange={handleChange}
-                  required
-                />
+                <Select name="materialType" onValueChange={(value) => setFormData({ ...formData, materialType: value })}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select Material Type" />
+                  </SelectTrigger>
+                  <SelectContent className="text-black bg-white">
+                    <SelectItem value="Rough Diamond">Rough Diamond</SelectItem>
+                    <SelectItem value="Graphite Powder">Graphite Powder</SelectItem>
+                    <SelectItem value="Diamond Paste">Diamond Paste</SelectItem>
+                    <SelectItem value="Diamond Blades">Diamond Blades</SelectItem>
+                    <SelectItem value="Cutting Fluids">Cutting Fluids</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
 
-              {/* Batch Size */}
+              {/* Customer Name Fields */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="firstName">First Name</Label>
+                  <Input id="firstName" name="firstName" placeholder="Enter first name" value={formData.firstName} onChange={handleChange} required />
+                </div>
+                <div>
+                  <Label htmlFor="lastName">Last Name</Label>
+                  <Input id="lastName" name="lastName" placeholder="Enter last name" value={formData.lastName} onChange={handleChange} required />
+                </div>
+              </div>
+
+              {/* Contact Information */}
+              <div className="grid grid-cols-3 gap-4">
+                <div>
+                  <Label htmlFor="email">Email</Label>
+                  <Input id="email" name="email" type="email" placeholder="Enter email" value={formData.email} onChange={handleChange} required />
+                </div>
+                <div>
+                  <Label htmlFor="phone">Phone</Label>
+                  <Input id="phone" name="phone" type="text" placeholder="Enter phone number" value={formData.phone} onChange={handleChange} required />
+                </div>
+                <div>
+                  <Label htmlFor="address">Address</Label>
+                  <Input id="address" name="address" placeholder="Enter address" value={formData.address} onChange={handleChange} required />
+                </div>
+              </div>
+
+              {/* Process Selection Dropdown */}
               <div>
-                <Label htmlFor="batchSize">Batch Size</Label>
-                <Input
-                  id="batchSize"
-                  name="batchSize"
-                  type="number"
-                  placeholder="Enter batch size"
-                  value={formData.batchSize}
-                  onChange={handleChange}
-                  required
-                />
+                <Label htmlFor="currentProcess">Current Process</Label>
+                <Select name="currentProcess" onValueChange={(value) => setFormData({ ...formData, currentProcess: value })}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select Current Process" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Sarin">Sarin</SelectItem>
+                    <SelectItem value="Stitching">Stitching</SelectItem>
+                    <SelectItem value="4P Cutting">4P Cutting</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
 
               {/* Submit Button */}
