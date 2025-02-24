@@ -2,6 +2,7 @@
 import { Home, ClipboardList } from "lucide-react";
 import Link from "next/link";
 
+
 const Sidebar = () => {
   return (
     <div className="w-72 bg-[#002A5E] text-white h-screen p-6 flex flex-col">
@@ -17,7 +18,7 @@ const Sidebar = () => {
         </li>
         <li className="flex items-center gap-3 p-2 rounded hover:bg-[#004080] cursor-pointer">
           <ClipboardList className="w-5 h-5" />
-          <Link href="/employees">Employees</Link>  {/* ✅ Ensure correct link */}
+          <Link href="/Employee">Employees</Link> 
         </li>
         <li className="flex items-center gap-3 p-2 rounded hover:bg-[#004080] cursor-pointer">
           <ClipboardList className="w-5 h-5" />
