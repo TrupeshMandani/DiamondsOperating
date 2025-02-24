@@ -1,8 +1,9 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import AssignTask from "../../component/AssignTask";
-import TaskList from "../../component/TaskList";
+import AssignTask from "../../../component/AssignTask";
+import TaskList from "../../../component/TaskList";
+import Sidebar from "@/app/component/Sidebar";
 import { useRouter } from "next/navigation";
 
 const TasksPage = () => {
@@ -29,6 +30,7 @@ const TasksPage = () => {
 
   return (
     <div className="min-h-screen p-8 text-white bg-gradient-to-br from-[#001F3F] to-[#002A5E]">
+      <Sidebar />
       <button 
         className="bg-[#0056A3] text-white px-4 py-2 rounded hover:bg-[#004080] mb-6"
         onClick={() => router.push("/")}

@@ -14,11 +14,11 @@ const Sidebar = () => {
         </li>
         <li className="flex items-center gap-3 p-2 rounded hover:bg-[#004080] cursor-pointer">
           <ClipboardList className="w-5 h-5" />
-          <Link href="/tasks">Tasks</Link>  {/* ✅ Ensure correct link */}
+          <Link href="/Pages/Manager/tasks">Tasks</Link>  {/* ✅ Ensure correct link */}
         </li>
         <li className="flex items-center gap-3 p-2 rounded hover:bg-[#004080] cursor-pointer">
           <ClipboardList className="w-5 h-5" />
-          <Link href="/Employee">Employees</Link> 
+          <Link href="/Pages/Manager/Employee">Employees</Link> 
         </li>
         <li className="flex items-center gap-3 p-2 rounded hover:bg-[#004080] cursor-pointer">
           <ClipboardList className="w-5 h-5" />
