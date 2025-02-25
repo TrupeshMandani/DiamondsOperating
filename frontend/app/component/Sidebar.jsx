@@ -10,7 +10,7 @@ const Sidebar = () => {
       <ul className="flex flex-col gap-4">
         <li className="flex items-center gap-3 p-2 rounded hover:bg-[#004080] cursor-pointer">
           <Home className="w-5 h-5" />
-          <Link href="/">Dashboard</Link>
+          <Link href="/Pages/Manager/Dashboard">Dashboard</Link>
         </li>
         <li className="flex items-center gap-3 p-2 rounded hover:bg-[#004080] cursor-pointer">
           <ClipboardList className="w-5 h-5" />
