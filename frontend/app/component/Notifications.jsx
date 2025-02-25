@@ -19,7 +19,7 @@ const Notifications = () => {
         <ul>
           {notifications.map((notif) => (
             <li key={notif.id} className="text-xs border-b border-gray-700 py-2">
-              {notif.message} <span className="text-gray-400">({notif.time})</span>
+              {notif.message} <span className="[#111827]">({notif.time})</span>
             </li>
           ))}
         </ul>

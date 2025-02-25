@@ -153,7 +153,7 @@ const Dashboard = () => {
   return (
     <div className="flex h-screen w-full">
       {/* Sidebar */}
-      <div className="w-72 h-screen fixed top-0 left-0 bg-[#121828] text-white shadow-lg">
+      <div className="w-72 h-screen fixed top-0 left-0 bg-[#111827] text-white shadow-lg">
         <Sidebar />
       </div>
 

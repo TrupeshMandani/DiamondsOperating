@@ -1,18 +1,23 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { toast } from "react-hot-toast";
 import { Button } from "../../../component/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import Sidebar  from "../../../component/Sidebar"; // Ensure Sidebar is already created
+import dynamic from "next/dynamic"; // Lazy load Sidebar
 import axios from "axios";
+import { debounce } from "lodash";
+
+// Lazy Load Sidebar
+const Sidebar = dynamic(() => import("../../../component/Sidebar"), { ssr: false });
 
 // Function to generate random Batch ID
 const generateBatchId = () => "BATCH-" + Math.floor(Math.random() * 1000000);
 
 export default function BatchCreationForm() {
+  const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     batchId: generateBatchId(),
     materialType: "",
@@ -28,12 +33,18 @@ export default function BatchCreationForm() {
     setFormData((prev) => ({ ...prev, batchId: generateBatchId() }));
   }, []);
 
-  const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
-  };
+  // Debounced Input Change Handler
+  const handleChange = useCallback(
+    debounce((e) => {
+      setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+    }, 300),
+    []
+  );
 
+  // Handle Form Submission
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setLoading(true); // Show loading indicator
 
     const payload = {
       batchId: formData.batchId,
@@ -50,7 +61,6 @@ export default function BatchCreationForm() {
     try {
       await axios.post("/api/batches", payload);
       toast.success("Batch Created Successfully!");
-      console.log("Batch Data:", payload);
 
       // Reset form with new Batch ID
       setFormData({
@@ -66,8 +76,19 @@ export default function BatchCreationForm() {
     } catch (error) {
       toast.error("Error Creating Batch!");
       console.error(error);
+    } finally {
+      setLoading(false); // Hide loading indicator
     }
   };
+
+  // Common Input Fields
+  const inputFields = [
+    { id: "firstName", placeholder: "Enter first name", type: "text" },
+    { id: "lastName", placeholder: "Enter last name", type: "text" },
+    { id: "email", placeholder: "Enter email", type: "email" },
+    { id: "phone", placeholder: "Enter phone number", type: "text" },
+    { id: "address", placeholder: "Enter address", type: "text" },
+  ];
 
   return (
     <div className="flex h-screen">
@@ -107,32 +128,24 @@ export default function BatchCreationForm() {
                 </Select>
               </div>
 
-              {/* Customer Name Fields */}
+              {/* Customer Information Fields */}
               <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="firstName">First Name</Label>
-                  <Input id="firstName" name="firstName" placeholder="Enter first name" value={formData.firstName} onChange={handleChange} required />
-                </div>
-                <div>
-                  <Label htmlFor="lastName">Last Name</Label>
-                  <Input id="lastName" name="lastName" placeholder="Enter last name" value={formData.lastName} onChange={handleChange} required />
-                </div>
+                {inputFields.slice(0, 2).map(({ id, placeholder, type }) => (
+                  <div key={id}>
+                    <Label htmlFor={id}>{id.replace(/([A-Z])/g, " $1")}</Label>
+                    <Input id={id} name={id} type={type} placeholder={placeholder} value={formData[id]} onChange={handleChange} required />
+                  </div>
+                ))}
               </div>
 
-              {/* Contact Information */}
+              {/* Contact Information Fields */}
               <div className="grid grid-cols-3 gap-4">
-                <div>
-                  <Label htmlFor="email">Email</Label>
-                  <Input id="email" name="email" type="email" placeholder="Enter email" value={formData.email} onChange={handleChange} required />
-                </div>
-                <div>
-                  <Label htmlFor="phone">Phone</Label>
-                  <Input id="phone" name="phone" type="text" placeholder="Enter phone number" value={formData.phone} onChange={handleChange} required />
-                </div>
-                <div>
-                  <Label htmlFor="address">Address</Label>
-                  <Input id="address" name="address" placeholder="Enter address" value={formData.address} onChange={handleChange} required />
-                </div>
+                {inputFields.slice(2).map(({ id, placeholder, type }) => (
+                  <div key={id}>
+                    <Label htmlFor={id}>{id.replace(/([A-Z])/g, " $1")}</Label>
+                    <Input id={id} name={id} type={type} placeholder={placeholder} value={formData[id]} onChange={handleChange} required />
+                  </div>
+                ))}
               </div>
 
               {/* Process Selection Dropdown */}
@@ -152,8 +165,8 @@ export default function BatchCreationForm() {
 
               {/* Submit Button */}
               <div className="flex justify-end">
-                <Button type="submit" className="bg-blue-700 hover:bg-blue-800 text-white px-6 py-2 rounded-lg">
-                  Create Batch
+                <Button type="submit" className="bg-blue-700 hover:bg-blue-800 text-white px-6 py-2 rounded-lg" disabled={loading}>
+                  {loading ? "Creating..." : "Create Batch"}
                 </Button>
               </div>
             </form>
