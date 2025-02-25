@@ -15,7 +15,7 @@ export const generateQRCode = async (req, res) => {
     // Prepare the data you want to encode into the QR code (for example, the batch information)
     const batchData = {
       batchNumber: batch.batchId,
-      customer: batch.customerName,
+      customer: batch.firstName,
       currentProcess: batch.currentProcess,
     };
 
@@ -39,8 +39,15 @@ export const createBatch = async (req, res) => {
   const {
     batchId,
     materialType,
-    customerName,
-    customerContact,
+    firstName,
+    lastName,
+    email,
+    phone,
+    address,
+    diamondWeight,
+    diamondNumber,
+    expectedDate,
+    currentDate,
     currentProcess,
   } = req.body;
 
@@ -48,8 +55,15 @@ export const createBatch = async (req, res) => {
     const newBatch = new Batch({
       batchId,
       materialType,
-      customerName,
-      customerContact,
+      firstName,
+      lastName,
+      email,
+      phone,
+      address,
+      diamondWeight,
+      diamondNumber,
+      expectedDate,
+      currentDate,
       currentProcess,
     });
 
@@ -178,11 +192,9 @@ export const updateBatch = async (req, res) => {
     });
   } catch (error) {
     console.error(error);
-    res
-      .status(500)
-      .json({
-        message: "Error updating the batch progress",
-        error: error.message,
-      });
+    res.status(500).json({
+      message: "Error updating the batch progress",
+      error: error.message,
+    });
   }
 };
