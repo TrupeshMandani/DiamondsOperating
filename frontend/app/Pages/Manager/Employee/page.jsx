@@ -3,8 +3,8 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { Plus, Search, UserPlus, X } from "lucide-react";
 import { useState, useEffect } from "react";
-import Sidebar from "../component/Sidebar";
-import { Button } from "../component/ui/button";
+import Sidebar from "../../../component/Sidebar";
+import { Button } from "../../../component/ui/button";
 import {
   Card,
   CardContent,
