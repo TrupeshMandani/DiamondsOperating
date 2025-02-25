@@ -5,7 +5,10 @@ import {
   updateTaskStatus,
   getBatchTasks,
 } from "../controllers/taskController.js";
-import { roleMiddleware, authMiddleware } from "../middleware/authMiddleware.js";
+import {
+  roleMiddleware,
+  authMiddleware,
+} from "../middleware/authMiddleware.js";
 
 const router = express.Router();
 
@@ -21,6 +24,6 @@ router.get("/employee/:id", roleMiddleware(["Employee"]), getEmployeeTasks);
 router.get("/batch/:id", roleMiddleware(["Admin", "Manager"]), getBatchTasks);
 
 // Update task status (Only assigned employee can update)
-router.put("/:id/status", roleMiddleware(["Employee"]), updateTaskStatus);
+router.put("/:id/status", updateTaskStatus);
 
 export default router;

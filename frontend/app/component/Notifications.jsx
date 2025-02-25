@@ -14,7 +14,7 @@ const Notifications = () => {
       <div className="absolute top-0 right-0 bg-red-500 text-white text-xs px-2 py-1 rounded-full">
         {notifications.length}
       </div>
-      <div className="absolute right-0 mt-2 w-64 bg-[#002A5E] p-4 rounded shadow-md">
+      <div className="absolute right-0 mt-2 w-64 bg-white] p-4 rounded shadow-md">
         <h3 className="text-sm font-semibold">Notifications</h3>
         <ul>
           {notifications.map((notif) => (
