@@ -23,6 +23,22 @@ const batchSchema = new mongoose.Schema({
     type: String,
     require: true,
   },
+  diamondWeight: {
+    type: Number,
+    required: true,
+  },
+  diamondNumber: {
+    type: Number,
+    required: true,
+  },
+  expectedDate: {
+    type: Date,
+    required: true,
+  },
+  currentDate: {
+    type: Date,
+    default: Date.now,
+  },
 
   currentProcess: {
     type: String,

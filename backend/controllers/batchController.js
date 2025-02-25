@@ -44,6 +44,10 @@ export const createBatch = async (req, res) => {
     email,
     phone,
     address,
+    diamondWeight,
+    diamondNumber,
+    expectedDate,
+    currentDate,
     currentProcess,
   } = req.body;
 
@@ -56,6 +60,10 @@ export const createBatch = async (req, res) => {
       email,
       phone,
       address,
+      diamondWeight,
+      diamondNumber,
+      expectedDate,
+      currentDate,
       currentProcess,
     });
 
