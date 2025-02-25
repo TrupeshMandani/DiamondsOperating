@@ -237,7 +237,7 @@ export default function BatchCreationForm() {
     };
 
     try {
-      await axios.post("/api/batches", payload);
+      await axios.post("http://localhost:5023/api/batches", payload);
       toast.success("Batch Created Successfully!");
       console.log("Batch Data:", payload);
 
