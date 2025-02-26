@@ -1,33 +1,38 @@
-"use client";
+const tasks = [
+  { id: 1, title: "Review Q2 Financial Report", status: "In Progress", assignee: "John Doe" },
+  { id: 2, title: "Prepare Team Performance Reviews", status: "Pending", assignee: "Jane Smith" },
+  { id: 3, title: "Update Project Management Software", status: "Completed", assignee: "Mike Johnson" },
+  { id: 4, title: "Schedule Client Meetings for Next Week", status: "In Progress", assignee: "Sarah Lee" },
+  { id: 5, title: "Finalize New Product Launch Strategy", status: "Pending", assignee: "Chris Brown" },
+]
 
-const TaskList = ({ tasks = [], filter }) => {
-  if (!Array.isArray(tasks)) {
-    console.error("Error: tasks is not an array", tasks);
-    return <p className="text-red-500">Error: Task data is missing or invalid.</p>;
-  }
-
-  const filteredTasks = tasks.filter((task) =>
-    filter === "completed" ? task.status === "Completed" : task.status === "Pending"
-  );
-
+const TaskList = () => {
   return (
-    <div>
-      {filteredTasks.length > 0 ? (
-        <ul className="space-y-4">
-          {filteredTasks.map((task) => (
-            <li key={task.id} className="p-4 bg-[#003366] rounded-lg flex justify-between items-center">
-              <span>{task.taskName} - {task.assignedTo}</span>
-              <span className={`px-3 py-1 rounded-full text-sm ${task.status === "Completed" ? "bg-green-500" : "bg-yellow-500"}`}>
-                {task.status}
-              </span>
-            </li>
-          ))}
-        </ul>
-      ) : (
-        <p className="text-gray-400">No {filter} tasks available.</p>
-      )}
+    <div className="bg-[#FCFCFC] rounded-lg p-6 shadow-md border border-[#1A405E]">
+      <h2 className="text-2xl font-bold mb-4 text-[#111827]">Recent Tasks</h2>
+      <div className="overflow-x-auto">
+        <table className="w-full">
+          <thead>
+            <tr className="border-b border-[#1A405E]">
+              <th className="text-left py-2 px-4 text-[#111827]">Task</th>
+              <th className="text-left py-2 px-4 text-[#111827]">Status</th>
+              <th className="text-left py-2 px-4 text-[#111827]">Assignee</th>
+            </tr>
+          </thead>
+          <tbody>
+            {tasks.map((task) => (
+              <tr key={task.id} className="border-b border-[#1A405E] last:border-b-0">
+                <td className="py-2 px-4 text-[#111827]">{task.title}</td>
+                <td className="py-2 px-4 text-[#111827]">{task.status}</td>
+                <td className="py-2 px-4 text-[#111827]">{task.assignee}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
-  );
-};
+  )
+}
 
-export default TaskList;
+export default TaskList
+
