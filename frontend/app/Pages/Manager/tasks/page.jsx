@@ -1,4 +1,3 @@
-
 "use client";
 import { useState, useEffect } from "react";
 import { toast } from "react-hot-toast";
@@ -47,7 +46,7 @@ export default function BatchCreationForm() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-  
+
     const payload = {
       batchId: formData.batchId,
       materialType: formData.materialType,
@@ -70,7 +69,7 @@ export default function BatchCreationForm() {
         "4P Cutting": 0,
       },
     };
-  
+
     try {
       const response = await axios.post(
         "http://localhost:5023/api/batches/create",
@@ -78,14 +77,11 @@ export default function BatchCreationForm() {
       );
       toast.success("Batch Created Successfully!");
       alert(" Batch Created succesfully");
-      
-    
     } catch (error) {
       console.error("Error Details:", error.response?.data || error.message);
       toast.error("Error Creating Batch!");
     }
   };
-  
 
   return (
     <div className="flex h-screen">
@@ -124,7 +120,6 @@ export default function BatchCreationForm() {
                       <SelectValue placeholder="Select Material Type" />
                     </SelectTrigger>
                     <SelectContent className="z-50 text-black bg-white">
-
                       <SelectItem value="Rough Diamond">
                         Rough Diamond
                       </SelectItem>
@@ -234,9 +229,7 @@ export default function BatchCreationForm() {
               {/* Diamond Weight & Number of Diamonds */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <Label htmlFor="diamondWeight">
-                    Diamond Weight (Carat)
-                  </Label>
+                  <Label htmlFor="diamondWeight">Diamond Weight (Carat)</Label>
                   <Input
                     id="diamondWeight"
                     name="diamondWeight"
