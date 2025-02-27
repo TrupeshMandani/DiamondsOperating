@@ -1,3 +1,4 @@
+"routes.js";
 import express from "express";
 import {
   createBatch,
@@ -12,17 +13,15 @@ const router = express.Router();
 
 
 // Create a new batch
-router.post("/create",  createBatch);
+router.post("/create", createBatch);
 
 // Generate a QR code for a batch by ID
-router.get(
-  "/:id/generate-label",
-
-  generateQRCode
-);
+router.get("/:id/generate-label", generateQRCode);
 
 // get all Batches
-router.get("/",  getBatches);
+router.get("/", getBatches);
+
+
 
 // Get batch By ID
 router.get("/:id", getBatchByID);

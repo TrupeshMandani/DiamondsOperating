@@ -45,7 +45,7 @@ export const createBatch = async (req, res) => {
     phone,
     address,
     diamondWeight,
-    diamondNumber,
+    diamondNumber = req.body.numOfDiamonds, // Fixed field name
     expectedDate,
     currentDate,
     currentProcess,
@@ -65,6 +65,13 @@ export const createBatch = async (req, res) => {
       expectedDate,
       currentDate,
       currentProcess,
+      processStartDate: new Date(),
+      status: "Pending",
+      progress: {
+        Sarin: 0,
+        Stitching: 0,
+        "4P Cutting": 0,
+      },
     });
 
     await newBatch.save();

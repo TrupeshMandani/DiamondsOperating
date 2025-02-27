@@ -1,3 +1,4 @@
+"Batchmodal.jsx";
 import mongoose from "mongoose";
 
 const batchSchema = new mongoose.Schema({
