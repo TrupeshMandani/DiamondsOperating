@@ -1,3 +1,4 @@
+
 "use client";
 import { useState, useEffect } from "react";
 import { toast } from "react-hot-toast";
@@ -16,7 +17,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import Sidebar from "../../../component/Sidebar";
-import axios from "axios";
 
 const generateBatchId = () => "BATCH-" + Math.floor(Math.random() * 1000000);
 
@@ -47,7 +47,7 @@ export default function BatchCreationForm() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-
+  
     const payload = {
       batchId: formData.batchId,
       materialType: formData.materialType,
@@ -56,6 +56,7 @@ export default function BatchCreationForm() {
       email: formData.email,
       phone: formData.phone,
       address: formData.address,
+
       diamondWeight: formData.diamondWeight,
       diamondNumber: formData.numOfDiamonds, // Fixed field name
       expectedDate: formData.expectedDate,
@@ -69,7 +70,7 @@ export default function BatchCreationForm() {
         "4P Cutting": 0,
       },
     };
-
+  
     try {
       const response = await axios.post(
         "http://localhost:5023/api/batches/create",
@@ -77,11 +78,14 @@ export default function BatchCreationForm() {
       );
       toast.success("Batch Created Successfully!");
       alert(" Batch Created succesfully");
+      
+    
     } catch (error) {
       console.error("Error Details:", error.response?.data || error.message);
       toast.error("Error Creating Batch!");
     }
   };
+  
 
   return (
     <div className="flex h-screen">
@@ -120,9 +124,11 @@ export default function BatchCreationForm() {
                       <SelectValue placeholder="Select Material Type" />
                     </SelectTrigger>
                     <SelectContent className="z-50 text-black bg-white">
+
                       <SelectItem value="Rough Diamond">
                         Rough Diamond
                       </SelectItem>
+
                       <SelectItem value="Graphite Powder">
                         Graphite Powder
                       </SelectItem>
@@ -217,7 +223,7 @@ export default function BatchCreationForm() {
                   <SelectTrigger>
                     <SelectValue placeholder="Select Current Process" />
                   </SelectTrigger>
-                  <SelectContent className=" bg-white text-black z-50">
+                  <SelectContent className="bg-white text-black z-50">
                     <SelectItem value="Sarin">Sarin</SelectItem>
                     <SelectItem value="Stitching">Stitching</SelectItem>
                     <SelectItem value="4P Cutting">4P Cutting</SelectItem>
@@ -228,7 +234,9 @@ export default function BatchCreationForm() {
               {/* Diamond Weight & Number of Diamonds */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <Label htmlFor="diamondWeight">Diamond Weight (Carat)</Label>
+                  <Label htmlFor="diamondWeight">
+                    Diamond Weight (Carat)
+                  </Label>
                   <Input
                     id="diamondWeight"
                     name="diamondWeight"

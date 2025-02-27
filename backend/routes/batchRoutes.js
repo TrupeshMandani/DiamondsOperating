@@ -8,11 +8,9 @@ import {
   getBatches,
   updateBatch,
 } from "../controllers/batchController.js"; // Import both functions
-import {
-  authMiddleware,
-  roleMiddleware,
-} from "../middleware/authMiddleware.js";
+
 const router = express.Router();
+
 
 // Create a new batch
 router.post("/create", createBatch);
@@ -22,6 +20,8 @@ router.get("/:id/generate-label", generateQRCode);
 
 // get all Batches
 router.get("/", getBatches);
+
+
 
 // Get batch By ID
 router.get("/:id", getBatchByID);
