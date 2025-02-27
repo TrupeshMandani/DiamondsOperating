@@ -1,14 +1,12 @@
-
 "use client";
+import axios from "axios"; // Add this import statement
+
 import { useState, useEffect } from "react";
 import { toast } from "react-hot-toast";
 import { Button } from "../../../component/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import DatePicker from "react-datepicker";
-import "react-datepicker/dist/react-datepicker.css";
-
 import {
   Select,
   SelectContent,
@@ -17,6 +15,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import Sidebar from "../../../component/Sidebar";
+import { useRouter } from "next/navigation"; // Correct usage of useRouter
 
 const generateBatchId = () => "BATCH-" + Math.floor(Math.random() * 1000000);
 
@@ -36,6 +35,8 @@ export default function BatchCreationForm() {
     currentDate: new Date().toISOString().split("T")[0],
   });
 
+  const router = useRouter(); // Correctly using useRouter directly inside the component
+
   useEffect(() => {
     // Regenerate a new Batch ID on mount
     setFormData((prev) => ({ ...prev, batchId: generateBatchId() }));
@@ -47,7 +48,7 @@ export default function BatchCreationForm() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-  
+
     const payload = {
       batchId: formData.batchId,
       materialType: formData.materialType,
@@ -56,7 +57,6 @@ export default function BatchCreationForm() {
       email: formData.email,
       phone: formData.phone,
       address: formData.address,
-
       diamondWeight: formData.diamondWeight,
       diamondNumber: formData.numOfDiamonds, // Fixed field name
       expectedDate: formData.expectedDate,
@@ -70,22 +70,22 @@ export default function BatchCreationForm() {
         "4P Cutting": 0,
       },
     };
-  
+
     try {
       const response = await axios.post(
         "http://localhost:5023/api/batches/create",
         payload
       );
       toast.success("Batch Created Successfully!");
-      alert(" Batch Created succesfully");
-      
-    
+      alert("Batch Created successfully");
+
+      // Redirect to the dashboard after batch creation
+      router.push("/dashboard"); // Adjust the path as per your app's routing
     } catch (error) {
       console.error("Error Details:", error.response?.data || error.message);
       toast.error("Error Creating Batch!");
     }
   };
-  
 
   return (
     <div className="flex h-screen">
@@ -99,7 +99,7 @@ export default function BatchCreationForm() {
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
-              {/* Batch ID & Material Type */}
+              {/* Form Fields */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor="batchId">Batch ID</Label>
@@ -115,7 +115,7 @@ export default function BatchCreationForm() {
                   <Label htmlFor="materialType">Material Type</Label>
                   <Select
                     name="materialType"
-                    value={formData.materialType} // Added value
+                    value={formData.materialType}
                     onValueChange={(value) =>
                       setFormData({ ...formData, materialType: value })
                     }
@@ -124,11 +124,9 @@ export default function BatchCreationForm() {
                       <SelectValue placeholder="Select Material Type" />
                     </SelectTrigger>
                     <SelectContent className="z-50 text-black bg-white">
-
                       <SelectItem value="Rough Diamond">
                         Rough Diamond
                       </SelectItem>
-
                       <SelectItem value="Graphite Powder">
                         Graphite Powder
                       </SelectItem>
@@ -234,9 +232,7 @@ export default function BatchCreationForm() {
               {/* Diamond Weight & Number of Diamonds */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <Label htmlFor="diamondWeight">
-                    Diamond Weight (Carat)
-                  </Label>
+                  <Label htmlFor="diamondWeight">Diamond Weight (Carat)</Label>
                   <Input
                     id="diamondWeight"
                     name="diamondWeight"
@@ -286,7 +282,6 @@ export default function BatchCreationForm() {
                   />
                 </div>
               </div>
-
               {/* Submit Button */}
               <div className="flex justify-end">
                 <Button
