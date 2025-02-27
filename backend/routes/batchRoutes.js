@@ -1,3 +1,4 @@
+"routes.js";
 import express from "express";
 import {
   createBatch,
@@ -13,19 +14,14 @@ import {
 } from "../middleware/authMiddleware.js";
 const router = express.Router();
 
-router.use(authMiddleware);
 // Create a new batch
-router.post("/create", roleMiddleware(["Admin", "Manager"]), createBatch);
+router.post("/create", createBatch);
 
 // Generate a QR code for a batch by ID
-router.get(
-  "/:id/generate-label",
-  roleMiddleware(["Admin", "Manager"]),
-  generateQRCode
-);
+router.get("/:id/generate-label", generateQRCode);
 
 // get all Batches
-router.get("/", roleMiddleware(["Admin", "Manager", "Employee"]), getBatches);
+router.get("/", getBatches);
 
 // Get batch By ID
 router.get("/:id", getBatchByID);
