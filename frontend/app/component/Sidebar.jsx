@@ -18,6 +18,10 @@ const Sidebar = () => {
         </li>
         <li className="flex items-center gap-3 p-2 rounded hover:bg-[#004080] cursor-pointer">
           <ClipboardList className="w-5 h-5" />
+          <Link href="/Pages/Batches">Batches</Link> 
+        </li>
+        <li className="flex items-center gap-3 p-2 rounded hover:bg-[#004080] cursor-pointer">
+          <ClipboardList className="w-5 h-5" />
           <Link href="/Pages/Manager/Employee">Employees</Link> 
         </li>
         <li className="flex items-center gap-3 p-2 rounded hover:bg-[#004080] cursor-pointer">
