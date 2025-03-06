@@ -101,14 +101,28 @@ export const getBatchByID = async (req, res) => {
   try {
     const { id } = req.params;
 
-    // Fetch batch by batchId (string) instead of _id (ObjectId)
+    // Fetch batch details by batchId
     const batch = await Batch.findOne({ batchId: id });
 
     if (!batch) {
       return res.status(404).json({ message: "Batch not found" });
     }
 
-    res.json(batch);
+    res.json({
+      batchId: batch.batchId,
+      materialType: batch.materialType,
+      customer: `${batch.firstName} ${batch.lastName}`,
+      email: batch.email,
+      phone: batch.phone,
+      address: batch.address,
+      diamondWeight: batch.diamondWeight,
+      diamondNumber: batch.diamondNumber,
+      expectedDate: batch.expectedDate,
+      currentDate: batch.currentDate,
+      currentProcess: batch.currentProcess,
+      status: batch.status,
+      progress: batch.progress,
+    });
   } catch (error) {
     res
       .status(500)
