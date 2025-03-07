@@ -9,7 +9,6 @@ import {
   roleMiddleware,
   authMiddleware,
 } from "../middleware/authMiddleware.js";
-import { register } from "../controllers/authController.js";
 
 const router = express.Router();
 
