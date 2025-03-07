@@ -1,3 +1,4 @@
+"use client";
 import { useState } from "react";
 import EmpTaskCard from "./EmpTaskCard";
 import { IoIosArrowDown } from "react-icons/io";
@@ -24,91 +25,117 @@ const tasks = {
 };
 
 const EmpTaskList = () => {
-  const [assignedTasksToShow, setAssignedTasksToShow] = useState(6);
-  const [inProgressTasksToShow, setInProgressTasksToShow] = useState(6);
-  const [completedTasksToShow, setCompletedTasksToShow] = useState(6);
+  const [assignedTasksToShow, setAssignedTasksToShow] = useState(4);
+  const [inProgressTasksToShow, setInProgressTasksToShow] = useState(4);
+  const [completedTasksToShow, setCompletedTasksToShow] = useState(4);
 
   const handleSeeMore = (section) => {
     if (section === "assigned") {
-      setAssignedTasksToShow(assignedTasksToShow + 6);
+      setAssignedTasksToShow(assignedTasksToShow + 4);
     } else if (section === "inProgress") {
-      setInProgressTasksToShow(inProgressTasksToShow + 6);
+      setInProgressTasksToShow(inProgressTasksToShow + 4);
     } else if (section === "completed") {
-      setCompletedTasksToShow(completedTasksToShow + 6);
+      setCompletedTasksToShow(completedTasksToShow + 4);
     }
   };
 
-  const renderTaskRows = (taskList) => {
+  const renderTaskRows = (taskList, status) => {
     return taskList.map((task) => (
-      <EmpTaskCard key={task.id} task={task} status="assigned" />
+      <EmpTaskCard key={task.id} task={task} status={status} />
     ));
   };
 
+  const checkShowMoreButton = (section, tasksToShow) => {
+    if (section === "assigned") {
+      return tasksToShow < tasks.assigned.length;
+    } else if (section === "inProgress") {
+      return tasksToShow < tasks.inProgress.length;
+    } else if (section === "completed") {
+      return tasksToShow < tasks.completed.length;
+    }
+    return false;
+  };
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 max-w-7xl mx-auto px-4">
       {/* Assigned Tasks Section */}
-      <div className="w-full p-4 bg-[#fff] text-white shadow-lg rounded-lg">
-        <h2 className="text-lg font-semibold text-black text-center mb-4">
+      <div className="w-full p-6 bg-white shadow-md rounded-lg">
+        <h2 className="text-xl font-semibold text-black text-center mb-6">
           Assigned Tasks
         </h2>
-        <div className="bg-white p-5 flex flex-wrap gap-3 rounded-lg">
-          {renderTaskRows(tasks.assigned.slice(0, assignedTasksToShow))}
+        <div className="bg-white p-4 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+          {renderTaskRows(
+            tasks.assigned.slice(0, assignedTasksToShow),
+            "assigned"
+          )}
         </div>
-        {assignedTasksToShow < tasks.assigned.length && (
-          <button
-            onClick={() => handleSeeMore("assigned")}
-            className="mt-4 mx-auto text-black hover:text-blue-600 text-lg flex items-center space-x-1"
-          >
-            <span>See More</span>
-            <IoIosArrowDown
-              className="transform animate-bounce pt-1 text-2xl"
-              aria-label="See More"
-            />
-          </button>
+        {checkShowMoreButton("assigned", assignedTasksToShow) && (
+          <div className="flex justify-center mt-4">
+            <button
+              onClick={() => handleSeeMore("assigned")}
+              className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-black rounded-full flex items-center gap-2 transition-all"
+            >
+              <span>See More</span>
+              <IoIosArrowDown
+                className="transform animate-bounce text-xl"
+                aria-label="See More"
+              />
+            </button>
+          </div>
         )}
       </div>
 
       {/* In Progress Tasks Section */}
-      <div className="w-full p-4 bg-white text-white shadow-lg rounded-lg">
-        <h2 className="text-lg text-black font-semibold text-center mb-4">
+      <div className="w-full p-6 bg-white shadow-md rounded-lg">
+        <h2 className="text-xl font-semibold text-black text-center mb-6">
           In Progress Tasks
         </h2>
-        <div className="bg-white p-3 flex flex-wrap gap-4 rounded-lg">
-          {renderTaskRows(tasks.inProgress.slice(0, inProgressTasksToShow))}
+        <div className="bg-white p-4 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+          {renderTaskRows(
+            tasks.inProgress.slice(0, inProgressTasksToShow),
+            "inProgress"
+          )}
         </div>
-        {inProgressTasksToShow < tasks.inProgress.length && (
-          <button
-            onClick={() => handleSeeMore("inProgress")}
-            className="mt-4 mx-auto text-black hover:text-blue-600 text-lg flex items-center space-x-1"
-          >
-            <span>See More</span>
-            <IoIosArrowDown
-              className="transform animate-bounce text-2xl"
-              aria-label="See More"
-            />
-          </button>
+        {checkShowMoreButton("inProgress", inProgressTasksToShow) && (
+          <div className="flex justify-center mt-4">
+            <button
+              onClick={() => handleSeeMore("inProgress")}
+              className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-black rounded-full flex items-center gap-2 transition-all"
+            >
+              <span>See More</span>
+              <IoIosArrowDown
+                className="transform animate-bounce text-xl"
+                aria-label="See More"
+              />
+            </button>
+          </div>
         )}
       </div>
 
       {/* Completed Tasks Section */}
-      <div className="w-full p-4 bg-[#fff] text-white shadow-lg rounded-lg">
-        <h2 className="text-lg text-black font-semibold text-center mb-4">
+      <div className="w-full p-6 bg-white shadow-md rounded-lg">
+        <h2 className="text-xl font-semibold text-black text-center mb-6">
           Completed Tasks
         </h2>
-        <div className="bg-white p-3 flex flex-wrap gap-4 rounded-lg">
-          {renderTaskRows(tasks.completed.slice(0, completedTasksToShow))}
+        <div className="bg-white p-4 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+          {renderTaskRows(
+            tasks.completed.slice(0, completedTasksToShow),
+            "completed"
+          )}
         </div>
-        {completedTasksToShow < tasks.completed.length && (
-          <button
-            onClick={() => handleSeeMore("completed")}
-            className="mt-4 mx-auto text-black hover:text-blue-600 text-lg flex items-center space-x-1"
-          >
-            <span>See More</span>
-            <IoIosArrowDown
-              className="transform animate-bounce text-2xl"
-              aria-label="See More"
-            />
-          </button>
+        {checkShowMoreButton("completed", completedTasksToShow) && (
+          <div className="flex justify-center mt-4">
+            <button
+              onClick={() => handleSeeMore("completed")}
+              className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-black rounded-full flex items-center gap-2 transition-all"
+            >
+              <span>See More</span>
+              <IoIosArrowDown
+                className="transform animate-bounce text-xl"
+                aria-label="See More"
+              />
+            </button>
+          </div>
         )}
       </div>
     </div>

@@ -51,10 +51,10 @@ function LoginForm() {
 
       setTimeout(() => {
         setIsSuccess(false);
-        if (userRole === "Manager" || "Admin") {
-          router.push("/pages/Manager/Dashboard");
-        } else if (userRole === "Employee") {
+        if (userRole === "Employee") {
           router.push("/pages/employees/dashboard");
+        } else if (userRole === "Manager" || "Admin") {
+          router.push("/pages/Manager/Dashboard");
         } else {
           router.push("/pages/login");
         }

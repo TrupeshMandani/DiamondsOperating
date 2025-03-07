@@ -2,7 +2,6 @@
 
 import { useTheme } from "next-themes";
 import { useEffect, useState } from "react";
-import StatsCard from "./StatsCard";
 import Sidebar from "./Sidebar";
 import BatchModal from "./BatchModal"; // Updated to use the new BatchModal
 import { motion } from "framer-motion";
