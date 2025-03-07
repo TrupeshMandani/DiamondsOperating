@@ -1,6 +1,6 @@
-"use client";
 import { useState } from "react";
 import EmpTaskCard from "./EmpTaskCard";
+import { IoIosArrowDown } from "react-icons/io";
 
 const tasks = {
   assigned: [
@@ -39,71 +39,75 @@ const EmpTaskList = () => {
   };
 
   const renderTaskRows = (taskList) => {
-    const rows = [];
-    for (let i = 0; i < taskList.length; i += 3) {
-      rows.push(taskList.slice(i, i + 3));
-    }
-    return rows.map((row, index) => (
-      <div key={index} className="flex gap-4 mb-4">
-        {row.map((task) => (
-          <EmpTaskCard key={task.id} task={task} status="assigned" />
-        ))}
-      </div>
+    return taskList.map((task) => (
+      <EmpTaskCard key={task.id} task={task} status="assigned" />
     ));
   };
 
   return (
-    <div className="max-w-6xl mx-auto space-y-6">
+    <div className="space-y-6">
       {/* Assigned Tasks Section */}
-      <div className="w-full p-4 bg-[#1A405E] text-white shadow-lg rounded-lg">
-        <h2 className="text-lg font-semibold text-center mb-4">
+      <div className="w-full p-4 bg-[#fff] text-white shadow-lg rounded-lg">
+        <h2 className="text-lg font-semibold text-black text-center mb-4">
           Assigned Tasks
         </h2>
-        <div className="bg-gray-800 p-3 rounded-lg space-y-3">
+        <div className="bg-white p-5 flex flex-wrap gap-3 rounded-lg">
           {renderTaskRows(tasks.assigned.slice(0, assignedTasksToShow))}
         </div>
         {assignedTasksToShow < tasks.assigned.length && (
           <button
             onClick={() => handleSeeMore("assigned")}
-            className="mt-4 block mx-auto bg-blue-500 text-white py-2 px-6 rounded-md hover:bg-blue-600 transition-all"
+            className="mt-4 mx-auto text-black hover:text-blue-600 text-lg flex items-center space-x-1"
           >
-            See More
+            <span>See More</span>
+            <IoIosArrowDown
+              className="transform animate-bounce pt-1 text-2xl"
+              aria-label="See More"
+            />
           </button>
         )}
       </div>
 
       {/* In Progress Tasks Section */}
-      <div className="w-full p-4 bg-[#1A405E] text-white shadow-lg rounded-lg">
-        <h2 className="text-lg font-semibold text-center mb-4">
+      <div className="w-full p-4 bg-white text-white shadow-lg rounded-lg">
+        <h2 className="text-lg text-black font-semibold text-center mb-4">
           In Progress Tasks
         </h2>
-        <div className="bg-gray-800 p-3 rounded-lg space-y-3">
+        <div className="bg-white p-3 flex flex-wrap gap-4 rounded-lg">
           {renderTaskRows(tasks.inProgress.slice(0, inProgressTasksToShow))}
         </div>
         {inProgressTasksToShow < tasks.inProgress.length && (
           <button
             onClick={() => handleSeeMore("inProgress")}
-            className="mt-4 block mx-auto bg-blue-500 text-white py-2 px-6 rounded-md hover:bg-blue-600 transition-all"
+            className="mt-4 mx-auto text-black hover:text-blue-600 text-lg flex items-center space-x-1"
           >
-            See More
+            <span>See More</span>
+            <IoIosArrowDown
+              className="transform animate-bounce text-2xl"
+              aria-label="See More"
+            />
           </button>
         )}
       </div>
 
       {/* Completed Tasks Section */}
-      <div className="w-full p-4 bg-[#1A405E] text-white shadow-lg rounded-lg">
-        <h2 className="text-lg font-semibold text-center mb-4">
+      <div className="w-full p-4 bg-[#fff] text-white shadow-lg rounded-lg">
+        <h2 className="text-lg text-black font-semibold text-center mb-4">
           Completed Tasks
         </h2>
-        <div className="bg-gray-800 p-3 rounded-lg space-y-3">
+        <div className="bg-white p-3 flex flex-wrap gap-4 rounded-lg">
           {renderTaskRows(tasks.completed.slice(0, completedTasksToShow))}
         </div>
         {completedTasksToShow < tasks.completed.length && (
           <button
             onClick={() => handleSeeMore("completed")}
-            className="mt-4 block mx-auto bg-blue-500 text-white py-2 px-6 rounded-md hover:bg-blue-600 transition-all"
+            className="mt-4 mx-auto text-black hover:text-blue-600 text-lg flex items-center space-x-1"
           >
-            See More
+            <span>See More</span>
+            <IoIosArrowDown
+              className="transform animate-bounce text-2xl"
+              aria-label="See More"
+            />
           </button>
         )}
       </div>

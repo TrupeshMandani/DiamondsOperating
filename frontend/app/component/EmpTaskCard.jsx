@@ -16,10 +16,7 @@ const EmpTaskCard = ({ task, status }) => {
   };
 
   return (
-    <motion.div
-      className="p-3 bg-gray-700 rounded-lg mb-2 hover:scale-105 transition-all"
-      whileHover={{ scale: 1.02 }}
-    >
+    <motion.div className="w-[300px] p-3 bg-[#e9e9e9] shadow-inner text-black rounded-lg mb-4 hover:scale-105 transition-all">
       <p className="text-lg font-medium">Batch ID: {task.id}</p>
       <p className="text-sm">
         Start: {task.start} - End: {task.end}

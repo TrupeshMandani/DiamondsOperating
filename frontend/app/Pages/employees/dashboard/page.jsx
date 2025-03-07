@@ -7,7 +7,6 @@ const page = () => {
   return (
     <AuthProtection>
       <div>
-        {" "}
         <EmpDashboard />
       </div>
     </AuthProtection>
