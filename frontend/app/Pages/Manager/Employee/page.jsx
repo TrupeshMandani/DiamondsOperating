@@ -558,9 +558,9 @@ export default function EmployeeDashboard() {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
                 <AnimatePresence>
-                  {filteredEmployees.map((employee) => (
+                  {filteredEmployees.map((employee, index) => (
                     <motion.div
-                      key={employee.id}
+                      key={employee.id || index}
                       variants={item}
                       initial="hidden"
                       animate="show"

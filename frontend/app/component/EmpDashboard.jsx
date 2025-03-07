@@ -1,7 +1,7 @@
+"use client";
+
 import EmpSidebar from "./EmpSidebar";
 import EmpTaskList from "./EmpTaskList";
-
-import TaskList from "./TaskList";
 
 export default function EmpDashboard() {
   return (

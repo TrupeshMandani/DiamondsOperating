@@ -1,13 +1,10 @@
 "use client";
 import React, { useState } from "react";
-import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
 import { FiArrowRight, FiCheckCircle, FiLoader } from "react-icons/fi";
 
 function LoginForm() {
-  const [isSignup, setIsSignup] = useState(false);
   const [formData, setFormData] = useState({
-    name: "",
     email: "",
     password: "",
   });
@@ -28,21 +25,13 @@ function LoginForm() {
     setIsLoading(true);
     setError("");
 
-    const endpoint = isSignup
-      ? `http://localhost:5023/api/auth/register`
-      : `http://localhost:5023/api/auth/login`;
-
-    const payload = isSignup
-      ? formData
-      : { email: formData.email, password: formData.password };
-
     try {
-      const response = await fetch(endpoint, {
+      const response = await fetch("http://localhost:5023/api/auth/login", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(payload),
+        body: JSON.stringify(formData),
       });
 
       const data = await response.json();
@@ -52,26 +41,21 @@ function LoginForm() {
       }
 
       setIsSuccess(true);
-
-      // Store token and user role in localStorage or context
       const { token, result } = data;
       localStorage.setItem("authToken", token);
-      localStorage.setItem("userRole", result.role); // Make sure role is stored
+      localStorage.setItem("userRole", result.role);
 
-      // Redirect based on user role
       setTimeout(() => {
         setIsSuccess(false);
         const userRole = localStorage.getItem("userRole");
-        console.log("User role: ", userRole); // Debugging log
-
         if (userRole === "Manager") {
-          router.push("/Pages/Manager/Dashboard"); // Redirect to manager dashboard
+          router.push("/pages/Manager/Dashboard");
         } else if (userRole === "Employee") {
-          router.push("/Pages/employees/dashboard"); // Redirect to employee dashboard
+          router.push("/pages/employees/dashboard");
         } else {
-          router.push("/Pages/Manager/Dashboard"); // Default fallback dashboard
+          router.push("/pages/Manager/Dashboard");
         }
-      }, 2000);
+      }, 500);
     } catch (err) {
       setError(err.message);
     }
@@ -81,25 +65,16 @@ function LoginForm() {
 
   return (
     <div className="fixed inset-0 flex items-center justify-center bg-gray-900">
-      <motion.div
+      <div
         className="p-8 rounded-xl backdrop-blur-lg bg-white/10 shadow-2xl border border-white/20"
         style={{ width: "800px", height: "400px" }}
-        initial={{ opacity: 0, y: -50 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
       >
         <div className="flex h-full">
-          {/* Left Panel */}
-          <motion.div
-            className="w-1/2 p-4 flex flex-col items-center justify-center bg-navy-800/50 backdrop-blur-sm rounded-xl border border-white/20"
-            whileHover={{ scale: 1.02 }}
-          >
-            <motion.img
+          <div className="w-1/2 p-4 flex flex-col items-center justify-center bg-navy-800/50 backdrop-blur-sm rounded-xl border border-white/20">
+            <img
               src="/Diamond logo.png"
               alt="Company Logo"
               className="w-24 h-24 rounded-full mb-4 backdrop-blur-sm border-2 border-white/30"
-              whileHover={{ rotate: 360 }}
-              transition={{ duration: 1 }}
             />
             <h1 className="text-xl font-bold text-white">
               Diamond Management System
@@ -107,74 +82,37 @@ function LoginForm() {
             <p className="text-center text-gray-300 text-sm mt-2">
               Secure access to your professional dashboard
             </p>
-          </motion.div>
-
-          {/* Right Form Panel */}
-          <motion.div
-            className="w-1/2 p-8 px-16 flex flex-col items-center justify-center"
-            key={isSignup ? "signup" : "login"}
-            initial={{ opacity: 0, x: isSignup ? 50 : -50 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.5 }}
-          >
-            <motion.h1
-              className="text-2xl font-bold text-center text-white mb-6"
-              animate={{ textShadow: "0 0 8px rgba(255,255,255,0.3)" }}
-              transition={{ repeat: Infinity, duration: 2 }}
-            >
-              {isSignup ? "Signup" : "Login"}
-            </motion.h1>
-
+          </div>
+          <div className="w-1/2 p-8 px-16 flex flex-col items-center justify-center">
+            <h1 className="text-2xl font-bold text-center text-white mb-6">
+              Login
+            </h1>
             <form onSubmit={handleSubmit} className="space-y-4 w-full">
-              {isSignup && (
-                <motion.div whileHover={{ scale: 1.02 }}>
-                  <input
-                    type="text"
-                    name="name"
-                    placeholder="Name"
-                    value={formData.name}
-                    onChange={handleChange}
-                    className="w-full border border-white/30 bg-white/20 px-3 py-2 rounded-md focus:outline-none focus:border-blue-400 placeholder-gray-400 text-white backdrop-blur-sm transition-all"
-                  />
-                </motion.div>
-              )}
-
-              <motion.div whileHover={{ scale: 1.02 }}>
+              <div>
                 <input
                   type="email"
                   name="email"
                   placeholder="Email"
                   value={formData.email}
                   onChange={handleChange}
-                  className="w-full border border-white/30 bg-white/20 px-3 py-2 rounded-md focus:outline-none focus:border-blue-400 placeholder-gray-400 text-white backdrop-blur-sm transition-all"
+                  className="w-full border border-white/30 bg-white/20 px-3 py-2 rounded-md focus:outline-none focus:border-blue-400 placeholder-gray-400 text-white backdrop-blur-sm"
                 />
-              </motion.div>
-
-              <motion.div whileHover={{ scale: 1.02 }}>
+              </div>
+              <div>
                 <input
                   type="password"
                   name="password"
                   placeholder="Password"
                   value={formData.password}
                   onChange={handleChange}
-                  className="w-full border border-white/30 bg-white/20 px-3 py-2 rounded-md focus:outline-none focus:border-blue-400 placeholder-gray-400 text-white backdrop-blur-sm transition-all"
+                  className="w-full border border-white/30 bg-white/20 px-3 py-2 rounded-md focus:outline-none focus:border-blue-400 placeholder-gray-400 text-white backdrop-blur-sm"
                 />
-              </motion.div>
-
+              </div>
               {error && (
-                <motion.div
-                  initial={{ scale: 0 }}
-                  animate={{ scale: 1 }}
-                  className="text-red-400 text-sm text-center"
-                >
-                  {error}
-                </motion.div>
+                <div className="text-red-400 text-sm text-center">{error}</div>
               )}
-
-              <motion.button
+              <button
                 type="submit"
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
                 disabled={isLoading}
                 className="w-full bg-blue-500/90 text-white px-4 py-2 rounded-md hover:bg-blue-600/90 transition-all duration-200 backdrop-blur-sm border border-white/20 flex items-center justify-center gap-2"
               >
@@ -185,27 +123,12 @@ function LoginForm() {
                 ) : (
                   <FiArrowRight />
                 )}
-                {isSignup ? "Signup" : "Login"}
-              </motion.button>
+                Login
+              </button>
             </form>
-
-            <motion.button
-              onClick={() => setIsSignup(!isSignup)}
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              className="text-blue-400 hover:text-blue-300 mt-4 text-sm font-medium  flex items-center gap-2"
-            >
-              {isSignup ? "Already have an account?" : "Don't have an account?"}
-              <motion.span
-                animate={{ x: [-2, 2, -2] }}
-                transition={{ repeat: Infinity, duration: 1 }}
-              >
-                →
-              </motion.span>
-            </motion.button>
-          </motion.div>
+          </div>
         </div>
-      </motion.div>
+      </div>
     </div>
   );
 }
