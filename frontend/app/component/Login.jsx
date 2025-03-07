@@ -2,6 +2,7 @@
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import { FiArrowRight, FiCheckCircle, FiLoader } from "react-icons/fi";
+import { jwtDecode } from "jwt-decode";
 
 function LoginForm() {
   const [formData, setFormData] = useState({
@@ -41,19 +42,21 @@ function LoginForm() {
       }
 
       setIsSuccess(true);
-      const { token, result } = data;
+      const { token } = data;
       localStorage.setItem("authToken", token);
-      localStorage.setItem("userRole", result.role);
+
+      // Decode the token immediately
+      const decoded = jwtDecode(token);
+      const userRole = decoded.role;
 
       setTimeout(() => {
         setIsSuccess(false);
-        const userRole = localStorage.getItem("userRole");
-        if (userRole === "Manager") {
+        if (userRole === "Manager" || "Admin") {
           router.push("/pages/Manager/Dashboard");
         } else if (userRole === "Employee") {
           router.push("/pages/employees/dashboard");
         } else {
-          router.push("/pages/Manager/Dashboard");
+          router.push("/pages/login");
         }
       }, 500);
     } catch (err) {

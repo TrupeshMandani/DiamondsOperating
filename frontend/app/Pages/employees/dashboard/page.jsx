@@ -1,16 +1,16 @@
 import EmpDashboard from "@/app/component/EmpDashboard";
-import ProtectedRoute from "@/app/component/ProtectedRoute";
+import AuthProtection from "@/utils/AuthProtection";
 
 import React from "react";
 
 const page = () => {
   return (
-    <ProtectedRoute>
+    <AuthProtection>
       <div>
         {" "}
         <EmpDashboard />
       </div>
-    </ProtectedRoute>
+    </AuthProtection>
   );
 };
 
