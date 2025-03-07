@@ -1,6 +1,5 @@
 "use client";
 
-import { useTheme } from "next-themes";
 import { useEffect, useState } from "react";
 import StatsCard from "./StatsCard";
 import Sidebar from "./Sidebar";
@@ -9,7 +8,6 @@ import { motion } from "framer-motion";
 import { Bell, CheckCircle, ClipboardList, Loader2, Users } from "lucide-react";
 
 const Dashboard = () => {
-  const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedBatch, setSelectedBatch] = useState(null); // Store selected batch details
@@ -131,7 +129,6 @@ const Dashboard = () => {
         transition={{ duration: 0.5 }}
         className="flex-1 ml-72 p-8 text-gray-800 bg-gradient-to-br from-gray-50 to-blue-50 overflow-y-auto"
       >
-        
         <motion.div
           initial={{ y: 20, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
@@ -139,67 +136,67 @@ const Dashboard = () => {
           className="mt-12"
         >
           <div className="flex justify-between items-center mb-8">
-          <motion.h1
-            initial={{ x: -20 }}
-            animate={{ x: 0 }}
-            transition={{ duration: 0.5, delay: 0.2 }}
-            className="text-3xl font-bold text-[#121828] border-l-4 border-blue-500 pl-4"
-          >
-            Dashboard
-          </motion.h1>
+            <motion.h1
+              initial={{ x: -20 }}
+              animate={{ x: 0 }}
+              transition={{ duration: 0.5, delay: 0.2 }}
+              className="text-3xl font-bold text-[#121828] border-l-4 border-blue-500 pl-4"
+            >
+              Dashboard
+            </motion.h1>
 
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              transition={{ duration: 0.3, delay: 0.4 }}
+              className="flex space-x-2"
+            >
+              <span className="px-4 py-2 bg-blue-100 text-blue-800 rounded-md font-medium">
+                {new Date().toLocaleDateString()}
+              </span>
+            </motion.div>
+          </div>
+
+          {/* Stats Cards */}
           <motion.div
-            initial={{ scale: 0.9, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            transition={{ duration: 0.3, delay: 0.4 }}
-            className="flex space-x-2"
+            initial={{ y: 20, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            transition={{ duration: 0.5, delay: 0.3 }}
+            className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mt-6"
           >
-            <span className="px-4 py-2 bg-blue-100 text-blue-800 rounded-md font-medium">
-              {new Date().toLocaleDateString()}
-            </span>
+            <StatsCard
+              title="Employees"
+              value={employees.length}
+              icon="Users"
+              iconComponent={getIcon("Users")}
+              onClick={() => openModal("Total Employees", employees)}
+              color="from-blue-500 to-blue-600"
+            />
+            <StatsCard
+              title="Completed Tasks"
+              value={completedTasks.length}
+              icon="CheckCircle"
+              iconComponent={getIcon("CheckCircle")}
+              onClick={() => openModal("Completed Tasks", completedTasks)}
+              color="from-green-500 to-green-600"
+            />
+            <StatsCard
+              title="Pending Tasks"
+              value={pendingTasks.length}
+              icon="ClipboardList"
+              iconComponent={getIcon("ClipboardList")}
+              onClick={() => openModal("Pending Tasks", pendingTasks)}
+              color="from-amber-500 to-amber-600"
+            />
+            <StatsCard
+              title="Notifications"
+              value={notifications.length}
+              icon="Bell"
+              iconComponent={getIcon("Bell")}
+              onClick={() => openModal("Notifications", notifications)}
+              color="from-purple-500 to-purple-600"
+            />
           </motion.div>
-        </div>
-
-        {/* Stats Cards */}
-        <motion.div
-          initial={{ y: 20, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          transition={{ duration: 0.5, delay: 0.3 }}
-          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mt-6"
-        >
-          <StatsCard
-            title="Employees"
-            value={employees.length}
-            icon="Users"
-            iconComponent={getIcon("Users")}
-            onClick={() => openModal("Total Employees", employees)}
-            color="from-blue-500 to-blue-600"
-          />
-          <StatsCard
-            title="Completed Tasks"
-            value={completedTasks.length}
-            icon="CheckCircle"
-            iconComponent={getIcon("CheckCircle")}
-            onClick={() => openModal("Completed Tasks", completedTasks)}
-            color="from-green-500 to-green-600"
-          />
-          <StatsCard
-            title="Pending Tasks"
-            value={pendingTasks.length}
-            icon="ClipboardList"
-            iconComponent={getIcon("ClipboardList")}
-            onClick={() => openModal("Pending Tasks", pendingTasks)}
-            color="from-amber-500 to-amber-600"
-          />
-          <StatsCard
-            title="Notifications"
-            value={notifications.length}
-            icon="Bell"
-            iconComponent={getIcon("Bell")}
-            onClick={() => openModal("Notifications", notifications)}
-            color="from-purple-500 to-purple-600"
-          />
-        </motion.div>
 
           <h2 className="text-2xl font-bold text-[#121828] mb-6 border-b-2 border-blue-200 pb-2">
             Batches

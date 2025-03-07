@@ -16063,3 +16063,4 @@ backend/node_modules/bcrypt/build-tmp-napi-v3/Release/obj.target/node-addon-api/
 backend/node_modules/bcrypt/lib/binding/napi-v3/bcrypt_lib.node
 backend/node_modules/bcrypt/node-addon-api/node_api.Makefile
 backend/node_modules/bcrypt/node-addon-api/nothing.target.mk
+backend/node_modules/mime/types 2.json
