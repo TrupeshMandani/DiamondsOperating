@@ -14,14 +14,6 @@ function LoginForm() {
   const [error, setError] = useState("");
   const router = useRouter();
 
-  // Handle input change
-  const handleChange = (e) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value,
-    });
-  };
-
   // Check token expiration and logout if expired
   useEffect(() => {
     const checkTokenExpiration = () => {
@@ -40,7 +32,25 @@ function LoginForm() {
     };
 
     checkTokenExpiration();
+
+    // Set a timeout to automatically remove the token after 5 minutes
+    const tokenExpirationTimer = setTimeout(() => {
+      localStorage.removeItem("authToken");
+      localStorage.removeItem("authTokenExpiration");
+      console.log("Token automatically removed after 5 minutes");
+    }, 5 * 60 * 1000); // 5 minutes
+
+    // Cleanup timeout if component unmounts or on rerender
+    return () => clearTimeout(tokenExpirationTimer);
   }, []);
+
+  // Handle input change
+  const handleChange = (e) => {
+    setFormData({
+      ...formData,
+      [e.target.name]: e.target.value,
+    });
+  };
 
   // Handle form submission
   const handleSubmit = async (e) => {

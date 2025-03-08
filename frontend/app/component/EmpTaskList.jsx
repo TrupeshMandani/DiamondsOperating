@@ -91,7 +91,7 @@ const EmpTaskList = () => {
             >
               <span>See More</span>
               <IoIosArrowDown
-                className="transform animate-bounce text-xl"
+                className="transform animate-bounce pt-1 text-xl"
                 aria-label="See More"
               />
             </button>
@@ -130,7 +130,7 @@ const EmpTaskList = () => {
             >
               <span>See More</span>
               <IoIosArrowDown
-                className="transform animate-bounce text-xl"
+                className="transform animate-bounce pt-1 text-xl"
                 aria-label="See More"
               />
             </button>
@@ -169,7 +169,7 @@ const EmpTaskList = () => {
             >
               <span>See More</span>
               <IoIosArrowDown
-                className="transform animate-bounce text-xl"
+                className="transform animate-bounce pt-1 text-xl"
                 aria-label="See More"
               />
             </button>

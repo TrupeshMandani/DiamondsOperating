@@ -9,7 +9,7 @@ import { VscAccount } from "react-icons/vsc";
 
 const EmpSidebar = () => {
   return (
-    <div className="w-72 bg-[#111827] text-white h-screen p-6 flex flex-col">
+    <div className="w-72 top-0 left-0 fixed bg-[#111827] text-white h-screen p-6 flex flex-col">
       <h1 className="text-2xl font-bold mb-6">Welcome User</h1>
       <ul className="flex flex-col gap-4">
         <li className="flex items-center gap-3 p-2 rounded hover:bg-[#004080] cursor-pointer">
