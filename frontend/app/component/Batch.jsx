@@ -1,24 +1,15 @@
 "use client";
 
-import { useTheme } from "next-themes";
 import { useEffect, useState } from "react";
-import StatsCard from "./StatsCard";
-import Sidebar from "./Sidebar";
 import BatchModal from "./BatchModal"; // Updated to use the new BatchModal
 import { motion } from "framer-motion";
-import { Bell, CheckCircle, ClipboardList, Loader2, Users } from "lucide-react";
 
 const Dashboard = () => {
-  const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedBatch, setSelectedBatch] = useState(null); // Store selected batch details
 
   const [batches, setBatches] = useState([]);
-  const [employees, setEmployees] = useState([]);
-  const [completedTasks, setCompletedTasks] = useState([]);
-  const [pendingTasks, setPendingTasks] = useState([]);
-  const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -39,37 +30,12 @@ const Dashboard = () => {
 
   useEffect(() => {
     setMounted(true);
-
-    // Static data for demo purposes
-    setEmployees([
-      { id: 1, name: "Rudra Solanki", status: "Active" },
-      { id: 2, name: "Trupesh Mandani", status: "Active" },
-      { id: 3, name: "Priyanshu Kuchadiya", status: "Active" },
-    ]);
-
-    setCompletedTasks([
-      { id: 1, task: "Complete Report", status: "Completed" },
-      { id: 2, task: "Approve Budget", status: "Completed" },
-    ]);
-
-    setPendingTasks([
-      { id: 3, task: "Review Code", status: "Pending" },
-      { id: 4, task: "Client Meeting", status: "Pending" },
-    ]);
-
-    setNotifications([
-      "New project assigned to John Doe",
-      "Meeting scheduled with CEO",
-      "Deadline reminder for Budget Approval",
-    ]);
-
     fetchBatches();
   }, []);
 
   if (!mounted || loading) {
     return (
       <div className="min-h-screen flex flex-col justify-center items-center bg-[#121828] text-white">
-        <Loader2 className="h-12 w-12 animate-spin text-blue-400 mb-4" />
         <p className="text-lg font-medium animate-pulse">
           Loading dashboard...
         </p>
@@ -104,98 +70,73 @@ const Dashboard = () => {
     setModalOpen(false);
   };
 
-  const getIcon = (iconName) => {
-    switch (iconName) {
-      case "Users":
-        return <Users className="h-6 w-6" />;
-      case "CheckCircle":
-        return <CheckCircle className="h-6 w-6" />;
-      case "ClipboardList":
-        return <ClipboardList className="h-6 w-6" />;
-      case "Bell":
-        return <Bell className="h-6 w-6" />;
-      default:
-        return null;
-    }
-  };
-
   return (
-    <div className="flex h-screen w-full bg-gray-50">
-      <div className="w-72 h-screen fixed top-0 left-0 bg-[#121828] text-white shadow-xl z-10">
-        <Sidebar />
-      </div>
-
+    <motion.div
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.5 }}
+      className="p-8 text-gray-800 bg-gradient-to-br from-gray-50 to-blue-50 overflow-y-auto"
+    >
       <motion.div
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
-        className="flex-1 ml-72 p-8 text-gray-800 bg-gradient-to-br from-gray-50 to-blue-50 overflow-y-auto"
+        initial={{ y: 20, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        transition={{ duration: 0.5, delay: 0.5 }}
+        className="mt-12"
       >
-        <h1 className="text-3xl font-bold text-[#121828] border-l-4 border-blue-500 pl-4">
-          Dashboard
-        </h1>
-
-        <motion.div
-          initial={{ y: 20, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          transition={{ duration: 0.5, delay: 0.5 }}
-          className="mt-12"
-        >
-          <h2 className="text-2xl font-bold text-[#121828] mb-6 border-b-2 border-blue-200 pb-2">
-            Batches
-          </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {batches.map((batch, index) => (
-              <motion.div
-                key={batch.batchId}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.3, delay: 0.1 * index }}
-                className="bg-white p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow border border-gray-100"
-              >
-                <h3 className="text-xl font-bold text-[#121828] mb-2">
-                  {batch.batchId}
-                </h3>
-                <div className="space-y-2 mb-4">
-                  <div className="flex items-center text-gray-600">
-                    <span className="font-medium mr-2">Status:</span>
-                    <span
-                      className={`px-2 py-1 rounded text-xs font-medium ${
-                        batch.status === "Active"
-                          ? "bg-green-100 text-green-800"
-                          : batch.status === "Pending"
-                          ? "bg-yellow-100 text-yellow-800"
-                          : "bg-blue-100 text-blue-800"
-                      }`}
-                    >
-                      {batch.status}
-                    </span>
-                  </div>
-                  <p className="text-gray-600">
-                    <span className="font-medium">Process:</span>{" "}
-                    {batch.currentProcess}
-                  </p>
+        <h2 className="text-2xl font-bold text-[#121828] mb-6 border-b-2 border-blue-200 pb-2">
+          Batches
+        </h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          {batches.map((batch, index) => (
+            <motion.div
+              key={batch.batchId}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3, delay: 0.1 * index }}
+              className="bg-white p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow border border-gray-100"
+            >
+              <h3 className="text-xl font-bold text-[#121828] mb-2">
+                {batch.batchId}
+              </h3>
+              <div className="space-y-2 mb-4">
+                <div className="flex items-center text-gray-600">
+                  <span className="font-medium mr-2">Status:</span>
+                  <span
+                    className={`px-2 py-1 rounded text-xs font-medium ${
+                      batch.status === "Active"
+                        ? "bg-green-100 text-green-800"
+                        : batch.status === "Pending"
+                        ? "bg-yellow-100 text-yellow-800"
+                        : "bg-blue-100 text-blue-800"
+                    }`}
+                  >
+                    {batch.status}
+                  </span>
                 </div>
-                <button
-                  className="w-full bg-[#121828] text-white px-4 py-2 rounded-md hover:bg-[#1c2540] transition-colors duration-200 flex items-center justify-center"
-                  onClick={() => openModal(batch)}
-                >
-                  View Details
-                </button>
-              </motion.div>
-            ))}
-          </div>
-        </motion.div>
-
-        {modalOpen && (
-          <BatchModal
-            isOpen={modalOpen}
-            onClose={closeModal}
-            batch={selectedBatch}
-          />
-        )}
+                <p className="text-gray-600">
+                  <span className="font-medium">Process:</span>{" "}
+                  {batch.currentProcess}
+                </p>
+              </div>
+              <button
+                className="w-full bg-[#121828] text-white px-4 py-2 rounded-md hover:bg-[#1c2540] transition-colors duration-200 flex items-center justify-center"
+                onClick={() => openModal(batch)}
+              >
+                View Details
+              </button>
+            </motion.div>
+          ))}
+        </div>
       </motion.div>
-    </div>
+
+      {modalOpen && (
+        <BatchModal
+          isOpen={modalOpen}
+          onClose={closeModal}
+          batch={selectedBatch}
+        />
+      )}
+    </motion.div>
   );
 };
 
