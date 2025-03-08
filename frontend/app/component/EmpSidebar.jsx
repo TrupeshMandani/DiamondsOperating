@@ -23,11 +23,12 @@ const EmpSidebar = () => {
         </li>
         <li className="flex items-center gap-3 p-2 rounded hover:bg-[#004080] cursor-pointer">
           <HiOutlineDocumentReport className="w-5 h-5" />
-          <Link href="/employees">Report </Link> {/* ✅ Ensure correct link */}
+          <Link href="/pages/employees/report">Report </Link>{" "}
+          {/* ✅ Ensure correct link */}
         </li>
         <li className="flex items-center gap-3 p-2 rounded hover:bg-[#004080] cursor-pointer">
           <GrDocumentPerformance className="w-5 h-5" />
-          <Link href="/performance">Performance</Link>{" "}
+          <Link href="/pages/employees/performance">Performance</Link>{" "}
           {/* ✅ Ensure correct link */}
         </li>
       </ul>

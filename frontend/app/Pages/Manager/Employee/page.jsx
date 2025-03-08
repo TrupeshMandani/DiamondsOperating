@@ -137,6 +137,7 @@ export default function EmployeeDashboard() {
 
   // Handle adding a new employee
   const handleAddEmployee = async () => {
+    console.log("button clicked ");
     if (
       !newEmployee.firstName ||
       !newEmployee.lastName ||

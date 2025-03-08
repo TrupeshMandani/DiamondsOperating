@@ -1,15 +1,16 @@
-"use client";
-
 import { useEffect, useState } from "react";
 import Sidebar from "./Sidebar";
-import BatchModal from "./BatchModal"; // Updated to use the new BatchModal
+import BatchModal from "./BatchModal";
+import EmployeeModal from "./EmployeeModal"; // Employee modal for selecting employee
 import { motion } from "framer-motion";
 import { Bell, CheckCircle, ClipboardList, Loader2, Users } from "lucide-react";
 
 const Dashboard = () => {
   const [mounted, setMounted] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
-  const [selectedBatch, setSelectedBatch] = useState(null); // Store selected batch details
+  const [employeeModalOpen, setEmployeeModalOpen] = useState(false); // State for employee modal
+  const [selectedBatch, setSelectedBatch] = useState(null);
+  const [selectedEmployee, setSelectedEmployee] = useState(null); // State for selected employee
 
   const [batches, setBatches] = useState([]);
   const [employees, setEmployees] = useState([]);
@@ -34,16 +35,25 @@ const Dashboard = () => {
     }
   };
 
+  // Fetch employee data
+  const fetchEmployees = async () => {
+    try {
+      const response = await fetch("http://localhost:5023/api/employees");
+      if (!response.ok) throw new Error("Failed to fetch employees");
+
+      const data = await response.json();
+      setEmployees(data);
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+
   useEffect(() => {
     setMounted(true);
+    fetchEmployees(); // Fetch employee data
+    fetchBatches();
 
-    // Static data for demo purposes
-    setEmployees([
-      { id: 1, name: "Rudra Solanki", status: "Active" },
-      { id: 2, name: "Trupesh Mandani", status: "Active" },
-      { id: 3, name: "Priyanshu Kuchadiya", status: "Active" },
-    ]);
-
+    // Static data for demo purposes (you can remove this when using real API)
     setCompletedTasks([
       { id: 1, task: "Complete Report", status: "Completed" },
       { id: 2, task: "Approve Budget", status: "Completed" },
@@ -59,8 +69,6 @@ const Dashboard = () => {
       "Meeting scheduled with CEO",
       "Deadline reminder for Budget Approval",
     ]);
-
-    fetchBatches();
   }, []);
 
   if (!mounted || loading) {
@@ -91,14 +99,33 @@ const Dashboard = () => {
     );
   }
 
-  const openModal = (batch) => {
+  const openBatchModal = (batch) => {
     setSelectedBatch(batch);
     setModalOpen(true);
   };
 
-  const closeModal = () => {
+  const closeBatchModal = () => {
     setSelectedBatch(null);
     setModalOpen(false);
+  };
+
+  const openEmployeeModal = () => {
+    setEmployeeModalOpen(true); // Set state to open employee modal
+  };
+
+  const closeEmployeeModal = () => {
+    setEmployeeModalOpen(false); // Close employee modal
+  };
+
+  const handleAssignBatchToEmployee = (employee) => {
+    // Implement your logic for assigning the batch to the employee
+    if (selectedBatch && employee) {
+      console.log(
+        `Batch ${selectedBatch.batchId} assigned to ${employee.firstName} ${employee.lastName}`
+      );
+      // Update backend API or database here if needed
+    }
+    closeEmployeeModal();
   };
 
   const getIcon = (iconName) => {
@@ -193,9 +220,15 @@ const Dashboard = () => {
                 </div>
                 <button
                   className="w-full bg-[#121828] text-white px-4 py-2 rounded-md hover:bg-[#1c2540] transition-colors duration-200 flex items-center justify-center"
-                  onClick={() => openModal(batch)}
+                  onClick={() => openBatchModal(batch)}
                 >
                   View Details
+                </button>
+                <button
+                  className="w-full bg-[#121828] mt-2 text-white px-4 py-2 rounded-md hover:bg-[#1c2540] transition-colors duration-200 flex items-center justify-center"
+                  onClick={openEmployeeModal} // Open employee modal
+                >
+                  Assign Employee
                 </button>
               </motion.div>
             ))}
@@ -205,8 +238,16 @@ const Dashboard = () => {
         {modalOpen && (
           <BatchModal
             isOpen={modalOpen}
-            onClose={closeModal}
+            onClose={closeBatchModal}
             batch={selectedBatch}
+          />
+        )}
+
+        {employeeModalOpen && (
+          <EmployeeModal
+            employees={employees}
+            onClose={closeEmployeeModal}
+            onAssign={handleAssignBatchToEmployee}
           />
         )}
       </motion.div>
