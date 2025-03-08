@@ -28,7 +28,7 @@ export const login = async (req, res) => {
         role: checkuser.role, // Include the user role in the token
       },
       process.env.JWT_SECRET,
-      { expiresIn: "1h" } // Token expires in 1 hour
+      { expiresIn: "5m" } // Token expires in 5 Minutes
     );
 
     // Return user info and token in response
