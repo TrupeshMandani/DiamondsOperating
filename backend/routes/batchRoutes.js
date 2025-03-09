@@ -1,22 +1,25 @@
-"routes.js";
 import express from "express";
 import {
-  assignBatchToEmployee,
-  createBatch,
+  generateAllQRCodes,  // <-- new
   generateQRCode,
+  createBatch,
+  getBatches,
   getBatchByID,
   getBatchProgress,
-  getBatches,
   updateBatch,
-} from "../controllers/batchController.js"; // Import both functions
+  assignBatchToEmployee,
+} from "../controllers/batchController.js";
 
 const router = express.Router();
 
 // Create a new batch
 router.post("/create", createBatch);
 
-// Generate a QR code for a batch by ID
+// Generate a QR code for a single batch
 router.get("/:id/generate-label", generateQRCode);
+
+// Generate QR code JSON for ALL existing batches
+router.get("/generate-all-labels", generateAllQRCodes); // <-- new route
 
 // get all Batches
 router.get("/", getBatches);
@@ -27,6 +30,7 @@ router.get("/:id", getBatchByID);
 // Update the batch
 router.put("/:id/progress", updateBatch);
 
+// Assign batch to employee
 router.put("/assign", assignBatchToEmployee);
 
 export default router;
