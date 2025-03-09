@@ -1,9 +1,8 @@
-"use client";
 import { useState } from "react";
 import EmpTaskCard from "./EmpTaskCard";
-import { IoIosArrowDown } from "react-icons/io";
+import { IoIosArrowDown, IoIosArrowUp } from "react-icons/io";
 
-const tasks = {
+const initialTasks = {
   assigned: [
     { id: "B001", start: "10:00 AM", end: "12:00 PM" },
     { id: "B002", start: "12:30 PM", end: "2:30 PM" },
@@ -25,9 +24,42 @@ const tasks = {
 };
 
 const EmpTaskList = () => {
+  const [tasks, setTasks] = useState(initialTasks);
   const [assignedTasksToShow, setAssignedTasksToShow] = useState(4);
   const [inProgressTasksToShow, setInProgressTasksToShow] = useState(4);
   const [completedTasksToShow, setCompletedTasksToShow] = useState(4);
+
+  // Function to update the task status (e.g., move to in-progress or completed)
+  const handleChangeStatus = (taskId, toSection) => {
+    // Find task from assigned, inProgress, or completed section based on taskId
+    let task;
+    let fromSection;
+
+    for (const section in tasks) {
+      task = tasks[section].find((task) => task.id === taskId);
+      if (task) {
+        fromSection = section;
+        break;
+      }
+    }
+
+    if (task && fromSection) {
+      // Remove from current section
+      const newFromSection = tasks[fromSection].filter(
+        (task) => task.id !== taskId
+      );
+
+      // Add to the new section
+      const newToSection = [...tasks[toSection], task];
+
+      // Update the tasks state
+      setTasks((prevTasks) => ({
+        ...prevTasks,
+        [fromSection]: newFromSection,
+        [toSection]: newToSection,
+      }));
+    }
+  };
 
   const handleSeeMore = (section) => {
     if (section === "assigned") {
@@ -39,9 +71,26 @@ const EmpTaskList = () => {
     }
   };
 
+  const handleSeeLess = (section) => {
+    if (section === "assigned") {
+      setAssignedTasksToShow(assignedTasksToShow - 4);
+    } else if (section === "inProgress") {
+      setInProgressTasksToShow(inProgressTasksToShow - 4);
+    } else if (section === "completed") {
+      setCompletedTasksToShow(completedTasksToShow - 4);
+    }
+  };
+
   const renderTaskRows = (taskList, status) => {
     return taskList.map((task) => (
-      <EmpTaskCard key={task.id} task={task} status={status} />
+      <EmpTaskCard
+        key={task.id}
+        task={task}
+        status={status}
+        updateTaskStatus={(taskId, newStatus) =>
+          handleChangeStatus(taskId, newStatus)
+        }
+      />
     ));
   };
 
@@ -54,6 +103,10 @@ const EmpTaskList = () => {
       return tasksToShow < tasks.completed.length;
     }
     return false;
+  };
+
+  const checkShowLessButton = (section, tasksToShow) => {
+    return tasksToShow > 4;
   };
 
   return (
@@ -69,20 +122,32 @@ const EmpTaskList = () => {
             "assigned"
           )}
         </div>
-        {checkShowMoreButton("assigned", assignedTasksToShow) && (
-          <div className="flex justify-center mt-4">
+        <div className="flex justify-center mt-4 gap-4">
+          {checkShowMoreButton("assigned", assignedTasksToShow) && (
             <button
               onClick={() => handleSeeMore("assigned")}
               className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-black rounded-full flex items-center gap-2 transition-all"
             >
               <span>See More</span>
               <IoIosArrowDown
-                className="transform animate-bounce text-xl"
+                className="transform animate-bounce pt-1 text-xl"
                 aria-label="See More"
               />
             </button>
-          </div>
-        )}
+          )}
+          {checkShowLessButton("assigned", assignedTasksToShow) && (
+            <button
+              onClick={() => handleSeeLess("assigned")}
+              className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-black rounded-full flex items-center gap-2 transition-all"
+            >
+              <span>See Less</span>
+              <IoIosArrowUp
+                className="transform animate-bounce text-xl"
+                aria-label="See Less"
+              />
+            </button>
+          )}
+        </div>
       </div>
 
       {/* In Progress Tasks Section */}
@@ -96,20 +161,32 @@ const EmpTaskList = () => {
             "inProgress"
           )}
         </div>
-        {checkShowMoreButton("inProgress", inProgressTasksToShow) && (
-          <div className="flex justify-center mt-4">
+        <div className="flex justify-center mt-4 gap-4">
+          {checkShowMoreButton("inProgress", inProgressTasksToShow) && (
             <button
               onClick={() => handleSeeMore("inProgress")}
               className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-black rounded-full flex items-center gap-2 transition-all"
             >
               <span>See More</span>
               <IoIosArrowDown
-                className="transform animate-bounce text-xl"
+                className="transform animate-bounce pt-1 text-xl"
                 aria-label="See More"
               />
             </button>
-          </div>
-        )}
+          )}
+          {checkShowLessButton("inProgress", inProgressTasksToShow) && (
+            <button
+              onClick={() => handleSeeLess("inProgress")}
+              className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-black rounded-full flex items-center gap-2 transition-all"
+            >
+              <span>See Less</span>
+              <IoIosArrowUp
+                className="transform animate-bounce text-xl"
+                aria-label="See Less"
+              />
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Completed Tasks Section */}
@@ -123,20 +200,32 @@ const EmpTaskList = () => {
             "completed"
           )}
         </div>
-        {checkShowMoreButton("completed", completedTasksToShow) && (
-          <div className="flex justify-center mt-4">
+        <div className="flex justify-center mt-4 gap-4">
+          {checkShowMoreButton("completed", completedTasksToShow) && (
             <button
               onClick={() => handleSeeMore("completed")}
               className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-black rounded-full flex items-center gap-2 transition-all"
             >
               <span>See More</span>
               <IoIosArrowDown
-                className="transform animate-bounce text-xl"
+                className="transform animate-bounce pt-1 text-xl"
                 aria-label="See More"
               />
             </button>
-          </div>
-        )}
+          )}
+          {checkShowLessButton("completed", completedTasksToShow) && (
+            <button
+              onClick={() => handleSeeLess("completed")}
+              className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-black rounded-full flex items-center gap-2 transition-all"
+            >
+              <span>See Less</span>
+              <IoIosArrowUp
+                className="transform animate-bounce text-xl"
+                aria-label="See Less"
+              />
+            </button>
+          )}
+        </div>
       </div>
     </div>
   );

@@ -16064,3 +16064,5 @@ backend/node_modules/bcrypt/lib/binding/napi-v3/bcrypt_lib.node
 backend/node_modules/bcrypt/node-addon-api/node_api.Makefile
 backend/node_modules/bcrypt/node-addon-api/nothing.target.mk
 backend/node_modules/mime/types 2.json
+node_modules/date-fns/fp/daysToWeeks.js
+node_modules/@floating-ui/core/dist/floating-ui.core.browser.min.mjs

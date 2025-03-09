@@ -85,7 +85,7 @@ export default function EmployeeDashboard() {
   useEffect(() => {
     const fetchEmployees = async () => {
       try {
-        const response = await fetch("http://localhost:5023/api/employee", {
+        const response = await fetch("http://localhost:5023/api/employees", {
           method: "GET",
           headers: {
             "Content-Type": "application/json",
@@ -137,6 +137,7 @@ export default function EmployeeDashboard() {
 
   // Handle adding a new employee
   const handleAddEmployee = async () => {
+    console.log("button clicked ");
     if (
       !newEmployee.firstName ||
       !newEmployee.lastName ||
@@ -160,7 +161,7 @@ export default function EmployeeDashboard() {
 
     try {
       console.log("Sending data:", employeeData);
-      const response = await fetch("http://localhost:5023/api/employee", {
+      const response = await fetch("http://localhost:5023/api/employees", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(employeeData),
@@ -189,9 +190,12 @@ export default function EmployeeDashboard() {
 
   const handleDeleteEmployee = async (id) => {
     try {
-      const response = await fetch(`http://localhost:5023/api/employee/${id}`, {
-        method: "DELETE",
-      });
+      const response = await fetch(
+        `http://localhost:5023/api/employees/${id}`,
+        {
+          method: "DELETE",
+        }
+      );
 
       if (!response.ok) {
         throw new Error("Failed to delete employee");

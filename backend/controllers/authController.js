@@ -2,6 +2,21 @@ import user from "../models/user.js";
 import jwt from "jsonwebtoken";
 import bcrypt from "bcryptjs";
 
+export const register = async (req, res) => {
+  const { name, email, password, role } = req.body;
+  try {
+    const checkUser = await user.findOne({ email });
+    if (checkUser) {
+      return res.status(400).json({ message: "User already exists" });
+    }
+    const newUser = new user({ name, email, password, role });
+    newUser.save();
+    res.status(200).json({ message: "User registered successfully" });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
 export const login = async (req, res) => {
   const { email, password } = req.body;
 
@@ -28,7 +43,7 @@ export const login = async (req, res) => {
         role: checkuser.role, // Include the user role in the token
       },
       process.env.JWT_SECRET,
-      { expiresIn: "1h" } // Token expires in 1 hour
+      { expiresIn: "25m" } // Token expires in 5 Minutes
     );
 
     // Return user info and token in response

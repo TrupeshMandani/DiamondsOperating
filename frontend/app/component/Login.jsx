@@ -1,5 +1,5 @@
 "use client";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { FiArrowRight, FiCheckCircle, FiLoader } from "react-icons/fi";
 import { jwtDecode } from "jwt-decode";
@@ -14,6 +14,37 @@ function LoginForm() {
   const [error, setError] = useState("");
   const router = useRouter();
 
+  // Check token expiration and logout if expired
+  useEffect(() => {
+    const checkTokenExpiration = () => {
+      const token = localStorage.getItem("authToken");
+      const expirationTime = localStorage.getItem("authTokenExpiration");
+
+      if (token && expirationTime) {
+        const currentTime = Date.now();
+        if (currentTime > expirationTime) {
+          console.log("Token expired. Logging out...");
+          localStorage.removeItem("authToken");
+          localStorage.removeItem("authTokenExpiration");
+          router.push("/Pages/login"); // Redirect to login page
+        }
+      }
+    };
+
+    checkTokenExpiration();
+
+    // Set a timeout to automatically remove the token after 5 minutes
+    const tokenExpirationTimer = setTimeout(() => {
+      localStorage.removeItem("authToken");
+      localStorage.removeItem("authTokenExpiration");
+      console.log("Token automatically removed after 5 minutes");
+    }, 5 * 60 * 1000); // 5 minutes
+
+    // Cleanup timeout if component unmounts or on rerender
+    return () => clearTimeout(tokenExpirationTimer);
+  }, []);
+
+  // Handle input change
   const handleChange = (e) => {
     setFormData({
       ...formData,
@@ -21,6 +52,7 @@ function LoginForm() {
     });
   };
 
+  // Handle form submission
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsLoading(true);
@@ -43,20 +75,25 @@ function LoginForm() {
 
       setIsSuccess(true);
       const { token } = data;
-      localStorage.setItem("authToken", token);
 
-      // Decode the token immediately
+      // Decode token and get expiration time
       const decoded = jwtDecode(token);
+      const expirationTime = decoded.exp * 1000; // Convert seconds to milliseconds
+
+      // Store token and expiration in localStorage
+      localStorage.setItem("authToken", token);
+      localStorage.setItem("authTokenExpiration", expirationTime);
+
       const userRole = decoded.role;
 
       setTimeout(() => {
         setIsSuccess(false);
         if (userRole === "Employee") {
-          router.push("/pages/employees/dashboard");
-        } else if (userRole === "Manager" || "Admin") {
-          router.push("/pages/Manager/Dashboard");
+          router.push("/Pages/employees/dashboard");
+        } else if (userRole === "Manager" || userRole === "Admin") {
+          router.push("/Pages/Manager/Dashboard");
         } else {
-          router.push("/pages/login");
+          router.push("/Pages/login");
         }
       }, 500);
     } catch (err) {
