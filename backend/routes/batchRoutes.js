@@ -1,6 +1,7 @@
 "routes.js";
 import express from "express";
 import {
+  assignBatchToEmployee,
   createBatch,
   generateQRCode,
   getBatchByID,
@@ -11,7 +12,6 @@ import {
 
 const router = express.Router();
 
-
 // Create a new batch
 router.post("/create", createBatch);
 
@@ -21,12 +21,12 @@ router.get("/:id/generate-label", generateQRCode);
 // get all Batches
 router.get("/", getBatches);
 
-
-
 // Get batch By ID
 router.get("/:id", getBatchByID);
 
 // Update the batch
 router.put("/:id/progress", updateBatch);
+
+router.put("/assign", assignBatchToEmployee);
 
 export default router;

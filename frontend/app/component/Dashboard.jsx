@@ -1,18 +1,14 @@
-"use client";
-
-import { useTheme } from "next-themes";
 import { useEffect, useState } from "react";
-import StatsCard from "./StatsCard";
 import Sidebar from "./Sidebar";
-import BatchModal from "./BatchModal"; // Updated to use the new BatchModal
+import BatchModal from "./BatchModal";
 import { motion } from "framer-motion";
 import { Bell, CheckCircle, ClipboardList, Loader2, Users } from "lucide-react";
 
 const Dashboard = () => {
-  const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
-  const [selectedBatch, setSelectedBatch] = useState(null); // Store selected batch details
+  const [selectedBatch, setSelectedBatch] = useState(null);
+  const [selectedEmployee, setSelectedEmployee] = useState(null); // State for selected employee
 
   const [batches, setBatches] = useState([]);
   const [employees, setEmployees] = useState([]);
@@ -37,16 +33,25 @@ const Dashboard = () => {
     }
   };
 
+  // Fetch employee data
+  const fetchEmployees = async () => {
+    try {
+      const response = await fetch("http://localhost:5023/api/employees");
+      if (!response.ok) throw new Error("Failed to fetch employees");
+
+      const data = await response.json();
+      setEmployees(data);
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+
   useEffect(() => {
     setMounted(true);
+    fetchEmployees(); // Fetch employee data
+    fetchBatches();
 
-    // Static data for demo purposes
-    setEmployees([
-      { id: 1, name: "Rudra Solanki", status: "Active" },
-      { id: 2, name: "Trupesh Mandani", status: "Active" },
-      { id: 3, name: "Priyanshu Kuchadiya", status: "Active" },
-    ]);
-
+    // Static data for demo purposes (you can remove this when using real API)
     setCompletedTasks([
       { id: 1, task: "Complete Report", status: "Completed" },
       { id: 2, task: "Approve Budget", status: "Completed" },
@@ -62,8 +67,6 @@ const Dashboard = () => {
       "Meeting scheduled with CEO",
       "Deadline reminder for Budget Approval",
     ]);
-
-    fetchBatches();
   }, []);
 
   if (!mounted || loading) {
@@ -94,12 +97,12 @@ const Dashboard = () => {
     );
   }
 
-  const openModal = (batch) => {
+  const openBatchModal = (batch) => {
     setSelectedBatch(batch);
     setModalOpen(true);
   };
 
-  const closeModal = () => {
+  const closeBatchModal = () => {
     setSelectedBatch(null);
     setModalOpen(false);
   };
@@ -159,6 +162,7 @@ const Dashboard = () => {
             </motion.div>
           </div>
 
+
           {/* Stats Cards */}
           <motion.div
             initial={{ y: 20, opacity: 0 }}
@@ -200,6 +204,7 @@ const Dashboard = () => {
             />
           </motion.div>
 
+
           <h2 className="text-2xl font-bold text-[#121828] mb-6 border-b-2 border-blue-200 pb-2">
             Batches
           </h2>
@@ -237,7 +242,7 @@ const Dashboard = () => {
                 </div>
                 <button
                   className="w-full bg-[#121828] text-white px-4 py-2 rounded-md hover:bg-[#1c2540] transition-colors duration-200 flex items-center justify-center"
-                  onClick={() => openModal(batch)}
+                  onClick={() => openBatchModal(batch)}
                 >
                   View Details
                 </button>
@@ -249,7 +254,7 @@ const Dashboard = () => {
         {modalOpen && (
           <BatchModal
             isOpen={modalOpen}
-            onClose={closeModal}
+            onClose={closeBatchModal}
             batch={selectedBatch}
           />
         )}

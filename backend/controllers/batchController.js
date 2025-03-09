@@ -1,6 +1,8 @@
 import QRCode from "qrcode";
 import Batch from "../models/batchModel.js";
 import Task from "../models/taskModel.js";
+import Employee from "../models/Employee.js";
+import mongoose from "mongoose";
 
 // Generate QR code for batch details
 export const generateQRCode = async (req, res) => {
@@ -45,13 +47,32 @@ export const createBatch = async (req, res) => {
     phone,
     address,
     diamondWeight,
-    diamondNumber = req.body.numOfDiamonds, // Fixed field name
+    diamondNumber,
     expectedDate,
-    currentDate,
     currentProcess,
+    assignedEmployee, // Optional
   } = req.body;
 
   try {
+    let employee = null;
+
+    // Check if assignedEmployee is provided
+    if (assignedEmployee) {
+      console.log("Received assignedEmployee ID:", assignedEmployee);
+
+      // Validate if assignedEmployee is a valid MongoDB ObjectId
+      if (!mongoose.Types.ObjectId.isValid(assignedEmployee)) {
+        return res.status(400).json({ message: "Invalid employee ID format" });
+      }
+
+      // Find employee in the database
+      employee = await Employee.findById(assignedEmployee);
+      if (!employee) {
+        return res.status(404).json({ message: "Assigned employee not found" });
+      }
+    }
+
+    // Create batch without assignedEmployee if not provided
     const newBatch = new Batch({
       batchId,
       materialType,
@@ -63,10 +84,10 @@ export const createBatch = async (req, res) => {
       diamondWeight,
       diamondNumber,
       expectedDate,
-      currentDate,
       currentProcess,
       processStartDate: new Date(),
       status: "Pending",
+      assignedEmployee: assignedEmployee || null, // Allow null initially
       progress: {
         Sarin: 0,
         Stitching: 0,
@@ -75,10 +96,12 @@ export const createBatch = async (req, res) => {
     });
 
     await newBatch.save();
-    res
-      .status(201)
-      .json({ message: "Batch created successfully", batch: newBatch });
+    res.status(201).json({
+      message: "Batch created successfully",
+      batch: newBatch,
+    });
   } catch (error) {
+    console.error("Error creating batch:", error.message);
     res
       .status(500)
       .json({ message: "Failed to create batch", error: error.message });
@@ -217,5 +240,36 @@ export const updateBatch = async (req, res) => {
       message: "Error updating the batch progress",
       error: error.message,
     });
+  }
+};
+// Assign batch to employee
+
+export const assignBatchToEmployee = async (req, res) => {
+  const { batchId, employeeId } = req.body;
+
+  try {
+    const batch = await Batch.findOne({ batchId });
+    if (!batch) {
+      return res.status(404).json({ message: "Batch not found" });
+    }
+
+    // Use the `new` keyword to instantiate the ObjectId
+    const employee = await Employee.findById(
+      new mongoose.Types.ObjectId(employeeId)
+    );
+    if (!employee) {
+      return res.status(404).json({ message: "Employee not found" });
+    }
+
+    batch.assignedEmployee = employeeId;
+    await batch.save();
+
+    res
+      .status(200)
+      .json({ message: "Batch assigned to employee successfully", batch });
+  } catch (error) {
+    res
+      .status(500)
+      .json({ message: "Error assigning batch", error: error.message });
   }
 };

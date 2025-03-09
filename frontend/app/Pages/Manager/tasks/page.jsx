@@ -80,7 +80,6 @@ export default function BatchCreationForm() {
       alert("Batch Created successfully");
 
       // Redirect to the dashboard after batch creation
-      router.push("/dashboard"); // Adjust the path as per your app's routing
     } catch (error) {
       console.error("Error Details:", error.response?.data || error.message);
       toast.error("Error Creating Batch!");

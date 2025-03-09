@@ -4,25 +4,23 @@ import {
   getEmployees,
   updateEmployee,
   deleteEmployee,
+  getEmployeeBatches,
 } from "../controllers/employeeController.js";
-import {
-  roleMiddleware,
-  authMiddleware,
-} from "../middleware/authMiddleware.js";
-import { register } from "../controllers/authController.js";
 
 const router = express.Router();
 
-router.use(authMiddleware);
-
 // Employee CRUD routes
 
-router.post("/", roleMiddleware(["Admin", "Manager"]), createEmployee);
+router.post("/", createEmployee);
 
-router.get("/", roleMiddleware(["Admin", "Manager", "Employee"]), getEmployees);
+router.get("/", getEmployees);
 
-router.put("/:id", roleMiddleware(["Admin", "Manager"]), updateEmployee);
+router.put("/:id", updateEmployee);
 
-router.delete("/:id", roleMiddleware(["Admin"]), deleteEmployee);
+router.delete("/:id", deleteEmployee);
+router.get(
+  "/:id",
 
+  getEmployeeBatches
+);
 export default router;
