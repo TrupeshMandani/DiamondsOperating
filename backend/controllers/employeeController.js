@@ -87,3 +87,25 @@ export const getEmployeeBatches = async (req, res) => {
       .json({ message: "Error fetching batches", error: error.message });
   }
 };
+// Get employee by ID
+export const getEmployeeById = async (req, res) => {
+  const { id } = req.params; // Extract employee ID from the request parameters
+
+  try {
+    // Find employee by ID
+    const employee = await Employee.findById(id);
+
+    // Check if employee exists
+    if (!employee) {
+      return res.status(404).json({ message: "Employee not found" });
+    }
+
+    // Return the employee details
+    res.status(200).json(employee);
+  } catch (error) {
+    // Handle errors
+    res
+      .status(500)
+      .json({ message: "Error fetching employee", error: error.message });
+  }
+};

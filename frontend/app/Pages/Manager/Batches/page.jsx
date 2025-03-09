@@ -1,6 +1,6 @@
 import Sidebar from "@/app/component/Sidebar"; // Import Sidebar component
-import TaskAssignment from "../../component/task-assignment";
-import Batch from "../../component/Batch";
+import TaskAssignment from "../../../component/task-assignment";
+import Batch from "../../../component/Batch";
 
 function Manager() {
   return (
@@ -10,7 +10,9 @@ function Manager() {
         <Sidebar />
       </div>
 
-      <div className="flex-1 ml-64 p-4"> {/* Adding left margin to accommodate the fixed sidebar */}
+      <div className="flex-1 ml-64 p-4">
+        {" "}
+        {/* Adding left margin to accommodate the fixed sidebar */}
         <div className="flex flex-col gap-4">
           {/* Batch Component - Placed above TaskAssignment */}
           <div className="w-full">
