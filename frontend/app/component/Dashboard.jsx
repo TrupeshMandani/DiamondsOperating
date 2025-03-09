@@ -163,7 +163,7 @@ const Dashboard = () => {
           </div>
 
 
-          {/* Stats Cards */}
+          {/* Stats Cards
           <motion.div
             initial={{ y: 20, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
@@ -202,7 +202,7 @@ const Dashboard = () => {
               onClick={() => openModal("Notifications", notifications)}
               color="from-purple-500 to-purple-600"
             />
-          </motion.div>
+          </motion.div> */}
 
 
           <h2 className="text-2xl font-bold text-[#121828] mb-6 border-b-2 border-blue-200 pb-2">
