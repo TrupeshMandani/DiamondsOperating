@@ -26,7 +26,7 @@ function LoginForm() {
           console.log("Token expired. Logging out...");
           localStorage.removeItem("authToken");
           localStorage.removeItem("authTokenExpiration");
-          router.push("/pages/login"); // Redirect to login page
+          router.push("/Pages/login"); // Redirect to login page
         }
       }
     };
@@ -89,11 +89,11 @@ function LoginForm() {
       setTimeout(() => {
         setIsSuccess(false);
         if (userRole === "Employee") {
-          router.push("/pages/employees/dashboard");
+          router.push("/Pages/employees/dashboard");
         } else if (userRole === "Manager" || userRole === "Admin") {
-          router.push("/pages/Manager/Dashboard");
+          router.push("/Pages/Manager/Dashboard");
         } else {
-          router.push("/pages/login");
+          router.push("/Pages/login");
         }
       }, 500);
     } catch (err) {

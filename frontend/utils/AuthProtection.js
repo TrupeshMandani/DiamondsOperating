@@ -11,7 +11,7 @@ const AuthProtection = ({ children }) => {
     const token = localStorage.getItem("authToken");
 
     if (!token) {
-      router.replace("/pages/login");
+      router.replace("/Pages/login");
       return;
     }
 
@@ -23,9 +23,9 @@ const AuthProtection = ({ children }) => {
 
       // Define valid paths for each role
       const rolePaths = {
-        Manager: "/pages/Manager/Dashboard",
-        Employee: "/pages/employees/dashboard",
-        Admin: "/pages/Manager/Dashboard",
+        Manager: "/Pages/Manager/Dashboard",
+        Employee: "/Pages/employees/dashboard",
+        Admin: "/Pages/Manager/Dashboard",
       };
 
       const allowedPath = rolePaths[userRole];
@@ -33,7 +33,7 @@ const AuthProtection = ({ children }) => {
       if (!allowedPath) {
         // If role is invalid, clear storage and redirect to login
         localStorage.removeItem("authToken");
-        router.replace("/pages/login");
+        router.replace("/Pages/login");
       } else if (pathname !== allowedPath) {
         // Redirect user to their assigned dashboard if they try accessing another one
         router.replace(allowedPath);
@@ -41,7 +41,7 @@ const AuthProtection = ({ children }) => {
     } catch (error) {
       console.error("Invalid Token:", error);
       localStorage.removeItem("authToken");
-      router.replace("/pages/login");
+      router.replace("/Pages/login");
     }
   }, [router, pathname]);
 

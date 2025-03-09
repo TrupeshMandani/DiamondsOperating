@@ -69,7 +69,7 @@ function LoginForm() {
         } else if (userRole === "Employee") {
           router.push("/Pages/employees/dashboard"); // Redirect to employee dashboard
         } else {
-          router.push("/pages/Manager/Dashboard"); // Default fallback dashboard
+          router.push("/Pages/Manager/Dashboard"); // Default fallback dashboard
         }
       }, 2000);
     } catch (err) {

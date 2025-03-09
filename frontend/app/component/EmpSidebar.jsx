@@ -14,28 +14,28 @@ const EmpSidebar = () => {
       <ul className="flex flex-col gap-4">
         <li className="flex items-center gap-3 p-2 rounded hover:bg-[#004080] cursor-pointer">
           <RiDashboardLine className="w-5 h-5" />
-          <Link href="/pages/employees/dashboard">Dashboard</Link>
+          <Link href="/Pages/employees/dashboard">Dashboard</Link>
         </li>
         <li className="flex items-center gap-3 p-2 rounded hover:bg-[#004080] cursor-pointer">
           <FaTasks className="w-5 h-5" />
-          <Link href="/pages/employees/task">Tasks</Link>{" "}
+          <Link href="/Pages/employees/task">Tasks</Link>{" "}
           {/* ✅ Ensure correct link */}
         </li>
         <li className="flex items-center gap-3 p-2 rounded hover:bg-[#004080] cursor-pointer">
           <HiOutlineDocumentReport className="w-5 h-5" />
-          <Link href="/pages/employees/report">Report </Link>{" "}
+          <Link href="/Pages/employees/report">Report </Link>{" "}
           {/* ✅ Ensure correct link */}
         </li>
         <li className="flex items-center gap-3 p-2 rounded hover:bg-[#004080] cursor-pointer">
           <GrDocumentPerformance className="w-5 h-5" />
-          <Link href="/pages/employees/performance">Performance</Link>{" "}
+          <Link href="/Pages/employees/performance">Performance</Link>{" "}
           {/* ✅ Ensure correct link */}
         </li>
       </ul>
       <div className="mt-auto">
         <li className="flex items-center gap-3 p-2 rounded hover:bg-[#004080] cursor-pointer">
           <VscAccount className="w-5 h-5" />
-          <Link href="/pages/employees/account">Account</Link>{" "}
+          <Link href="/Pages/employees/account">Account</Link>{" "}
           {/* ✅ Ensure correct link */}
         </li>
       </div>
