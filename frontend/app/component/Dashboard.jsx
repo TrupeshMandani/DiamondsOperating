@@ -1,14 +1,12 @@
 import { useEffect, useState } from "react";
 import Sidebar from "./Sidebar";
 import BatchModal from "./BatchModal";
-import EmployeeModal from "./EmployeeModal"; // Employee modal for selecting employee
 import { motion } from "framer-motion";
 import { Bell, CheckCircle, ClipboardList, Loader2, Users } from "lucide-react";
 
 const Dashboard = () => {
   const [mounted, setMounted] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
-  const [employeeModalOpen, setEmployeeModalOpen] = useState(false); // State for employee modal
   const [selectedBatch, setSelectedBatch] = useState(null);
   const [selectedEmployee, setSelectedEmployee] = useState(null); // State for selected employee
 
@@ -109,25 +107,6 @@ const Dashboard = () => {
     setModalOpen(false);
   };
 
-  const openEmployeeModal = () => {
-    setEmployeeModalOpen(true); // Set state to open employee modal
-  };
-
-  const closeEmployeeModal = () => {
-    setEmployeeModalOpen(false); // Close employee modal
-  };
-
-  const handleAssignBatchToEmployee = (employee) => {
-    // Implement your logic for assigning the batch to the employee
-    if (selectedBatch && employee) {
-      console.log(
-        `Batch ${selectedBatch.batchId} assigned to ${employee.firstName} ${employee.lastName}`
-      );
-      // Update backend API or database here if needed
-    }
-    closeEmployeeModal();
-  };
-
   const getIcon = (iconName) => {
     switch (iconName) {
       case "Users":
@@ -224,12 +203,6 @@ const Dashboard = () => {
                 >
                   View Details
                 </button>
-                <button
-                  className="w-full bg-[#121828] mt-2 text-white px-4 py-2 rounded-md hover:bg-[#1c2540] transition-colors duration-200 flex items-center justify-center"
-                  onClick={openEmployeeModal} // Open employee modal
-                >
-                  Assign Employee
-                </button>
               </motion.div>
             ))}
           </div>
@@ -240,14 +213,6 @@ const Dashboard = () => {
             isOpen={modalOpen}
             onClose={closeBatchModal}
             batch={selectedBatch}
-          />
-        )}
-
-        {employeeModalOpen && (
-          <EmployeeModal
-            employees={employees}
-            onClose={closeEmployeeModal}
-            onAssign={handleAssignBatchToEmployee}
           />
         )}
       </motion.div>
