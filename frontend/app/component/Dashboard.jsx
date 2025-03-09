@@ -162,6 +162,49 @@ const Dashboard = () => {
             </motion.div>
           </div>
 
+
+          {/* Stats Cards */}
+          <motion.div
+            initial={{ y: 20, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            transition={{ duration: 0.5, delay: 0.3 }}
+            className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mt-6"
+          >
+            <StatsCard
+              title="Employees"
+              value={employees.length}
+              icon="Users"
+              iconComponent={getIcon("Users")}
+              onClick={() => openModal("Total Employees", employees)}
+              color="from-blue-500 to-blue-600"
+            />
+            <StatsCard
+              title="Completed Tasks"
+              value={completedTasks.length}
+              icon="CheckCircle"
+              iconComponent={getIcon("CheckCircle")}
+              onClick={() => openModal("Completed Tasks", completedTasks)}
+              color="from-green-500 to-green-600"
+            />
+            <StatsCard
+              title="Pending Tasks"
+              value={pendingTasks.length}
+              icon="ClipboardList"
+              iconComponent={getIcon("ClipboardList")}
+              onClick={() => openModal("Pending Tasks", pendingTasks)}
+              color="from-amber-500 to-amber-600"
+            />
+            <StatsCard
+              title="Notifications"
+              value={notifications.length}
+              icon="Bell"
+              iconComponent={getIcon("Bell")}
+              onClick={() => openModal("Notifications", notifications)}
+              color="from-purple-500 to-purple-600"
+            />
+          </motion.div>
+
+
           <h2 className="text-2xl font-bold text-[#121828] mb-6 border-b-2 border-blue-200 pb-2">
             Batches
           </h2>
