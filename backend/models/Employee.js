@@ -8,7 +8,7 @@ const employeeSchema = new mongoose.Schema({
   email: { type: String, required: true, unique: true },
   phoneNumber: { type: String, required: true },
   address: { type: String, required: true },
-  joiningDate: { type: Date, default: Date.now },
+  skills: { type: [String], default: [],required: true },
 });
 
 const Employee = mongoose.model("Employee", employeeSchema);
