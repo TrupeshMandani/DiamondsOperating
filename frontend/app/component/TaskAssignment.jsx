@@ -62,11 +62,6 @@ export default function TaskAssignment() {
     } catch (err) {
       console.error("Error fetching batches:", err);
       // Fallback to mock data if API fails
-      setBatches([
-        { batchId: "B001", status: "Active", currentProcess: "Sarin" },
-        { batchId: "B002", status: "Pending", currentProcess: "Stitching" },
-        { batchId: "B003", status: "Completed", currentProcess: "4P Cutting" },
-      ]);
     } finally {
       setLoading(false);
     }
@@ -102,37 +97,41 @@ export default function TaskAssignment() {
   };
 
   // Fetch tasks for a batch
+  // TODO you have to make this function again Because this is not the correct api call
   const fetchTasksForBatch = async (batchId) => {
     try {
-      // In a real app, this would be an API call
-      // For now using mock data
-      const mockTasks = [
-        {
-          id: 1,
-          batchId: batchId,
-          employeeId: 1,
-          employeeName: "Rudra Solanki",
-          process: "Sarin",
-          description: "Complete initial scanning of diamonds",
-          dueDate: new Date(Date.now() + 86400000 * 2), // 2 days from now
-          assignedDate: new Date(),
-          priority: "High",
-          status: "In Progress",
-        },
-        {
-          id: 2,
-          batchId: batchId,
-          employeeId: 2,
-          employeeName: "Trupesh Mandani",
-          process: "Stitching",
-          description: "Prepare stitching for batch components",
-          dueDate: new Date(Date.now() + 86400000 * 3), // 3 days from now
-          assignedDate: new Date(),
-          priority: "Medium",
-          status: "Pending",
-        },
-      ];
-      setTasks(mockTasks);
+      // Make an API call to fetch assigned batches for a given batchId
+      const response = await fetch("http://localhost:5023/api/batches/assign"); // Make sure the URL is correct
+
+      // Check if the response is okay (status code 200-299)
+      if (!response.ok) {
+        throw new Error(`Error: ${response.statusText}`);
+      }
+
+      // Parse the JSON response body
+      const assignedBatches = await response.json();
+
+      // Filter tasks for the specific batchId (if needed)
+      const filteredTasks = assignedBatches.filter(
+        (task) => task.batchId === batchId
+      );
+
+      // Map the data to the format you need for the frontend
+      const tasks = filteredTasks.map((task) => ({
+        id: task._id, // Assuming the task has a unique ID
+        batchId: task.batchId,
+        employeeId: task.assignedEmployee, // Assuming 'assignedEmployee' is the employee's ID
+        employeeName: `${task.assignedEmployee.firstName} ${task.assignedEmployee.lastName}`, // If populated with employee details
+        process: task.process, // Assuming 'process' is stored in the task
+        description: task.description, // Assuming 'description' is part of the task
+        dueDate: new Date(task.dueDate),
+        assignedDate: new Date(task.assignedDate),
+        priority: task.priority, // Assuming priority is part of the task
+        status: task.status, // Assuming status is part of the task
+      }));
+
+      // Set the tasks to state or any other logic
+      setTasks(tasks);
     } catch (err) {
       console.error("Error fetching tasks:", err);
     }
@@ -264,14 +263,6 @@ export default function TaskAssignment() {
   // Filter tasks by process
   const filteredTasks = tasks.filter(
     (task) => task.process === selectedProcess
-  );
-
-  // Filter employees by expertise
-  const filteredEmployees = employees.filter(
-    (employee) =>
-      Array.isArray(employee.expertise) &&
-      employee.expertise.includes(selectedProcess) &&
-      employee.status === "Active"
   );
 
   useEffect(() => {

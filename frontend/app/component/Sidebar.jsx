@@ -4,6 +4,7 @@ import { FaTasks } from "react-icons/fa";
 import { MdBatchPrediction } from "react-icons/md";
 import { BsPersonVcardFill } from "react-icons/bs";
 import { GrDocumentPerformance } from "react-icons/gr";
+import { FaPlus } from "react-icons/fa";
 
 import Link from "next/link";
 
@@ -18,7 +19,7 @@ const Sidebar = () => {
         </li>
         <li className="flex items-center gap-3 p-2 rounded hover:bg-[#004080] cursor-pointer">
           <FaTasks className="w-5 h-5" />
-          <Link href="/Pages/Manager/tasks">Tasks</Link>{" "}
+          <Link href="/Pages/Manager/Tasks">Tasks</Link>{" "}
           {/* ✅ Ensure correct link */}
         </li>
         <li className="flex items-center gap-3 p-2 rounded hover:bg-[#004080] cursor-pointer">
@@ -32,6 +33,11 @@ const Sidebar = () => {
         <li className="flex items-center gap-3 p-2 rounded hover:bg-[#004080] cursor-pointer">
           <GrDocumentPerformance className="w-5 h-5" />
           <Link href="/performance">Performance</Link>{" "}
+          {/* ✅ Ensure correct link */}
+        </li>
+        <li className="flex items-center gap-3 p-2 rounded hover:bg-[#004080] cursor-pointer">
+          <FaPlus className="w-5 h-5" />
+          <Link href="/Pages/Manager/NewBatch">New Batch</Link>{" "}
           {/* ✅ Ensure correct link */}
         </li>
       </ul>

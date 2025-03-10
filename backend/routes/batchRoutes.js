@@ -9,6 +9,7 @@ import {
   getBatches,
   updateBatch,
 } from "../controllers/batchController.js"; // Import both functions
+import { getEmployeesWithAssignedBatches } from "../controllers/employeeController.js";
 
 const router = express.Router();
 
@@ -27,6 +28,11 @@ router.get("/:id", getBatchByID);
 // Update the batch
 router.put("/:id/progress", updateBatch);
 
+// Assign the batch to emp Route
 router.put("/assign", assignBatchToEmployee);
+// Get the assigned batches ROUTE
+
+// Fetching emp with assigned batched
+router.get("/employees/assigned", getEmployeesWithAssignedBatches);
 
 export default router;
