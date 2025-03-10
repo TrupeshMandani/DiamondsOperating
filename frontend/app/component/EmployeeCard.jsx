@@ -20,10 +20,10 @@ export const EmployeeCard = ({ employee, onViewDetails, onDelete }) => {
       layout
     >
       <Card className="bg-white shadow-md rounded-xl hover:shadow-xl transition-shadow duration-300 border border-[#e2f0f9] overflow-hidden">
-        <CardHeader className="pb-2 bg-gradient-to-r from-[#236294]/5 to-[#64b5f6]/5 ">
-          <div className="flex justify-between items-center ">
-            <CardTitle className="text-[#1a2b42] font-semibold flex items-center ">
-              <div className="flex-1 truncate">
+        <CardHeader className="pb-2  from-[#236294]/5 to-[#64b5f6]/5 ">
+          <div className="  flex justify-between items-center ">
+            <CardTitle className="text-[#1a2b42] bg-[fbfcf8] font-semibold flex items-center ">
+              <div className="flex-1 truncate text-xl  font-semibold ">
                 {employee.firstName} {employee.lastName}
               </div>
               <Button
@@ -76,7 +76,7 @@ export const EmployeeCard = ({ employee, onViewDetails, onDelete }) => {
             </div>
           </div>
         </CardContent>
-        <CardFooter className="border-t border-[#e2f0f9] bg-[#f8fbff] pt-3">
+        <CardFooter className="border-t  border-[#e2f0f9] bg-white pt-3">
           <Button
             onClick={() => onViewDetails(employee)}
             className="w-full bg-[#236294]/10 text-[#236294] hover:bg-[#236294] hover:text-white transition-colors bg-blue-950"

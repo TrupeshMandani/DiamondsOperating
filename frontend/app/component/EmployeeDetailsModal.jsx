@@ -65,6 +65,12 @@ export const EmployeeDetailsModal = ({ employee, onClose, onGrantAccess }) => {
                   {new Date(employee.dateOfBirth).toLocaleDateString()}
                 </div>
               </div>
+              <div className="flex items-start">
+                <div className="w-24 text-[#5a6a7e] text-sm">Skills:</div>
+                <div className="text-[#1a2b42] font-medium">
+                  {employee.skills}
+                </div>
+              </div>
             </div>
           </div>
 
