@@ -304,7 +304,7 @@ const EmpTaskList = () => {
 
   const fetchAssignedTasks = async () => {
     try {
-      const employeeId = "67cfff1265d3ea526ee848f8";
+      const employeeId = localStorage.getItem("employeeId");
       const token = localStorage.getItem("authToken");
 
       if (!employeeId || !token) throw new Error("Employee ID or token not found. Please log in again.");
