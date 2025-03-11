@@ -5,6 +5,7 @@ import {
   updateEmployee,
   deleteEmployee,
   getEmployeeBatches,
+  getEmployeeById,
 } from "../controllers/employeeController.js";
 
 const router = express.Router();
@@ -23,4 +24,5 @@ router.get(
 
   getEmployeeBatches
 );
+router.get("/id/:id", getEmployeeById);
 export default router;

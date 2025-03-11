@@ -3,6 +3,7 @@ import Sidebar from "./Sidebar";
 import BatchModal from "./BatchModal";
 import { motion } from "framer-motion";
 import { Bell, CheckCircle, ClipboardList, Loader2, Users } from "lucide-react";
+import StatsCard from "./StatsCard";
 
 const Dashboard = () => {
   const [mounted, setMounted] = useState(false);
@@ -162,8 +163,7 @@ const Dashboard = () => {
             </motion.div>
           </div>
 
-
-          {/* Stats Cards
+          {/* Stats Cards */}
           <motion.div
             initial={{ y: 20, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
@@ -202,8 +202,7 @@ const Dashboard = () => {
               onClick={() => openModal("Notifications", notifications)}
               color="from-purple-500 to-purple-600"
             />
-          </motion.div> */}
-
+          </motion.div>
 
           <h2 className="text-2xl font-bold text-[#121828] mb-6 border-b-2 border-blue-200 pb-2">
             Batches

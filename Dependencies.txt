@@ -17,8 +17,8 @@ npx shadcn@latest add popover
 npm install react@18 react-dom@18 --legacy-peer-deps
 npm list @radix-ui/react-tabs
 npm install @radix-ui/react-tabs
-npm install jwt-decode
-npx shadcn@latest add scroll-area
+npm i jwt-decode
+
 
 
 backend
