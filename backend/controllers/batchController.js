@@ -243,7 +243,31 @@ export const updateBatch = async (req, res) => {
     });
   }
 };
-// Assign batch to employee
+
+//get batch for employee 
+export const getTasksForEmployee = async (req, res) => {
+  const { employeeId } = req.params;
+
+  try {
+    // Validate employeeId
+    if (!mongoose.Types.ObjectId.isValid(employeeId)) {
+      return res.status(400).json({ message: "Invalid employee ID format" });
+    }
+
+    // Fetch tasks assigned to the employee
+    const tasks = await Task.find({ employeeId });
+
+    if (!tasks || tasks.length === 0) {
+      return res.status(404).json({ message: "No tasks found for this employee" });
+    }
+
+    res.status(200).json(tasks);
+  } catch (error) {
+    res
+      .status(500)
+      .json({ message: "Error fetching tasks", error: error.message });
+  }
+};
 
 export const assignBatchToEmployee = async (req, res) => {
   const { batchId, employeeId } = req.body;

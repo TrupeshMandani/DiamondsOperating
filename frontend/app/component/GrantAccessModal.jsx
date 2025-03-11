@@ -32,6 +32,7 @@ export const GrantAccessModal = ({ employee, onClose }) => {
     }
 
     const registerData = {
+      
       name: `${employee.firstName} ${employee.lastName}`,
       email: employee.email,
       password: passwordData.password,

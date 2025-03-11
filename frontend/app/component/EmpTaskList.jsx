@@ -1,37 +1,64 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import EmpTaskCard from "./EmpTaskCard";
 import { IoIosArrowDown, IoIosArrowUp } from "react-icons/io";
 
-const initialTasks = {
-  assigned: [
-    { id: "B001", start: "10:00 AM", end: "12:00 PM" },
-    { id: "B002", start: "12:30 PM", end: "2:30 PM" },
-    { id: "B003", start: "12:45 PM", end: "2:30 PM" },
-    { id: "B004", start: "8:00 AM", end: "10:00 AM" },
-    { id: "B005", start: "9:00 AM", end: "11:00 AM" },
-    { id: "B006", start: "10:00 AM", end: "12:00 PM" },
-    { id: "B007", start: "1:00 PM", end: "3:00 PM" },
-  ],
-  inProgress: [
-    { id: "B003", start: "3:00 PM", end: "5:00 PM" },
-    { id: "B008", start: "11:00 AM", end: "1:00 PM" },
-    { id: "B009", start: "2:00 PM", end: "4:00 PM" },
-  ],
-  completed: [
-    { id: "B004", start: "8:00 AM", end: "10:00 AM" },
-    { id: "B005", start: "9:00 AM", end: "11:00 AM" },
-  ],
-};
-
 const EmpTaskList = () => {
-  const [tasks, setTasks] = useState(initialTasks);
+  const [tasks, setTasks] = useState({
+    assigned: [],
+    inProgress: [],
+    completed: [],
+  });
   const [assignedTasksToShow, setAssignedTasksToShow] = useState(4);
   const [inProgressTasksToShow, setInProgressTasksToShow] = useState(4);
   const [completedTasksToShow, setCompletedTasksToShow] = useState(4);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  // Fetch tasks assigned to the employee
+  const fetchAssignedTasks = async () => {
+    try {
+      const employeeId = '67cfcf3aafb91ddf3a52b8b4'; // Get employee ID from local storage
+      const token = localStorage.getItem("authToken"); // Get token from local storage
+
+      if (!employeeId || !token) {
+        throw new Error("Employee ID or token not found. Please log in again.");
+      }
+
+      const response = await fetch(`http://localhost:5023/api/batches/tasks/employee/${employeeId}`, {
+        headers: {
+          Authorization: `Bearer ${token}`, // Include the token for authentication
+        },
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Failed to fetch tasks: ${errorText}`);
+      }
+
+      const data = await response.json();
+
+      // Filter tasks based on status
+      setTasks({
+        assigned: data.filter(task => task.status === "Pending"), // Use "Pending" for assigned tasks
+        inProgress: data.filter(task => task.status === "In Progress"),
+        completed: data.filter(task => task.status === "Completed"),
+      });
+      setError(null); // Clear any previous errors
+    } catch (error) {
+      console.error("Error fetching tasks:", error.message);
+      setError("Failed to load tasks. Please try again later.");
+    } finally {
+      setLoading(false); // Stop loading
+    }
+  };
+
+  // Fetch tasks when the component mounts
+  useEffect(() => {
+    fetchAssignedTasks();
+  }, []);
 
   // Function to update the task status (e.g., move to in-progress or completed)
   const handleChangeStatus = (taskId, toSection) => {
-    // Find task from assigned, inProgress, or completed section based on taskId
     let task;
     let fromSection;
 
@@ -61,6 +88,7 @@ const EmpTaskList = () => {
     }
   };
 
+  // Handle "See More" and "See Less" buttons
   const handleSeeMore = (section) => {
     if (section === "assigned") {
       setAssignedTasksToShow(assignedTasksToShow + 4);
@@ -81,19 +109,25 @@ const EmpTaskList = () => {
     }
   };
 
+  // Render task rows
   const renderTaskRows = (taskList, status) => {
     return taskList.map((task) => (
       <EmpTaskCard
-        key={task.id}
+        key={task._id}
         task={task}
         status={status}
+        batchTitle={task.batchId?.batchTitle || "N/A"} // Fetch from populated batchId
+        currentProcess={task.batchId?.currentProcess || "N/A"} // Fetch from populated batchId
         updateTaskStatus={(taskId, newStatus) =>
           handleChangeStatus(taskId, newStatus)
         }
       />
     ));
   };
+  
+  
 
+  // Check if "See More" button should be shown
   const checkShowMoreButton = (section, tasksToShow) => {
     if (section === "assigned") {
       return tasksToShow < tasks.assigned.length;
@@ -105,9 +139,36 @@ const EmpTaskList = () => {
     return false;
   };
 
+  // Check if "See Less" button should be shown
   const checkShowLessButton = (section, tasksToShow) => {
     return tasksToShow > 4;
   };
+
+  // Display loading state
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-700"></div>
+      </div>
+    );
+  }
+
+  // Display error message
+  if (error) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-red-500 text-center">
+          <p>{error}</p>
+          <button
+            onClick={fetchAssignedTasks}
+            className="mt-4 px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600"
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto px-4">

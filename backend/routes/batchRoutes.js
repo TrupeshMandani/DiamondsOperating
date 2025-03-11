@@ -8,6 +8,7 @@ import {
   getBatchProgress,
   getBatches,
   updateBatch,
+  getTasksForEmployee,
 } from "../controllers/batchController.js"; // Import both functions
 import { getEmployeesWithAssignedBatches } from "../controllers/employeeController.js";
 
@@ -34,5 +35,7 @@ router.put("/assign", assignBatchToEmployee);
 
 // Fetching emp with assigned batched
 router.get("/employees/assigned", getEmployeesWithAssignedBatches);
+
+router.get("/tasks/employee/:employeeId", getTasksForEmployee);
 
 export default router;

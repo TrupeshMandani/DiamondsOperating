@@ -9,7 +9,7 @@ export const register = async (req, res) => {
     if (checkUser) {
       return res.status(400).json({ message: "User already exists" });
     }
-    const newUser = new user({ name, email, password, role });
+    const newUser = new user({  name, email, password, role });
     newUser.save();
     res.status(200).json({ message: "User registered successfully" });
   } catch (error) {

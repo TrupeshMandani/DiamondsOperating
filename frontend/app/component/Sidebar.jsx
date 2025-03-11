@@ -23,6 +23,11 @@ const Sidebar = () => {
           {/* ✅ Ensure correct link */}
         </li>
         <li className="flex items-center gap-3 p-2 rounded hover:bg-[#004080] cursor-pointer">
+          <FaPlus className="w-5 h-5" />
+          <Link href="/Pages/Manager/NewBatch">New Batch</Link>{" "}
+          {/* ✅ Ensure correct link */}
+        </li>
+        <li className="flex items-center gap-3 p-2 rounded hover:bg-[#004080] cursor-pointer">
           <MdBatchPrediction className="w-5 h-5" />
           <Link href="/Pages/Manager/Batches">Batches</Link>
         </li>
@@ -35,11 +40,7 @@ const Sidebar = () => {
           <Link href="/performance">Performance</Link>{" "}
           {/* ✅ Ensure correct link */}
         </li>
-        <li className="flex items-center gap-3 p-2 rounded hover:bg-[#004080] cursor-pointer">
-          <FaPlus className="w-5 h-5" />
-          <Link href="/Pages/Manager/NewBatch">New Batch</Link>{" "}
-          {/* ✅ Ensure correct link */}
-        </li>
+       
       </ul>
     </div>
   );
