@@ -70,7 +70,7 @@ export const generateQRCode = async (req, res) => {
     const batch = await Batch.findOne({ batchId: req.params.id });
 
     if (!batch) {
-      return res.status(404).json({ message: "Batch not found" });
+      return res.status(404).json({ message: "Batch not found1" });
     }
 
     // Prepare the data you want to encode into the QR code
@@ -239,7 +239,7 @@ export const getBatchProgress = async (req, res) => {
     const batch = await Batch.findOne({ batchId: id });
 
     if (!batch) {
-      return res.status(404).json({ message: "Batch not found" });
+      return res.status(404).json({ message: "Batch not found 3" });
     }
 
     // Fetch tasks related to the batch
@@ -275,7 +275,7 @@ export const updateBatch = async (req, res) => {
     // Fetch the batch by batchId
     const batch = await Batch.findOne({ batchId: id });
     if (!batch) {
-      return res.status(404).json({ message: "Batch not found" });
+      return res.status(404).json({ message: "Batch not found 11" });
     }
 
     const validStages = ["Sarin", "Stitching", "4P Cutting"];
@@ -322,21 +322,42 @@ export const assignBatchToEmployee = async (req, res) => {
   const { batchId, employeeId } = req.body;
 
   try {
-    const batch = await Batch.findOne({ batchId });
+    const batch = await Batch.findOne({ batchId }).select(
+      "batchId currentProcess"
+    );
     if (!batch) {
       return res.status(404).json({ message: "Batch not found" });
     }
 
-    // Use the `new` keyword to instantiate the ObjectId
-    const employee = await Employee.findById(new mongoose.Types.ObjectId(employeeId));
+    const employee = await Employee.findById(employeeId).select(
+      "firstName lastName"
+    );
     if (!employee) {
       return res.status(404).json({ message: "Employee not found" });
     }
 
+    // Assign the batch
     batch.assignedEmployee = employeeId;
     await batch.save();
 
-    res.status(200).json({ message: "Batch assigned to employee successfully", batch });
+    // Create a new task entry
+    const task = new Task({
+      batchId: batch._id,
+      batchTitle: batch.batchId,
+
+      employeeId: employee._id,
+      firstName: employee.firstName,
+      lastName: employee.lastName,
+      currentProcess: batch.currentProcess, // Use batch's current process
+      status: "Pending",
+    });
+
+    await task.save();
+
+    res.status(200).json({
+      message: "Batch assigned & task created successfully",
+      task,
+    });
   } catch (error) {
     res.status(500).json({ message: "Error assigning batch", error: error.message });
   }
