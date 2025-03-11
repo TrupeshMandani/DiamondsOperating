@@ -2,11 +2,12 @@ import Employee from "../models/Employee.js"; // Import the Employee model
 import Batch from "../models/batchModel.js";
 // Create a new employee
 export const createEmployee = async (req, res) => {
-  const { firstName, lastName, email, phoneNumber, address, dateOfBirth, skills } = req.body
+  const { firstName, lastName, email, phoneNumber, address, dateOfBirth, skills } = req.body;
+
   try {
-    const checkEmployee = await Employee.findOne({ email })
+    const checkEmployee = await Employee.findOne({ email });
     if (checkEmployee) {
-      return res.status(400).json({ message: "Employee already exists" })
+      return res.status(400).json({ message: "Employee already exists" });
     }
 
     const newEmployee = new Employee({
@@ -16,18 +17,20 @@ export const createEmployee = async (req, res) => {
       phoneNumber,
       address,
       dateOfBirth,
-      skills: skills || [], // Use skills from request or default to empty array
-    })
+      skills: skills || [],
+    });
 
-    await newEmployee.save() // Save the new employee
+    await newEmployee.save();
+
     res.status(200).json({
       message: "Employee registered successfully",
-      employee: newEmployee,
-    })
+      employeeId: newEmployee._id, // Return the employee ID for authentication
+    });
   } catch (error) {
-    res.status(500).json({ message: error.message })
+    res.status(500).json({ message: error.message });
   }
-}
+};
+
 
 // Get all employees
 export const getEmployees = async (req, res) => {

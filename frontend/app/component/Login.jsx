@@ -83,7 +83,7 @@ function LoginForm() {
       // Store token, expiration, employee ID, and role in localStorage
       localStorage.setItem("authToken", token);
       localStorage.setItem("authTokenExpiration", expirationTime);
-
+      localStorage.setItem("employeeId", result._id);
 
       localStorage.setItem("role", decoded.role); // Store role
   

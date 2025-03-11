@@ -254,8 +254,11 @@ export const getTasksForEmployee = async (req, res) => {
       return res.status(400).json({ message: "Invalid employee ID format" });
     }
 
-    // Fetch tasks assigned to the employee
-    const tasks = await Task.find({ employeeId });
+    // Fetch tasks and populate batchTitle from Batch model
+    const tasks = await Task.find({ employeeId }).populate({
+      path: "batchId",
+      select: "batchTitle", // Only fetch batchTitle from Batch model
+    });
 
     if (!tasks || tasks.length === 0) {
       return res.status(404).json({ message: "No tasks found for this employee" });
@@ -263,9 +266,7 @@ export const getTasksForEmployee = async (req, res) => {
 
     res.status(200).json(tasks);
   } catch (error) {
-    res
-      .status(500)
-      .json({ message: "Error fetching tasks", error: error.message });
+    res.status(500).json({ message: "Error fetching tasks", error: error.message });
   }
 };
 
