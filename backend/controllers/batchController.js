@@ -245,63 +245,72 @@ export const updateBatch = async (req, res) => {
 };
 
 //get batch for employee 
-export const getTasksForEmployee = async (req, res) => {
-  const { employeeId } = req.params;
-
+export const getTasksForBatch = async (req, res) => {
   try {
-    // Validate employeeId
-    if (!mongoose.Types.ObjectId.isValid(employeeId)) {
-      return res.status(400).json({ message: "Invalid employee ID format" });
+    const { id } = req.params;
+
+    console.log(`Fetching tasks for batch: ${id}`); // Debugging
+
+    // Find the batch using its batchId (which is a string)
+    const batch = await Batch.findOne({ batchId: id });
+
+    if (!batch) {
+      return res.status(404).json({ message: "Batch not found" });
     }
 
-    // Fetch tasks and populate batchTitle from Batch model
-    const tasks = await Task.find({ employeeId }).populate({
-      path: "batchId",
-      select: "batchTitle", // Only fetch batchTitle from Batch model
-    });
+    // Fetch tasks using the found batch's ObjectId
+    const tasks = await Task.find({ batchId: batch._id });
 
     if (!tasks || tasks.length === 0) {
-      return res.status(404).json({ message: "No tasks found for this employee" });
+      return res.status(404).json({ message: "No tasks found for this batch" });
     }
 
     res.status(200).json(tasks);
   } catch (error) {
+    console.error("Error fetching tasks:", error.message);
     res.status(500).json({ message: "Error fetching tasks", error: error.message });
   }
 };
 
 export const assignBatchToEmployee = async (req, res) => {
-  const { batchId, employeeId } = req.body;
-
   try {
-    const batch = await Batch.findOne({ batchId }).select(
-      "batchId currentProcess"
-    );
+    const { batchId, employeeId, description, dueDate, priority, status, process } = req.body;
+
+    console.log("Received Task Data:", req.body); // ✅ Debugging
+
+    if (!batchId || !employeeId || !description || !dueDate || !priority || !process) {
+      return res.status(400).json({ message: "Missing required fields" });
+    }
+
+    const batch = await Batch.findOne({ batchId }).select("batchId currentProcess");
     if (!batch) {
       return res.status(404).json({ message: "Batch not found" });
     }
 
-    const employee = await Employee.findById(employeeId).select(
-      "firstName lastName"
-    );
+    const employee = await Employee.findById(employeeId).select("firstName lastName");
     if (!employee) {
       return res.status(404).json({ message: "Employee not found" });
     }
 
-    // Assign the batch
+    batch.currentProcess = process;
+    await batch.save();
+
+    // Assign the batch to the employee
     batch.assignedEmployee = employeeId;
     await batch.save();
 
-    // Create a new task entry
+    // Ensure `process` is correctly passed and stored
     const task = new Task({
       batchId: batch._id,
       batchTitle: batch.batchId,
-
       employeeId: employee._id,
-      firstName: employee.firstName,
-      lastName: employee.lastName,
-      currentProcess: batch.currentProcess, // Use batch's current process
-      status: "Pending",
+      employeeName: `${employee.firstName} ${employee.lastName}`,
+      currentProcess: process,  // ✅ Correctly stores the frontend `process`
+      description,
+      dueDate,
+      priority,
+      status: status || "Pending",
+      assignedDate: new Date(),
     });
 
     await task.save();
@@ -311,8 +320,8 @@ export const assignBatchToEmployee = async (req, res) => {
       task,
     });
   } catch (error) {
-    res
-      .status(500)
-      .json({ message: "Error assigning batch", error: error.message });
+    console.error("Error assigning batch:", error.message);
+    res.status(500).json({ message: "Error assigning batch", error: error.message });
   }
 };
+
