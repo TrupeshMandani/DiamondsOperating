@@ -325,3 +325,23 @@ export const assignBatchToEmployee = async (req, res) => {
   }
 };
 
+export const getTasksForEmployee = async (req, res) => {
+  try {
+    const { employeeId } = req.params;
+
+    console.log(`Fetching tasks for employee: ${employeeId}`);
+
+    // Fetch tasks and include batch details
+    const tasks = await Task.find({ employeeId }).populate("batchId", "batchTitle currentProcess");
+
+    if (!tasks || tasks.length === 0) {
+      return res.status(404).json({ message: "No tasks found for this employee" });
+    }
+
+    res.status(200).json(tasks);
+  } catch (error) {
+    console.error("Error fetching employee tasks:", error.message);
+    res.status(500).json({ message: "Error fetching employee tasks", error: error.message });
+  }
+};
+

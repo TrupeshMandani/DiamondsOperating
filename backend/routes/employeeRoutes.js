@@ -7,6 +7,7 @@ import {
   getEmployeeBatches,
   getEmployeeById,
 } from "../controllers/employeeController.js";
+import { getTasksForEmployee } from "../controllers/batchController.js";
 
 const router = express.Router();
 
@@ -25,4 +26,6 @@ router.get(
   getEmployeeBatches
 );
 router.get("/id/:id", getEmployeeById);
+
+router.get("/:employeeId/tasks", getTasksForEmployee);
 export default router;
