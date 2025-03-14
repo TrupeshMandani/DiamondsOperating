@@ -58,7 +58,7 @@ const EmpSidebar = () => {
 
   useEffect(() => {
     // Fetch employee name from localStorage
-    const storedName = localStorage.getItem("employeeId");
+    const storedName = localStorage.getItem("firstName");
     if (storedName) {
       setEmployeeName(storedName);
     }
