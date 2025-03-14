@@ -97,51 +97,35 @@ export default function TaskAssignment() {
   };
 
   // Fetch tasks for a batch
-  // TODO you have to make this function again Because this is not the correct api call
   const fetchTasksForBatch = async (batchId) => {
     try {
-      // Make an API call to fetch assigned batches for a given batchId
-      const response = await fetch("http://localhost:5023/api/batches/assign"); // Make sure the URL is correct
+      console.log(`Fetching tasks for batch: ${batchId}`);
 
-      // Check if the response is okay (status code 200-299)
-      if (!response.ok) {
-        throw new Error(`Error: ${response.statusText}`);
-      }
-
-      // Parse the JSON response body
-      const assignedBatches = await response.json();
-
-      // Filter tasks for the specific batchId (if needed)
-      const filteredTasks = assignedBatches.filter(
-        (task) => task.batchId === batchId
+      const response = await fetch(
+        `http://localhost:5023/api/batches/${batchId}/tasks`
       );
 
-      // Map the data to the format you need for the frontend
-      const tasks = filteredTasks.map((task) => ({
-        id: task._id, // Assuming the task has a unique ID
-        batchId: task.batchId,
-        employeeId: task.assignedEmployee, // Assuming 'assignedEmployee' is the employee's ID
-        employeeName: `${task.assignedEmployee.firstName} ${task.assignedEmployee.lastName}`, // If populated with employee details
-        process: task.process, // Assuming 'process' is stored in the task
-        description: task.description, // Assuming 'description' is part of the task
-        dueDate: new Date(task.dueDate),
-        assignedDate: new Date(task.assignedDate),
-        priority: task.priority, // Assuming priority is part of the task
-        status: task.status, // Assuming status is part of the task
-      }));
+      if (!response.ok) {
+        const errorMessage = await response.text();
+        throw new Error(`Error fetching tasks: ${errorMessage}`);
+      }
 
-      // Set the tasks to state or any other logic
+      const tasks = await response.json();
+      console.log("Fetched tasks:", tasks);
+
+      // Ensure tasks are stored in state
       setTasks(tasks);
+      console.log("Updated tasks state:", tasks); // Debugging
     } catch (err) {
-      console.error("Error fetching tasks:", err);
+      console.error("Error fetching tasks:", err.message);
     }
   };
 
   // Handle batch selection
-  const handleBatchSelect = (batchId) => {
+  const handleBatchSelect = async (batchId) => {
     const batch = batches.find((b) => b.batchId === batchId);
     setSelectedBatch(batch);
-    fetchTasksForBatch(batchId);
+    await fetchTasksForBatch(batchId); // ✅ Wait for response before updating UI
   };
 
   // Handle process selection
@@ -150,7 +134,6 @@ export default function TaskAssignment() {
   };
 
   // Handle task assignment
-  // Handle task assignment
   const handleAssignTask = async () => {
     try {
       if (!newTask.employeeId || !newTask.description || !newTask.dueDate) {
@@ -158,18 +141,20 @@ export default function TaskAssignment() {
         return;
       }
 
-      // First, fetch the employee name before making any other API calls
-      const employeeNameStr = await fetchEmployeeDetails(newTask.employeeId);
+      console.log("Selected Process Before Sending:", selectedProcess); // ✅ Debugging
 
       const taskData = {
         batchId: selectedBatch.batchId,
         employeeId: newTask.employeeId,
+        description: newTask.description,
+        dueDate: newTask.dueDate,
+        priority: newTask.priority,
+        status: "Pending",
+        process: selectedProcess, // ✅ Ensure correct process is sent
       };
 
-      console.log(selectedBatch.batchId);
-      console.log("Employee Name:", employeeNameStr); // Log to verify the name is coming back
+      console.log("Sending Task Data:", taskData);
 
-      // Send request to the backend to assign the task
       const response = await fetch("http://localhost:5023/api/batches/assign", {
         method: "PUT",
         headers: {
@@ -178,46 +163,46 @@ export default function TaskAssignment() {
         body: JSON.stringify(taskData),
       });
 
-      // Check if the response is successful
+      const responseText = await response.text();
+      console.log("Backend Response:", responseText);
+
       if (!response.ok) {
-        const errorDetails = await response.text();
-        console.error("Error details:", errorDetails);
-        throw new Error("Failed to assign task");
+        throw new Error(
+          `Failed to assign task. Backend response: ${responseText}`
+        );
       }
 
-      const assignedTask = await response.json();
+      const assignedTask = JSON.parse(responseText);
+      setTasks([...tasks, assignedTask]);
+      alert(
+        `Task assigned successfully to ${newTask.employeeId} for ${selectedProcess}`
+      );
 
-      const newTaskObj = {
-        id: tasks.length + 1,
-        batchId: selectedBatch.batchId,
-        employeeId: newTask.employeeId,
-        employeeName: employeeNameStr,
-        process: selectedProcess,
-        description: newTask.description,
-        dueDate: newTask.dueDate,
-        assignedDate: new Date(),
-        priority: newTask.priority,
-        status: "Pending",
-      };
-
-      setTasks([...tasks, newTaskObj]);
-
-      // Use the fetched employee name in the alert
-      alert(`Task assigned to ${employeeNameStr} for ${selectedProcess}`);
-
-      // Reset form fields
-      setNewTask({
-        employeeId: "",
-        description: "",
-        dueDate: new Date(),
-        priority: "Medium",
-        status: "Pending",
-      });
-
-      setIsAssigningTask(false);
+      await fetchUpdatedBatch(selectedBatch.batchId);
     } catch (err) {
       console.error("Error assigning task:", err.message);
       alert(`Error assigning task: ${err.message}`);
+    }
+  };
+
+  const fetchUpdatedBatch = async (batchId) => {
+    try {
+      const response = await fetch(
+        `http://localhost:5023/api/batches/${batchId}`
+      );
+      if (!response.ok) {
+        throw new Error("Failed to fetch updated batch");
+      }
+      const updatedBatch = await response.json();
+      console.log("Updated Batch Data:", updatedBatch); // ✅ Debugging
+
+      // ✅ Ensure the selected batch state is updated
+      setSelectedBatch((prevBatch) => ({
+        ...prevBatch,
+        currentProcess: updatedBatch.currentProcess, // ✅ Update current process
+      }));
+    } catch (err) {
+      console.error("Error fetching updated batch:", err.message);
     }
   };
 
@@ -260,9 +245,14 @@ export default function TaskAssignment() {
     }
   };
 
+  useEffect(() => {
+    console.log("Updated Process:", selectedBatch?.currentProcess);
+  }, [selectedBatch]);
+  
+
   // Filter tasks by process
   const filteredTasks = tasks.filter(
-    (task) => task.process === selectedProcess
+    (task) => task.currentProcess === selectedProcess
   );
 
   useEffect(() => {
@@ -379,7 +369,7 @@ export default function TaskAssignment() {
                           <label className="text-right text-sm font-medium">
                             Due Date
                           </label>
-                          <div className="col-span-3">
+                          <div className="col-span-3 bg-white">
                             <DatePicker
                               date={newTask.dueDate}
                               setDate={(date) =>
@@ -388,7 +378,7 @@ export default function TaskAssignment() {
                             />
                           </div>
                         </div>
-                        <div className="grid grid-cols-4 items-center gap-4">
+                        <div className=" grid grid-cols-4 items-center gap-4">
                           <label className="text-right text-sm font-medium">
                             Priority
                           </label>
@@ -402,7 +392,7 @@ export default function TaskAssignment() {
                             <SelectTrigger>
                               <SelectValue placeholder="Select Priority" />
                             </SelectTrigger>
-                            <SelectContent>
+                            <SelectContent className="text-black bg-white w-max">
                               <SelectItem value="High">High</SelectItem>
                               <SelectItem value="Medium">Medium</SelectItem>
                               <SelectItem value="Low">Low</SelectItem>
@@ -443,7 +433,7 @@ export default function TaskAssignment() {
                         {filteredTasks.length > 0 ? (
                           filteredTasks.map((task) => (
                             <Card
-                              key={task.id}
+                              key={`${task.batchId}-${task.employeeId}-${task.dueDate}`}
                               className="border border-gray-200 hover:shadow-md transition-shadow"
                             >
                               <CardHeader className="pb-2">
