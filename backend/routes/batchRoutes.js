@@ -1,4 +1,3 @@
-"routes.js";
 import express from "express";
 import {
   assignBatchToEmployee,
@@ -8,7 +7,9 @@ import {
   getBatchProgress,
   getBatches,
   updateBatch,
-} from "../controllers/batchController.js"; // Import both functions
+  getTasksForBatch, 
+  getTasksForEmployee // Add this function
+} from "../controllers/batchController.js"; // Import function
 import { getEmployeesWithAssignedBatches } from "../controllers/employeeController.js";
 
 const router = express.Router();
@@ -19,20 +20,25 @@ router.post("/create", createBatch);
 // Generate a QR code for a batch by ID
 router.get("/:id/generate-label", generateQRCode);
 
-// get all Batches
+// Get all Batches
 router.get("/", getBatches);
 
 // Get batch By ID
 router.get("/:id", getBatchByID);
 
+// Get tasks for a batch (NEW FIX)
+router.get("/:id/tasks", getTasksForBatch);  // 👈 Add this
+
 // Update the batch
 router.put("/:id/progress", updateBatch);
 
-// Assign the batch to emp Route
+// Assign the batch to employee
 router.put("/assign", assignBatchToEmployee);
-// Get the assigned batches ROUTE
 
-// Fetching emp with assigned batched
+// Fetching employees with assigned batches
 router.get("/employees/assigned", getEmployeesWithAssignedBatches);
+
+
+
 
 export default router;

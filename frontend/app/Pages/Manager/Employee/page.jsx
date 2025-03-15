@@ -24,7 +24,7 @@ export default function EmployeeDashboard() {
   useEffect(() => {
     const fetchEmployees = async () => {
       try {
-        const response = await fetch("http://localhost:5023/api/employee", {
+        const response = await fetch("http://localhost:5023/api/employees", {
           method: "GET",
           headers: {
             "Content-Type": "application/json",
@@ -46,18 +46,28 @@ export default function EmployeeDashboard() {
   }, []);
 
   const handleAddEmployee = (newEmployee) => {
-    setEmployees([...employees, newEmployee]);
+    setEmployees((prevEmployees) => [...prevEmployees, newEmployee]);
   };
 
+
   const handleDeleteEmployee = async (id) => {
+    const isConfirmed = window.confirm("Are you sure you want to delete this employee?");
+
+    if (!isConfirmed) {
+      return; // If the user clicks "No", do nothing
+    }
+  
     try {
-      const response = await fetch(`http://localhost:5023/api/employee/${id}`, {
+      const response = await fetch(`http://localhost:5023/api/employees/${id}`, {
         method: "DELETE",
       });
 
       if (!response.ok) {
         throw new Error("Failed to delete employee");
       }
+      
+      alert("Employee deleted successfully!");
+    
 
       setEmployees(employees.filter((employee) => employee._id !== id));
       toast.success("Employee deleted successfully");
@@ -68,11 +78,12 @@ export default function EmployeeDashboard() {
 
   const filteredEmployees = employees.filter(
     (employee) =>
-      employee.firstName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      employee.lastName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      employee.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      employee.phoneNumber.toLowerCase().includes(searchTerm.toLowerCase())
+      employee.firstName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      employee.lastName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      employee.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      employee.phoneNumber?.toLowerCase().includes(searchTerm.toLowerCase())
   );
+  
 
   return (
     <div className="flex min-h-screen bg-[#f0f7]">
