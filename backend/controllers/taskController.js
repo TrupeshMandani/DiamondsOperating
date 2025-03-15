@@ -38,3 +38,34 @@ export const getTasksByBatchId = async (req, res) => {
       .json({ message: "Error fetching tasks", error: error.message });
   }
 };
+
+// Function to update task status
+export const updateTaskStatus = async (req, res) => {
+  try {
+    const { taskId } = req.params;
+    const { status } = req.body;
+
+    // Validate status
+    const validStatuses = ["pending", "in process", "completed"];
+    if (!validStatuses.includes(status)) {
+      return res.status(400).json({ message: "Invalid status value" });
+    }
+
+    // Find and update the task
+    const task = await Task.findByIdAndUpdate(
+      taskId,
+      { status },
+      { new: true }
+    );
+
+    if (!task) {
+      return res.status(404).json({ message: "Task not found" });
+    }
+
+    res.status(200).json({ message: "Task status updated", task });
+  } catch (error) {
+    res
+      .status(500)
+      .json({ message: "Error updating task status", error: error.message });
+  }
+};
