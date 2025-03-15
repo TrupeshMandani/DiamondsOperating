@@ -18,6 +18,7 @@ const EmpTaskList = () => {
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [updatingTasks, setUpdatingTasks] = useState(new Set());
 
   const fetchAssignedTasks = async () => {
     try {
@@ -26,9 +27,13 @@ const EmpTaskList = () => {
       if (!employeeId || !token)
         throw new Error("Employee ID or token not found. Please log in again.");
 
-      const response = await fetch(`http://localhost:5023/api/employees/${employeeId}/tasks`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const response = await fetch(
+        `http://localhost:5023/api/employees/${employeeId}/tasks`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+
       if (!response.ok)
         throw new Error(`Failed to fetch tasks: ${await response.text()}`);
 
@@ -50,6 +55,71 @@ const EmpTaskList = () => {
     fetchAssignedTasks();
   }, []);
 
+  const updateTaskStatus = async (taskId, newStatus) => {
+    try {
+      // Validate inputs
+      if (!taskId || !/^[0-9a-fA-F]{24}$/.test(taskId)) {
+        throw new Error("Invalid task ID format");
+      }
+
+      setUpdatingTasks((prev) => {
+        const newSet = new Set(prev);
+        newSet.add(taskId);
+        return newSet;
+      });
+
+      const token = localStorage.getItem("authToken");
+      const url = `http://localhost:5023/api/tasks/update-status/${taskId}`;
+
+      console.log("Making request to:", url); // Debug log
+
+      const response = await fetch(url, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ status: newStatus }),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text(); // Instead of response.json()
+        console.error("Full server response:", errorText);
+        throw new Error(errorText || "Failed to update task");
+      }
+
+      // Optimistic update
+      setTasks((prev) => {
+        const moveTask = (from, to) => ({
+          ...prev,
+          [from]: prev[from].filter((t) => t._id !== taskId),
+          [to]: [
+            ...prev[to],
+            ...prev[from]
+              .filter((t) => t._id === taskId)
+              .map((t) => ({ ...t, status: newStatus })),
+          ],
+        });
+
+        if (newStatus === "In Progress")
+          return moveTask("assigned", "inProgress");
+        if (newStatus === "Completed")
+          return moveTask("inProgress", "completed");
+        return prev;
+      });
+    } catch (err) {
+      setError(err.message);
+      console.error("Update error:", err);
+      fetchAssignedTasks();
+    } finally {
+      setUpdatingTasks((prev) => {
+        const newSet = new Set(prev);
+        newSet.delete(taskId);
+        return newSet;
+      });
+    }
+  };
+
   const handleTaskLimitChange = (section, increment) => {
     setTaskLimits((prev) => ({
       ...prev,
@@ -70,8 +140,8 @@ const EmpTaskList = () => {
     }
   };
 
-  const renderTaskRows = (taskList, status) => (
-    taskList.map((task) => (
+  const renderTaskRows = (taskList, section) =>
+    taskList.slice(0, taskLimits[section]).map((task) => (
       <motion.div
         key={task._id}
         initial={{ opacity: 0, scale: 0.9 }}
@@ -79,22 +149,52 @@ const EmpTaskList = () => {
         transition={{ duration: 0.3 }}
         className="bg-white p-4 shadow-md rounded-lg border border-gray-200 hover:shadow-lg transition-shadow"
       >
-        <h3 className="text-lg font-semibold">Batch ID: {task.batchTitle || "Unknown"}</h3>
-        <p className="text-gray-600 text-sm">Process: {task.currentProcess || "N/A"}</p>
-        <p className="text-gray-600 text-sm">Description: {task.description || "No details"}</p>
+        <h3 className="text-lg font-semibold">
+          Batch ID: {task.batchTitle || "Unknown"}
+        </h3>
+        <p className="text-gray-600 text-sm">
+          Process: {task.currentProcess || "N/A"}
+        </p>
+        <p className="text-gray-600 text-sm">
+          Description: {task.description || "No details"}
+        </p>
         <div className="flex items-center gap-2 mt-2">
           <Calendar className="h-4 w-4 text-gray-600" />
-          <span className="text-sm">Due: {new Date(task.dueDate).toLocaleDateString()}</span>
+          <span className="text-sm">
+            Due: {new Date(task.dueDate).toLocaleDateString()}
+          </span>
         </div>
         <div className="flex items-center gap-2 mt-2">
           <Clock className="h-4 w-4 text-gray-600" />
-          <span className="text-sm">Assigned: {new Date(task.assignedDate).toLocaleDateString()}</span>
+          <span className="text-sm">
+            Assigned: {new Date(task.assignedDate).toLocaleDateString()}
+          </span>
         </div>
-        <Badge className={`mt-2 ${getPriorityColor(task.priority)}`}>{task.priority}</Badge>
-        <Button className="w-full mt-3">Start Task</Button>
+        <Badge className={`mt-2 ${getPriorityColor(task.priority)}`}>
+          {task.priority}
+        </Badge>
+
+        {section === "assigned" && (
+          <Button
+            className="w-full mt-3"
+            onClick={() => updateTaskStatus(task._id, "In Progress")}
+            disabled={updatingTasks.has(task._id)}
+          >
+            {updatingTasks.has(task._id) ? "Updating..." : "Start Task"}
+          </Button>
+        )}
+
+        {section === "inProgress" && (
+          <Button
+            className="w-full mt-3"
+            onClick={() => updateTaskStatus(task._id, "Completed")}
+            disabled={updatingTasks.has(task._id)}
+          >
+            {updatingTasks.has(task._id) ? "Updating..." : "Complete Task"}
+          </Button>
+        )}
       </motion.div>
-    ))
-  );
+    ));
 
   if (loading)
     return (
@@ -126,7 +226,7 @@ const EmpTaskList = () => {
             {section.replace(/([A-Z])/g, " $1").trim()} Tasks
           </h2>
           <div className="bg-white p-4 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-            {renderTaskRows(tasks[section].slice(0, taskLimits[section]), section)}
+            {renderTaskRows(tasks[section], section)}
           </div>
           <div className="flex justify-center mt-4 gap-4">
             {taskLimits[section] < tasks[section].length && (
