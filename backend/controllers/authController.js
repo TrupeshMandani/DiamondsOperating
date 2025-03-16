@@ -1,18 +1,37 @@
 import user from "../models/user.js";
 import jwt from "jsonwebtoken";
 import bcrypt from "bcryptjs";
+import Employee from "../models/Employee.js";
 
 export const register = async (req, res) => {
-  const { name, email, password, role } = req.body;
+  const { _id, email, password, role } = req.body;
+
   try {
+    // Verify employee exists
+    const employee = await Employee.findById(_id);
+    if (!employee) {
+      return res.status(400).json({ message: "No corresponding employee found. Register employee first." });
+    }
+
+    // Check if user already exists
     const checkUser = await user.findOne({ email });
     if (checkUser) {
       return res.status(400).json({ message: "User already exists" });
     }
-    const newUser = new user({ name, email, password, role });
-    newUser.save();
-    res.status(200).json({ message: "User registered successfully" });
+
+    // Create the user with the same _id as the employee
+    const newUser = new user({
+      _id,  // Use the same _id from Employee collection
+      name: `${employee.firstName} ${employee.lastName}`,
+      email,
+      password,
+      role,
+    });
+
+    await newUser.save();
+    res.status(200).json({ message: "User registered successfully", userId: newUser._id });
   } catch (error) {
+    console.error("Error in register API:", error);
     res.status(500).json({ message: error.message });
   }
 };

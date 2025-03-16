@@ -2,6 +2,10 @@ import mongoose from "mongoose";
 import bcrypt from "bcryptjs";
 
 const userSchema = new mongoose.Schema({
+  _id: {
+    type: mongoose.Schema.Types.ObjectId, // Match Employee's _id
+    required: true,
+  },
   name: {
     type: String,
     required: true,

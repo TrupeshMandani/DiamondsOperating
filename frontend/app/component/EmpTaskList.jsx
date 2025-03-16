@@ -1,232 +1,253 @@
-import { useState } from "react";
-import EmpTaskCard from "./EmpTaskCard";
+import { useState, useEffect } from "react";
+import { motion } from "framer-motion";
 import { IoIosArrowDown, IoIosArrowUp } from "react-icons/io";
-
-const initialTasks = {
-  assigned: [
-    { id: "B001", start: "10:00 AM", end: "12:00 PM" },
-    { id: "B002", start: "12:30 PM", end: "2:30 PM" },
-    { id: "B003", start: "12:45 PM", end: "2:30 PM" },
-    { id: "B004", start: "8:00 AM", end: "10:00 AM" },
-    { id: "B005", start: "9:00 AM", end: "11:00 AM" },
-    { id: "B006", start: "10:00 AM", end: "12:00 PM" },
-    { id: "B007", start: "1:00 PM", end: "3:00 PM" },
-  ],
-  inProgress: [
-    { id: "B003", start: "3:00 PM", end: "5:00 PM" },
-    { id: "B008", start: "11:00 AM", end: "1:00 PM" },
-    { id: "B009", start: "2:00 PM", end: "4:00 PM" },
-  ],
-  completed: [
-    { id: "B004", start: "8:00 AM", end: "10:00 AM" },
-    { id: "B005", start: "9:00 AM", end: "11:00 AM" },
-  ],
-};
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Calendar, Clock } from "lucide-react";
 
 const EmpTaskList = () => {
-  const [tasks, setTasks] = useState(initialTasks);
-  const [assignedTasksToShow, setAssignedTasksToShow] = useState(4);
-  const [inProgressTasksToShow, setInProgressTasksToShow] = useState(4);
-  const [completedTasksToShow, setCompletedTasksToShow] = useState(4);
+  const [tasks, setTasks] = useState({
+    assigned: [],
+    inProgress: [],
+    completed: [],
+  });
+  const [taskLimits, setTaskLimits] = useState({
+    assigned: 4,
+    inProgress: 4,
+    completed: 4,
+  });
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [updatingTasks, setUpdatingTasks] = useState(new Set());
 
-  // Function to update the task status (e.g., move to in-progress or completed)
-  const handleChangeStatus = (taskId, toSection) => {
-    // Find task from assigned, inProgress, or completed section based on taskId
-    let task;
-    let fromSection;
+  const fetchAssignedTasks = async () => {
+    try {
+      const employeeId = localStorage.getItem("employeeId");
+      const token = localStorage.getItem("authToken");
+      if (!employeeId || !token)
+        throw new Error("Employee ID or token not found. Please log in again.");
 
-    for (const section in tasks) {
-      task = tasks[section].find((task) => task.id === taskId);
-      if (task) {
-        fromSection = section;
-        break;
-      }
-    }
-
-    if (task && fromSection) {
-      // Remove from current section
-      const newFromSection = tasks[fromSection].filter(
-        (task) => task.id !== taskId
+      const response = await fetch(
+        `http://localhost:5023/api/employees/${employeeId}/tasks`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
       );
 
-      // Add to the new section
-      const newToSection = [...tasks[toSection], task];
+      if (!response.ok)
+        throw new Error(`Failed to fetch tasks: ${await response.text()}`);
 
-      // Update the tasks state
-      setTasks((prevTasks) => ({
-        ...prevTasks,
-        [fromSection]: newFromSection,
-        [toSection]: newToSection,
-      }));
+      const data = await response.json();
+      setTasks({
+        assigned: data.filter((task) => task.status === "Pending"),
+        inProgress: data.filter((task) => task.status === "In Progress"),
+        completed: data.filter((task) => task.status === "Completed"),
+      });
+      setError(null);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handleSeeMore = (section) => {
-    if (section === "assigned") {
-      setAssignedTasksToShow(assignedTasksToShow + 4);
-    } else if (section === "inProgress") {
-      setInProgressTasksToShow(inProgressTasksToShow + 4);
-    } else if (section === "completed") {
-      setCompletedTasksToShow(completedTasksToShow + 4);
+  useEffect(() => {
+    fetchAssignedTasks();
+  }, []);
+
+  const updateTaskStatus = async (taskId, newStatus) => {
+    try {
+      // Validate inputs
+      if (!taskId || !/^[0-9a-fA-F]{24}$/.test(taskId)) {
+        throw new Error("Invalid task ID format");
+      }
+
+      setUpdatingTasks((prev) => {
+        const newSet = new Set(prev);
+        newSet.add(taskId);
+        return newSet;
+      });
+
+      const token = localStorage.getItem("authToken");
+      const url = `http://localhost:5023/api/tasks/update-status/${taskId}`;
+
+      console.log("Making request to:", url); // Debug log
+
+      const response = await fetch(url, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ status: newStatus }),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text(); // Instead of response.json()
+        console.error("Full server response:", errorText);
+        throw new Error(errorText || "Failed to update task");
+      }
+
+      // Optimistic update
+      setTasks((prev) => {
+        const moveTask = (from, to) => ({
+          ...prev,
+          [from]: prev[from].filter((t) => t._id !== taskId),
+          [to]: [
+            ...prev[to],
+            ...prev[from]
+              .filter((t) => t._id === taskId)
+              .map((t) => ({ ...t, status: newStatus })),
+          ],
+        });
+
+        if (newStatus === "In Progress")
+          return moveTask("assigned", "inProgress");
+        if (newStatus === "Completed")
+          return moveTask("inProgress", "completed");
+        return prev;
+      });
+    } catch (err) {
+      setError(err.message);
+      console.error("Update error:", err);
+      fetchAssignedTasks();
+    } finally {
+      setUpdatingTasks((prev) => {
+        const newSet = new Set(prev);
+        newSet.delete(taskId);
+        return newSet;
+      });
     }
   };
 
-  const handleSeeLess = (section) => {
-    if (section === "assigned") {
-      setAssignedTasksToShow(assignedTasksToShow - 4);
-    } else if (section === "inProgress") {
-      setInProgressTasksToShow(inProgressTasksToShow - 4);
-    } else if (section === "completed") {
-      setCompletedTasksToShow(completedTasksToShow - 4);
+  const handleTaskLimitChange = (section, increment) => {
+    setTaskLimits((prev) => ({
+      ...prev,
+      [section]: prev[section] + (increment ? 4 : -4),
+    }));
+  };
+
+  const getPriorityColor = (priority) => {
+    switch (priority) {
+      case "High":
+        return "bg-red-100 text-red-800";
+      case "Medium":
+        return "bg-yellow-100 text-yellow-800";
+      case "Low":
+        return "bg-green-100 text-green-800";
+      default:
+        return "bg-gray-100 text-gray-800";
     }
   };
 
-  const renderTaskRows = (taskList, status) => {
-    return taskList.map((task) => (
-      <EmpTaskCard
-        key={task.id}
-        task={task}
-        status={status}
-        updateTaskStatus={(taskId, newStatus) =>
-          handleChangeStatus(taskId, newStatus)
-        }
-      />
+  const renderTaskRows = (taskList, section) =>
+    taskList.slice(0, taskLimits[section]).map((task) => (
+      <motion.div
+        key={task._id}
+        initial={{ opacity: 0, scale: 0.9 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ duration: 0.3 }}
+        className="bg-white p-4 shadow-md rounded-lg border border-gray-200 hover:shadow-lg transition-shadow"
+      >
+        <h3 className="text-lg font-semibold">
+          Batch ID: {task.batchTitle || "Unknown"}
+        </h3>
+        <p className="text-gray-600 text-sm">
+          Process: {task.currentProcess || "N/A"}
+        </p>
+        <p className="text-gray-600 text-sm">
+          Description: {task.description || "No details"}
+        </p>
+        <div className="flex items-center gap-2 mt-2">
+          <Calendar className="h-4 w-4 text-gray-600" />
+          <span className="text-sm">
+            Due: {new Date(task.dueDate).toLocaleDateString()}
+          </span>
+        </div>
+        <div className="flex items-center gap-2 mt-2">
+          <Clock className="h-4 w-4 text-gray-600" />
+          <span className="text-sm">
+            Assigned: {new Date(task.assignedDate).toLocaleDateString()}
+          </span>
+        </div>
+        <Badge className={`mt-2 ${getPriorityColor(task.priority)}`}>
+          {task.priority}
+        </Badge>
+
+        {section === "assigned" && (
+          <Button
+            className="w-full mt-3"
+            onClick={() => updateTaskStatus(task._id, "In Progress")}
+            disabled={updatingTasks.has(task._id)}
+          >
+            {updatingTasks.has(task._id) ? "Updating..." : "Start Task"}
+          </Button>
+        )}
+
+        {section === "inProgress" && (
+          <Button
+            className="w-full mt-3"
+            onClick={() => updateTaskStatus(task._id, "Completed")}
+            disabled={updatingTasks.has(task._id)}
+          >
+            {updatingTasks.has(task._id) ? "Updating..." : "Complete Task"}
+          </Button>
+        )}
+      </motion.div>
     ));
-  };
 
-  const checkShowMoreButton = (section, tasksToShow) => {
-    if (section === "assigned") {
-      return tasksToShow < tasks.assigned.length;
-    } else if (section === "inProgress") {
-      return tasksToShow < tasks.inProgress.length;
-    } else if (section === "completed") {
-      return tasksToShow < tasks.completed.length;
-    }
-    return false;
-  };
+  if (loading)
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-700"></div>
+      </div>
+    );
 
-  const checkShowLessButton = (section, tasksToShow) => {
-    return tasksToShow > 4;
-  };
+  if (error)
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-red-500 text-center">
+          <p>{error}</p>
+          <button
+            onClick={fetchAssignedTasks}
+            className="mt-4 px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600"
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+    );
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto px-4">
-      {/* Assigned Tasks Section */}
-      <div className="w-full p-6 bg-white shadow-md rounded-lg">
-        <h2 className="text-xl font-semibold text-black text-center mb-6">
-          Assigned Tasks
-        </h2>
-        <div className="bg-white p-4 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-          {renderTaskRows(
-            tasks.assigned.slice(0, assignedTasksToShow),
-            "assigned"
-          )}
+      {Object.keys(tasks).map((section) => (
+        <div key={section} className="w-full p-6 bg-white shadow-md rounded-lg">
+          <h2 className="text-xl font-semibold text-black text-center mb-6">
+            {section.replace(/([A-Z])/g, " $1").trim()} Tasks
+          </h2>
+          <div className="bg-white p-4 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+            {renderTaskRows(tasks[section], section)}
+          </div>
+          <div className="flex justify-center mt-4 gap-4">
+            {taskLimits[section] < tasks[section].length && (
+              <button
+                onClick={() => handleTaskLimitChange(section, true)}
+                className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-black rounded-full flex items-center gap-2 transition-all"
+              >
+                <span>See More</span> <IoIosArrowDown className="text-xl" />
+              </button>
+            )}
+            {taskLimits[section] > 4 && (
+              <button
+                onClick={() => handleTaskLimitChange(section, false)}
+                className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-black rounded-full flex items-center gap-2 transition-all"
+              >
+                <span>See Less</span> <IoIosArrowUp className="text-xl" />
+              </button>
+            )}
+          </div>
         </div>
-        <div className="flex justify-center mt-4 gap-4">
-          {checkShowMoreButton("assigned", assignedTasksToShow) && (
-            <button
-              onClick={() => handleSeeMore("assigned")}
-              className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-black rounded-full flex items-center gap-2 transition-all"
-            >
-              <span>See More</span>
-              <IoIosArrowDown
-                className="transform animate-bounce pt-1 text-xl"
-                aria-label="See More"
-              />
-            </button>
-          )}
-          {checkShowLessButton("assigned", assignedTasksToShow) && (
-            <button
-              onClick={() => handleSeeLess("assigned")}
-              className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-black rounded-full flex items-center gap-2 transition-all"
-            >
-              <span>See Less</span>
-              <IoIosArrowUp
-                className="transform animate-bounce text-xl"
-                aria-label="See Less"
-              />
-            </button>
-          )}
-        </div>
-      </div>
-
-      {/* In Progress Tasks Section */}
-      <div className="w-full p-6 bg-white shadow-md rounded-lg">
-        <h2 className="text-xl font-semibold text-black text-center mb-6">
-          In Progress Tasks
-        </h2>
-        <div className="bg-white p-4 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-          {renderTaskRows(
-            tasks.inProgress.slice(0, inProgressTasksToShow),
-            "inProgress"
-          )}
-        </div>
-        <div className="flex justify-center mt-4 gap-4">
-          {checkShowMoreButton("inProgress", inProgressTasksToShow) && (
-            <button
-              onClick={() => handleSeeMore("inProgress")}
-              className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-black rounded-full flex items-center gap-2 transition-all"
-            >
-              <span>See More</span>
-              <IoIosArrowDown
-                className="transform animate-bounce pt-1 text-xl"
-                aria-label="See More"
-              />
-            </button>
-          )}
-          {checkShowLessButton("inProgress", inProgressTasksToShow) && (
-            <button
-              onClick={() => handleSeeLess("inProgress")}
-              className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-black rounded-full flex items-center gap-2 transition-all"
-            >
-              <span>See Less</span>
-              <IoIosArrowUp
-                className="transform animate-bounce text-xl"
-                aria-label="See Less"
-              />
-            </button>
-          )}
-        </div>
-      </div>
-
-      {/* Completed Tasks Section */}
-      <div className="w-full p-6 bg-white shadow-md rounded-lg">
-        <h2 className="text-xl font-semibold text-black text-center mb-6">
-          Completed Tasks
-        </h2>
-        <div className="bg-white p-4 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-          {renderTaskRows(
-            tasks.completed.slice(0, completedTasksToShow),
-            "completed"
-          )}
-        </div>
-        <div className="flex justify-center mt-4 gap-4">
-          {checkShowMoreButton("completed", completedTasksToShow) && (
-            <button
-              onClick={() => handleSeeMore("completed")}
-              className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-black rounded-full flex items-center gap-2 transition-all"
-            >
-              <span>See More</span>
-              <IoIosArrowDown
-                className="transform animate-bounce pt-1 text-xl"
-                aria-label="See More"
-              />
-            </button>
-          )}
-          {checkShowLessButton("completed", completedTasksToShow) && (
-            <button
-              onClick={() => handleSeeLess("completed")}
-              className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-black rounded-full flex items-center gap-2 transition-all"
-            >
-              <span>See Less</span>
-              <IoIosArrowUp
-                className="transform animate-bounce text-xl"
-                aria-label="See Less"
-              />
-            </button>
-          )}
-        </div>
-      </div>
+      ))}
     </div>
   );
 };
