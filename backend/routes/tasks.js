@@ -1,5 +1,6 @@
 import express from "express";
 import {
+  deleteTask,
   getAllTasks,
   getTasksByBatchId,
   updateTaskStatus,
@@ -16,4 +17,6 @@ router.get("/:batchId", getTasksByBatchId);
 // Route to update task status by Task ID
 router.put("/:taskId/update-status", updateTaskStatus);
 
+// Route to delete task by Task ID
+router.delete("/:taskId", deleteTask);
 export default router;

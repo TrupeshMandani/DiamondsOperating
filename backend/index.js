@@ -21,7 +21,7 @@ app.use(express.json());
 // Routes
 app.use("/api/auth", authRoutes);
 app.use("/api/employees", employeeRoutes);
-app.use("/tasks", taskRoutes); // Use the task routes
+app.use("/api/tasks", taskRoutes); // Use the task routes
 // Define the route for generating QR code
 
 // Protect batch-related routes

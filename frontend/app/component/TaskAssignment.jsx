@@ -49,6 +49,9 @@ export default function TaskAssignment() {
     dueDate: new Date(),
     priority: "Medium",
     status: "Pending",
+    rate: 0,
+    diamondNumber: 0,
+    firstName: "",
   });
 
   // Fetch batch data
@@ -106,6 +109,11 @@ export default function TaskAssignment() {
       );
 
       if (!response.ok) {
+        // If no tasks found, set empty array instead of throwing error
+        if (response.status === 404) {
+          setTasks([]);
+          return;
+        }
         const errorMessage = await response.text();
         throw new Error(`Error fetching tasks: ${errorMessage}`);
       }
@@ -118,6 +126,8 @@ export default function TaskAssignment() {
       console.log("Updated tasks state:", tasks); // Debugging
     } catch (err) {
       console.error("Error fetching tasks:", err.message);
+      // Set empty tasks array on error
+      setTasks([]);
     }
   };
 
@@ -125,6 +135,10 @@ export default function TaskAssignment() {
   const handleBatchSelect = async (batchId) => {
     const batch = batches.find((b) => b.batchId === batchId);
     setSelectedBatch(batch);
+    setNewTask((prev) => ({
+      ...prev,
+      diamondNumber: batch.diamondNumber,
+    }));
     await fetchTasksForBatch(batchId); // ✅ Wait for response before updating UI
   };
 
@@ -150,7 +164,9 @@ export default function TaskAssignment() {
         dueDate: newTask.dueDate,
         priority: newTask.priority,
         status: "Pending",
-        process: selectedProcess, // ✅ Ensure correct process is sent
+        process: selectedProcess,
+        rate: parseFloat(newTask.rate) || 0,
+        diamondNumber: newTask.diamondNumber || 0,
       };
 
       console.log("Sending Task Data:", taskData);
@@ -174,8 +190,17 @@ export default function TaskAssignment() {
 
       const assignedTask = JSON.parse(responseText);
       setTasks([...tasks, assignedTask]);
+
+      // Get the selected employee's name
+      const selectedEmployee = employees.find(
+        (emp) => emp._id === newTask.employeeId
+      );
+      const employeeName = selectedEmployee
+        ? `${selectedEmployee.firstName} ${selectedEmployee.lastName}`
+        : "the employee";
+
       alert(
-        `Task assigned successfully to ${newTask.employeeId} for ${selectedProcess}`
+        `Task assigned successfully to ${employeeName} for ${selectedProcess}`
       );
 
       await fetchUpdatedBatch(selectedBatch.batchId);
@@ -248,7 +273,6 @@ export default function TaskAssignment() {
   useEffect(() => {
     console.log("Updated Process:", selectedBatch?.currentProcess);
   }, [selectedBatch]);
-  
 
   // Filter tasks by process
   const filteredTasks = tasks.filter(
@@ -313,18 +337,18 @@ export default function TaskAssignment() {
                         Assign New Task
                       </Button>
                     </DialogTrigger>
-                    <DialogContent className="sm:max-w-[500px] bg-gray-50 text-black">
+                    <DialogContent className="sm:max-w-[500px] bg-gray-50 text-black rounded-lg p-6">
                       <DialogHeader>
-                        <DialogTitle>
+                        <DialogTitle className="text-lg font-medium">
                           Assign Task for {selectedProcess}
                         </DialogTitle>
-                        <DialogDescription>
+                        <DialogDescription className="text-sm text-gray-600">
                           Create a new task for batch {selectedBatch.batchId}
                         </DialogDescription>
                       </DialogHeader>
-                      <div className="grid gap-4 py-4">
-                        <div className="grid grid-cols-4 items-center gap-4 w-full">
-                          <label className="text-right text-sm font-medium">
+                      <div className="grid gap-4">
+                        <div className="flex flex-col space-y-2">
+                          <label className="text-sm font-medium">
                             Employee
                           </label>
                           <Select
@@ -332,12 +356,12 @@ export default function TaskAssignment() {
                               setNewTask({ ...newTask, employeeId: value })
                             }
                             value={newTask.employeeId}
-                            className="col-span-3 text-black"
+                            className="text-black"
                           >
                             <SelectTrigger>
                               <SelectValue placeholder="Select Employee" />
                             </SelectTrigger>
-                            <SelectContent className="text-black bg-white w-max">
+                            <SelectContent className="text-black bg-white w-full">
                               {employees.map((employee) => (
                                 <SelectItem
                                   key={employee._id}
@@ -349,12 +373,29 @@ export default function TaskAssignment() {
                             </SelectContent>
                           </Select>
                         </div>
-                        <div className="grid grid-cols-4 items-center gap-4">
-                          <label className="text-right text-sm font-medium">
+                        <div className="flex flex-col space-y-2">
+                          <label className="text-sm font-medium">
+                            Rate (per piece)
+                          </label>
+                          <input
+                            type="number"
+                            className="p-2 border rounded w-full"
+                            value={newTask.rate || ""}
+                            onChange={(e) =>
+                              setNewTask({
+                                ...newTask,
+                                rate: parseFloat(e.target.value),
+                              })
+                            }
+                            required
+                          />
+                        </div>
+                        <div className="flex flex-col space-y-2">
+                          <label className="text-sm font-medium">
                             Description
                           </label>
                           <Textarea
-                            className="col-span-3"
+                            className="p-2 border rounded w-full"
                             placeholder="Task description"
                             value={newTask.description}
                             onChange={(e) =>
@@ -365,21 +406,19 @@ export default function TaskAssignment() {
                             }
                           />
                         </div>
-                        <div className="grid grid-cols-4 items-center gap-4">
-                          <label className="text-right text-sm font-medium">
+                        <div className="flex flex-col space-y-2">
+                          <label className="text-sm font-medium">
                             Due Date
                           </label>
-                          <div className="col-span-3 bg-white">
-                            <DatePicker
-                              date={newTask.dueDate}
-                              setDate={(date) =>
-                                setNewTask({ ...newTask, dueDate: date })
-                              }
-                            />
-                          </div>
+                          <DatePicker
+                            date={newTask.dueDate}
+                            setDate={(date) =>
+                              setNewTask({ ...newTask, dueDate: date })
+                            }
+                          />
                         </div>
-                        <div className=" grid grid-cols-4 items-center gap-4">
-                          <label className="text-right text-sm font-medium">
+                        <div className="flex flex-col space-y-2">
+                          <label className="text-sm font-medium">
                             Priority
                           </label>
                           <Select
@@ -387,12 +426,12 @@ export default function TaskAssignment() {
                               setNewTask({ ...newTask, priority: value })
                             }
                             value={newTask.priority}
-                            className="col-span-3"
+                            className="text-black"
                           >
                             <SelectTrigger>
                               <SelectValue placeholder="Select Priority" />
                             </SelectTrigger>
-                            <SelectContent className="text-black bg-white w-max">
+                            <SelectContent className="text-black bg-white w-full">
                               <SelectItem value="High">High</SelectItem>
                               <SelectItem value="Medium">Medium</SelectItem>
                               <SelectItem value="Low">Low</SelectItem>
@@ -400,14 +439,16 @@ export default function TaskAssignment() {
                           </Select>
                         </div>
                       </div>
-                      <DialogFooter>
+                      <DialogFooter className="flex justify-end mt-4">
                         <Button
                           variant="outline"
                           onClick={() => setIsAssigningTask(false)}
                         >
                           Cancel
                         </Button>
-                        <Button onClick={handleAssignTask}>Assign Task</Button>
+                        <Button onClick={handleAssignTask} className="ml-2">
+                          Assign Task
+                        </Button>
                       </DialogFooter>
                     </DialogContent>
                   </Dialog>
@@ -477,8 +518,56 @@ export default function TaskAssignment() {
                                 </div>
                               </CardContent>
                               <CardFooter className="pt-2 flex justify-end">
-                                <Button variant="outline" size="sm">
-                                  Update Status
+                                <Button
+                                  variant="destructive"
+                                  size="sm"
+                                  onClick={async () => {
+                                    try {
+                                      const token =
+                                        localStorage.getItem("authToken");
+                                      if (!token) {
+                                        throw new Error(
+                                          "No authentication token found"
+                                        );
+                                      }
+
+                                      const response = await fetch(
+                                        `http://localhost:5023/api/tasks/${task._id}`,
+                                        {
+                                          method: "DELETE",
+                                          headers: {
+                                            "Content-Type": "application/json",
+                                            Authorization: `Bearer ${token}`,
+                                          },
+                                        }
+                                      );
+
+                                      const responseData =
+                                        await response.json();
+                                      if (!response.ok) {
+                                        throw new Error(
+                                          responseData.message ||
+                                            "Failed to delete task"
+                                        );
+                                      }
+
+                                      // Remove the task from the UI
+                                      setTasks((prevTasks) =>
+                                        prevTasks.filter(
+                                          (t) => t._id !== task._id
+                                        )
+                                      );
+                                      alert("Task deleted successfully");
+                                    } catch (error) {
+                                      console.error(
+                                        "Error deleting task:",
+                                        error
+                                      );
+                                      alert("Failed to delete task");
+                                    }
+                                  }}
+                                >
+                                  Delete Task
                                 </Button>
                               </CardFooter>
                             </Card>
