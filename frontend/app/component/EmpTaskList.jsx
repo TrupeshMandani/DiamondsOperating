@@ -50,9 +50,9 @@ const EmpTaskList = () => {
 
       const data = await response.json();
       setTasks({
-        Assigned: data.filter((task) => task.status === "Pending"),
-        InProgress: data.filter((task) => task.status === "In Progress"),
-        Completed: data.filter((task) => task.status === "Completed"),
+        assigned: data.filter((task) => task.status === "Pending"),
+        inProgress: data.filter((task) => task.status === "In Progress"),
+        completed: data.filter((task) => task.status === "Completed"),
       });
       setError(null);
     } catch (err) {

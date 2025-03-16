@@ -109,6 +109,11 @@ export default function TaskAssignment() {
       );
 
       if (!response.ok) {
+        // If no tasks found, set empty array instead of throwing error
+        if (response.status === 404) {
+          setTasks([]);
+          return;
+        }
         const errorMessage = await response.text();
         throw new Error(`Error fetching tasks: ${errorMessage}`);
       }
@@ -121,6 +126,8 @@ export default function TaskAssignment() {
       console.log("Updated tasks state:", tasks); // Debugging
     } catch (err) {
       console.error("Error fetching tasks:", err.message);
+      // Set empty tasks array on error
+      setTasks([]);
     }
   };
 
