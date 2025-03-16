@@ -69,3 +69,43 @@ export const updateTaskStatus = async (req, res) => {
       .json({ message: "Error updating task status", error: error.message });
   }
 };
+
+// Delete a task
+
+export const deleteTask = async (req, res) => {
+  try {
+    const { taskId } = req.params;
+
+    console.log("Received taskId:", taskId);
+
+    // Check if taskId is defined and a valid MongoDB ObjectId
+    if (!taskId || !mongoose.Types.ObjectId.isValid(taskId)) {
+      return res
+        .status(400)
+        .json({ message: "Invalid task ID format", taskId });
+    }
+
+    const task = await Task.findById(taskId);
+    if (!task) {
+      return res.status(404).json({ message: "Task not found", taskId });
+    }
+
+    console.log("Task found:", task);
+
+    const deletedTask = await Task.findByIdAndDelete(taskId);
+    console.log("Deleted Task:", deletedTask);
+
+    if (!deletedTask) {
+      return res.status(500).json({ message: "Task could not be deleted" });
+    }
+
+    res
+      .status(200)
+      .json({ message: "Task deleted successfully", deletedTaskId: taskId });
+  } catch (error) {
+    console.error("Error deleting task:", error);
+    res
+      .status(500)
+      .json({ message: "Failed to delete task", error: error.message, taskId });
+  }
+};
