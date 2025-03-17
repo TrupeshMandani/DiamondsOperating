@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Calendar, Clock, Users, AlertCircle, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -53,6 +53,142 @@ export default function TaskAssignment() {
     diamondNumber: 0,
     firstName: "",
   });
+
+  // WebSocket reference
+  const socketRef = useRef(null);
+
+  // Connect to WebSocket
+  useEffect(() => {
+    // Create WebSocket connection
+    socketRef.current = new WebSocket("ws://localhost:5023");
+
+    // Connection opened
+    socketRef.current.addEventListener("open", (event) => {
+      console.log("WebSocket Connection established");
+    });
+
+    // Listen for messages
+    socketRef.current.addEventListener("message", (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        console.log("WebSocket message received:", data);
+
+        // Handle different types of updates
+        if (data.type === "TASK_UPDATE" || data.type === "taskCompleted") {
+          console.log("Task update received via WebSocket:", data);
+
+          // Extract the task data, handling both data formats
+          let taskUpdateData;
+
+          if (data.type === "TASK_UPDATE" && data.payload) {
+            // Standard format from backend
+            taskUpdateData = data.payload;
+          } else if (data.type === "taskCompleted") {
+            // Format from EmpTaskCard
+            taskUpdateData = {
+              _id: data.taskId,
+              status: data.status || "Completed",
+            };
+          } else {
+            // Direct data format
+            taskUpdateData = data;
+          }
+
+          console.log("Processed task update data:", taskUpdateData);
+
+          // Update tasks in state with the new status
+          setTasks((prevTasks) =>
+            prevTasks.map((task) => {
+              // Check if this is the task being updated
+              if (
+                task._id === taskUpdateData._id ||
+                task._id === taskUpdateData.taskId
+              ) {
+                console.log(
+                  `Updating task ${task._id} status to ${taskUpdateData.status}`
+                );
+                return {
+                  ...task,
+                  status: taskUpdateData.status,
+                };
+              }
+              return task;
+            })
+          );
+
+          // Also check if we need to update batch status based on task completion
+          if (
+            (taskUpdateData.status === "Completed" ||
+              taskUpdateData.status === "completed") &&
+            selectedBatch
+          ) {
+            fetchUpdatedBatch(selectedBatch.batchId);
+          }
+        } else if (data.type === "BATCH_UPDATE") {
+          handleBatchUpdate(data.payload);
+        }
+      } catch (error) {
+        console.error("Error processing WebSocket message:", error);
+      }
+    });
+
+    // Handle errors
+    socketRef.current.addEventListener("error", (error) => {
+      console.error("WebSocket error:", error);
+    });
+
+    // Clean up on component unmount
+    return () => {
+      if (socketRef.current) {
+        socketRef.current.close();
+      }
+    };
+  }, []);
+
+  // Handle task updates from WebSocket
+  const handleTaskUpdate = (updatedTask) => {
+    console.log("Handling task update:", updatedTask);
+
+    // Update the task in state if it exists
+    setTasks((prevTasks) =>
+      prevTasks.map((task) =>
+        task._id === updatedTask._id
+          ? {
+              ...task,
+              status: updatedTask.status,
+              // Update other fields that might have changed
+              description: updatedTask.description || task.description,
+              priority: updatedTask.priority || task.priority,
+              dueDate: updatedTask.dueDate || task.dueDate,
+              currentProcess: updatedTask.currentProcess || task.currentProcess,
+            }
+          : task
+      )
+    );
+
+    // Also check if we need to update batch status based on the task update
+    if (updatedTask.status === "Completed" && selectedBatch) {
+      // Fetch the latest batch data to reflect any process changes
+      fetchUpdatedBatch(selectedBatch.batchId);
+    }
+  };
+
+  // Handle batch updates from WebSocket
+  const handleBatchUpdate = (updatedBatch) => {
+    // Update batches list
+    setBatches((prevBatches) =>
+      prevBatches.map((batch) =>
+        batch.batchId === updatedBatch.batchId
+          ? { ...batch, ...updatedBatch }
+          : batch
+      )
+    );
+
+    // Update selected batch if it's the one that got updated
+    if (selectedBatch && selectedBatch.batchId === updatedBatch.batchId) {
+      setSelectedBatch((prev) => ({ ...prev, ...updatedBatch }));
+    }
+  };
 
   // Fetch batch data
   const fetchBatches = async () => {
@@ -139,7 +275,20 @@ export default function TaskAssignment() {
       ...prev,
       diamondNumber: batch.diamondNumber,
     }));
-    await fetchTasksForBatch(batchId); // ✅ Wait for response before updating UI
+
+    // Fetch initial tasks
+    await fetchTasksForBatch(batchId);
+
+    // Subscribe to updates for this specific batch via WebSocket
+    if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
+      socketRef.current.send(
+        JSON.stringify({
+          type: "SUBSCRIBE",
+          entity: "batch",
+          id: batchId,
+        })
+      );
+    }
   };
 
   // Handle process selection
@@ -189,15 +338,55 @@ export default function TaskAssignment() {
       }
 
       const assignedTask = JSON.parse(responseText);
-      setTasks([...tasks, assignedTask]);
 
-      // Get the selected employee's name
+      // Find selected employee to get full details
       const selectedEmployee = employees.find(
         (emp) => emp._id === newTask.employeeId
       );
+
+      // Create a fully detailed task object for immediate display
+      const enhancedTask = {
+        ...assignedTask,
+        _id: assignedTask._id, // Ensure ID is preserved for deletion functionality
+        batchId: selectedBatch.batchId,
+        employeeId: newTask.employeeId,
+        employeeName: selectedEmployee
+          ? `${selectedEmployee.firstName} ${selectedEmployee.lastName}`
+          : "Unknown Employee",
+        description: newTask.description,
+        dueDate: newTask.dueDate.toISOString(), // Format date correctly
+        assignedDate: new Date().toISOString(), // Add current date as assigned date
+        priority: newTask.priority,
+        status: "Pending",
+        currentProcess: selectedProcess, // Ensure process matches current tab
+        process: selectedProcess,
+        rate: parseFloat(newTask.rate) || 0,
+        diamondNumber: newTask.diamondNumber || 0,
+      };
+
+      console.log("Enhanced task to be added to UI:", enhancedTask);
+
+      // Update tasks state with the new task
+      setTasks((prevTasks) => [...prevTasks, enhancedTask]);
+
       const employeeName = selectedEmployee
         ? `${selectedEmployee.firstName} ${selectedEmployee.lastName}`
         : "the employee";
+
+      // Reset task form
+      setNewTask({
+        employeeId: "",
+        description: "",
+        dueDate: new Date(),
+        priority: "Medium",
+        status: "Pending",
+        rate: 0,
+        diamondNumber: selectedBatch.diamondNumber || 0,
+        firstName: "",
+      });
+
+      // Close the dialog before showing the alert
+      setIsAssigningTask(false);
 
       alert(
         `Task assigned successfully to ${employeeName} for ${selectedProcess}`
@@ -283,6 +472,36 @@ export default function TaskAssignment() {
     fetchBatches();
     fetchEmployees();
   }, []);
+
+  // Add this effect to handle subscription changes when batch changes
+  useEffect(() => {
+    // When batch changes, subscribe to the new batch's updates
+    if (
+      selectedBatch &&
+      socketRef.current &&
+      socketRef.current.readyState === WebSocket.OPEN
+    ) {
+      // Subscribe to the new batch
+      socketRef.current.send(
+        JSON.stringify({
+          type: "SUBSCRIBE",
+          entity: "batch",
+          id: selectedBatch.batchId,
+        })
+      );
+
+      // Return cleanup function that unsubscribes when batch changes or component unmounts
+      return () => {
+        socketRef.current.send(
+          JSON.stringify({
+            type: "UNSUBSCRIBE",
+            entity: "batch",
+            id: selectedBatch.batchId,
+          })
+        );
+      };
+    }
+  }, [selectedBatch?.batchId]);
 
   if (loading) {
     return (
