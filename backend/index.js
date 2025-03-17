@@ -57,35 +57,10 @@ app.get("/api/employees", async (req, res) => {
 });
 
 // PUT route to update task status
-app.put("/api/tasks/update-status/:taskId", async (req, res) => {
-  const { taskId } = req.params;
-  const { status } = req.body;
+import { updateTaskStatus } from "./controllers/taskController.js";
 
-  if (!taskId || !status) {
-    return res.status(400).json({ message: "Task ID and status are required" });
-  }
+app.put("/api/tasks/update-status/:taskId", updateTaskStatus);
 
-  try {
-    // Find the task by taskId
-    const task = await Task.findById(taskId);
-
-    if (!task) {
-      return res.status(404).json({ message: "Task not found" });
-    }
-
-    // Update the task status
-    task.status = status;
-
-    // Save the updated task to the database
-    await task.save();
-
-    res.status(200).json({ message: "Task updated successfully", task });
-  } catch (err) {
-    res
-      .status(500)
-      .json({ message: "Error updating task", error: err.message });
-  }
-});
 const PORT = process.env.PORT || 5000;
 
 app.listen(PORT, () => console.log(`Connected to the port ${PORT}`));
