@@ -41,9 +41,8 @@ wss.on("connection", (ws) => {
 });
 
 // PUT route to update task status
-app.put("/api/tasks/update-status/:taskId", async (req, res) => {
-  const { taskId } = req.params;
-  const { status } = req.body;
+import { updateTaskStatus } from "./controllers/taskController.js";
+
 
   if (!taskId || !status) {
     return res.status(400).json({ message: "Task ID and status are required" });

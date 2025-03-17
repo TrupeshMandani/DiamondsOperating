@@ -6,6 +6,7 @@ import { IoIosArrowDown, IoIosArrowUp } from "react-icons/io";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Calendar, Clock } from "lucide-react";
+import TaskCardWithTimer from "./EmpTaskCardWithTimer"; // adjust path
 // Removed the import for Switch
 
 const EmpTaskList = () => {
@@ -68,22 +69,19 @@ const EmpTaskList = () => {
 
   const updateTaskStatus = async (taskId, newStatus) => {
     try {
-      // Validate inputs
       if (!taskId || !/^[0-9a-fA-F]{24}$/.test(taskId)) {
         throw new Error("Invalid task ID format");
       }
-
+  
       setUpdatingTasks((prev) => {
         const newSet = new Set(prev);
         newSet.add(taskId);
         return newSet;
       });
-
+  
       const token = localStorage.getItem("authToken");
       const url = `http://localhost:5023/api/tasks/update-status/${taskId}`;
-
-      console.log("Making request to:", url); // Debug log
-
+  
       const response = await fetch(url, {
         method: "PUT",
         headers: {
@@ -92,36 +90,45 @@ const EmpTaskList = () => {
         },
         body: JSON.stringify({ status: newStatus }),
       });
-
+  
       if (!response.ok) {
-        const errorText = await response.text(); // Instead of response.json()
-        console.error("Full server response:", errorText);
+        const errorText = await response.text();
         throw new Error(errorText || "Failed to update task");
       }
-
-      // Optimistic update
+  
+      const result = await response.json();
+      const updatedTask = result.task;
+  
+      // ✅ Replace task in the list with updated data
       setTasks((prev) => {
-        const moveTask = (from, to) => ({
+        const from =
+          newStatus === "In Progress"
+            ? "assigned"
+            : newStatus === "Completed"
+            ? "inProgress"
+            : null;
+        const to =
+          newStatus === "In Progress"
+            ? "inProgress"
+            : newStatus === "Completed"
+            ? "completed"
+            : null;
+  
+        if (!from || !to) return prev;
+  
+        const updatedFrom = prev[from].filter((t) => t._id !== taskId);
+        const updatedTo = [...prev[to], updatedTask];
+  
+        return {
           ...prev,
-          [from]: prev[from].filter((t) => t._id !== taskId),
-          [to]: [
-            ...prev[to],
-            ...prev[from]
-              .filter((t) => t._id === taskId)
-              .map((t) => ({ ...t, status: newStatus })),
-          ],
-        });
-
-        if (newStatus === "In Progress")
-          return moveTask("assigned", "inProgress");
-        if (newStatus === "Completed")
-          return moveTask("inProgress", "completed");
-        return prev;
+          [from]: updatedFrom,
+          [to]: updatedTo,
+        };
       });
     } catch (err) {
       setError(err.message);
       console.error("Update error:", err);
-      fetchAssignedTasks();
+      fetchAssignedTasks(); // fallback to reload
     } finally {
       setUpdatingTasks((prev) => {
         const newSet = new Set(prev);
@@ -130,6 +137,7 @@ const EmpTaskList = () => {
       });
     }
   };
+  
 
   const handleTaskLimitChange = (section, increment) => {
     setTaskLimits((prev) => ({
@@ -151,71 +159,33 @@ const EmpTaskList = () => {
     }
   };
 
+  const getDuration = (start, end) => {
+    const startDate = new Date(start);
+    const endDate = new Date(end);
+    const diffMs = endDate - startDate;
+    const diffMins = Math.floor(diffMs / 60000);
+    const hours = Math.floor(diffMins / 60);
+    const minutes = diffMins % 60;
+    const days = Math.floor(diffMins / 1440);
+  
+    if (days > 0) return `${days} day(s), ${hours % 24} hr ${minutes} min`;
+    if (hours > 0) return `${hours} hr ${minutes} min`;
+    return `${minutes} min`;
+  };
+  
   const renderTaskRows = (taskList, section) =>
     taskList.slice(0, taskLimits[section]).map((task) => (
-      <motion.div
+      <TaskCardWithTimer
         key={task._id}
-        initial={{ opacity: 0, scale: 0.9 }}
-        animate={{ opacity: 1, scale: 1 }}
-        transition={{ duration: 0.3 }}
-        className="bg-white p-4 shadow-md rounded-lg border border-gray-200 hover:shadow-lg transition-shadow"
-      >
-        <h3 className="text-lg font-semibold">
-          Batch ID: {task.batchTitle || "Unknown"}
-        </h3>
-        <p className="text-gray-600 text-sm">
-          Process: {task.currentProcess || "N/A"}
-        </p>
-        <p className="text-gray-600 text-sm">
-          Description: {task.description || "No details"}
-        </p>
-        <div className="flex items-center gap-2 mt-2">
-          <Calendar className="h-4 w-4 text-gray-600" />
-          <span className="text-sm">
-            Due: {new Date(task.dueDate).toLocaleDateString()}
-          </span>
-        </div>
-        <div className="flex items-center gap-2 mt-2">
-          <span className="text-sm font-medium">
-            Earnings: ₹{(task.rate * task.diamondNumber || 0).toFixed(2)}
-          </span>
-        </div>
-        <div className="flex items-center gap-2 mt-2">
-          <span className="text-sm font-medium">
-            Number of Diamonds: {task.diamondNumber}
-          </span>
-        </div>
-        <div className="flex items-center gap-2 mt-2">
-          <Clock className="h-4 w-4 text-gray-600" />
-          <span className="text-sm">
-            assigned: {new Date(task.assignedDate).toLocaleDateString()}
-          </span>
-        </div>
-        <Badge className={`mt-2 ${getPriorityColor(task.priority)}`}>
-          {task.priority}
-        </Badge>
-
-        {section === "assigned" && (
-          <Button
-            className="w-full mt-3"
-            onClick={() => updateTaskStatus(task._id, "In Progress")}
-            disabled={updatingTasks.has(task._id)}
-          >
-            {updatingTasks.has(task._id) ? "Updating..." : "Start Task"}
-          </Button>
-        )}
-
-        {section === "inProgress" && (
-          <Button
-            className="w-full mt-3"
-            onClick={() => updateTaskStatus(task._id, "Completed")}
-            disabled={updatingTasks.has(task._id)}
-          >
-            {updatingTasks.has(task._id) ? "Updating..." : "Complete Task"}
-          </Button>
-        )}
-      </motion.div>
+        task={task}
+        section={section}
+        updateTaskStatus={updateTaskStatus}
+        updatingTasks={updatingTasks}
+        getPriorityColor={getPriorityColor}
+      />
     ));
+  
+    
 
   if (loading)
     return (
