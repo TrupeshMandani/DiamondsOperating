@@ -45,19 +45,31 @@ export const getEmployees = async (req, res) => {
 // Update an existing employee
 export const updateEmployee = async (req, res) => {
   const { id } = req.params;
+  const { firstName, lastName, email, phoneNumber, address, dateOfBirth, skills } = req.body;
+
   try {
-    const employee = await Employee.findById(id); // Find employee in Employee collection
+    const employee = await Employee.findById(id);
     if (!employee) {
       return res.status(404).json({ message: "Employee not found" });
     }
-    const updatedEmployee = await Employee.findByIdAndUpdate(id, req.body, {
-      new: true,
-    });
-    res.status(200).json(updatedEmployee);
+
+    // Update only specific fields
+    employee.firstName = firstName || employee.firstName;
+    employee.lastName = lastName || employee.lastName;
+    employee.email = email || employee.email;
+    employee.phoneNumber = phoneNumber || employee.phoneNumber;
+    employee.address = address || employee.address;
+    employee.dateOfBirth = dateOfBirth || employee.dateOfBirth;
+    employee.skills = skills || employee.skills;
+
+    const updatedEmployee = await employee.save();
+    
+    res.status(200).json({ message: "Employee updated successfully", updatedEmployee });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ message: "Error updating employee", error: error.message });
   }
 };
+
 
 // Delete an existing employee
 export const deleteEmployee = async (req, res) => {
