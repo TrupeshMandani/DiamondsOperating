@@ -1,8 +1,24 @@
 "use client";
 import { motion } from "framer-motion";
+import { useEffect } from "react";
 import { useState } from "react";
 
 const EmpTaskCard = ({ task, status, updateTaskStatus }) => {
+  // WebSocket connection to listen for updates
+  useEffect(() => {
+    const socket = new WebSocket("ws://localhost:5023");
+
+    socket.onmessage = (event) => {
+      const message = JSON.parse(event.data);
+      if (message.type === "taskCompleted" && message.taskId === task.id) {
+        updateTaskStatus(task.id, "completed");
+      }
+    };
+
+    return () => {
+      socket.close();
+    };
+  }, [task.id, updateTaskStatus]);
   const [isTaskStarted, setIsTaskStarted] = useState(status === "inProgress");
 
   const getStatusClass = () => {
@@ -25,10 +41,31 @@ const EmpTaskCard = ({ task, status, updateTaskStatus }) => {
       : "Are you sure you want to start the task?";
 
     if (window.confirm(confirmationMessage)) {
-      const newStatus = isTaskStarted ? "completed" : "inProgress";
-      updateTaskStatus(task.id, newStatus);
-      setIsTaskStarted(!isTaskStarted); // Toggle task start/end state
-      alert(`${action} for Batch ID: ${task.id} confirmed`);
+      const newStatus = isTaskStarted ? "Completed" : "In Progress";
+
+      // Send request to update task status
+      fetch(`http://localhost:5023/api/tasks/update-status/${task._id}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          status: newStatus,
+          // Include task ID for clarity
+          taskId: task._id,
+        }),
+      })
+        .then((response) => response.json())
+        .then((data) => {
+          console.log("Task status updated:", data);
+          updateTaskStatus(task._id, newStatus.toLowerCase().replace(" ", ""));
+          setIsTaskStarted(!isTaskStarted);
+          alert(`${action} for Batch ID: ${task.id || task.batchId} confirmed`);
+        })
+        .catch((error) => {
+          console.error("Error updating task status:", error);
+          alert("Failed to update task status");
+        });
     }
   };
 
