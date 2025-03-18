@@ -9,6 +9,7 @@ import { authMiddleware } from "./middleware/authMiddleware.js";
 import taskRoutes from "./routes/tasks.js";
 import Employee from "./models/Employee.js";
 import Task from "./models/taskModel.js";
+import WebSocket from "ws"; // Import WebSocket
 
 dotenv.config();
 
@@ -21,63 +22,59 @@ app.use(express.json());
 // Routes
 app.use("/api/auth", authRoutes);
 app.use("/api/employees", employeeRoutes);
-app.use("/tasks", taskRoutes); // Use the task routes
-// Define the route for generating QR code
+app.use("/api/tasks", taskRoutes); // Use the task routes
+app.use("/api/batches", batchRoutes); // Protect batch-related routes
 
-// Protect batch-related routes
-app.use("/api/batches", batchRoutes);
-
-app.delete("/api/employees/:id", async (req, res) => {
-  try {
-    const { id } = req.params;
-    const deletedEmployee = await Employee.findByIdAndDelete(id);
-    a;
-
-    if (!deletedEmployee) {
-      return res.status(404).json({ message: "Employee not found" });
-    }
-
-    res.status(200).json({ message: "Employee deleted successfully" });
-  } catch (err) {
-    res
-      .status(500)
-      .json({ message: "Error deleting employee", error: err.message });
-  }
+// WebSocket server setup
+const server = app.listen(process.env.PORT || 5000, () => {
+  console.log(`Connected to the port ${process.env.PORT || 5000}`);
 });
 
-app.get("/api/employees", async (req, res) => {
-  try {
-    const employees = await Employee.find();
-    res.status(200).json(employees);
-  } catch (err) {
-    res
-      .status(500)
-      .json({ message: "Error fetching employees", error: err.message });
-  }
+const wss = new WebSocket.Server({ server });
+
+wss.on("connection", (ws) => {
+  console.log("New client connected");
+
+  ws.on("close", () => {
+    console.log("Client disconnected");
+  });
 });
 
 // PUT route to update task status
-app.put("/api/tasks/update-status/:taskId", async (req, res) => {
-  const { taskId } = req.params;
-  const { status } = req.body;
+import { updateTaskStatus } from "./controllers/taskController.js";
+
 
   if (!taskId || !status) {
     return res.status(400).json({ message: "Task ID and status are required" });
   }
 
   try {
-    // Find the task by taskId
     const task = await Task.findById(taskId);
 
     if (!task) {
       return res.status(404).json({ message: "Task not found" });
     }
 
-    // Update the task status
     task.status = status;
-
-    // Save the updated task to the database
     await task.save();
+
+    // Emit a WebSocket message to all clients with proper format
+    wss.clients.forEach((client) => {
+      if (client.readyState === WebSocket.OPEN) {
+        client.send(JSON.stringify({ 
+          type: "TASK_UPDATE", 
+          payload: {
+            _id: taskId,
+            status: status,
+            // Include other relevant task fields
+            description: task.description,
+            priority: task.priority,
+            dueDate: task.dueDate,
+            currentProcess: task.currentProcess
+          }
+        }));
+      }
+    });
 
     res.status(200).json({ message: "Task updated successfully", task });
   } catch (err) {
@@ -86,9 +83,6 @@ app.put("/api/tasks/update-status/:taskId", async (req, res) => {
       .json({ message: "Error updating task", error: err.message });
   }
 });
-const PORT = process.env.PORT || 5000;
-
-app.listen(PORT, () => console.log(`Connected to the port ${PORT}`));
 
 app.get("/", (req, res) => {
   res.send("Welcome to the Diamond Management System API!");

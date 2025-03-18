@@ -244,7 +244,7 @@ export const updateBatch = async (req, res) => {
   }
 };
 
-//get batch for employee 
+//get batch for employee
 export const getTasksForBatch = async (req, res) => {
   try {
     const { id } = req.params;
@@ -268,26 +268,51 @@ export const getTasksForBatch = async (req, res) => {
     res.status(200).json(tasks);
   } catch (error) {
     console.error("Error fetching tasks:", error.message);
-    res.status(500).json({ message: "Error fetching tasks", error: error.message });
+    res
+      .status(500)
+      .json({ message: "Error fetching tasks", error: error.message });
   }
 };
 
 export const assignBatchToEmployee = async (req, res) => {
   try {
-    const { batchId, employeeId, description, dueDate, priority, status, process } = req.body;
+    const {
+      batchId,
+      employeeId,
+      description,
+      dueDate,
+      priority,
+      status,
+      process,
+      rate,
+      diamondNumber, // ✅ Getting it from req.body
+    } = req.body;
 
     console.log("Received Task Data:", req.body); // ✅ Debugging
 
-    if (!batchId || !employeeId || !description || !dueDate || !priority || !process) {
+    if (
+      !batchId ||
+      !employeeId ||
+      !description ||
+      !dueDate ||
+      !priority ||
+      !process ||
+      rate === undefined ||
+      diamondNumber === undefined // ✅ Ensure it's not missing
+    ) {
       return res.status(400).json({ message: "Missing required fields" });
     }
 
-    const batch = await Batch.findOne({ batchId }).select("batchId currentProcess");
+    const batch = await Batch.findOne({ batchId }).select(
+      "batchId currentProcess"
+    );
     if (!batch) {
       return res.status(404).json({ message: "Batch not found" });
     }
 
-    const employee = await Employee.findById(employeeId).select("firstName lastName");
+    const employee = await Employee.findById(employeeId).select(
+      "firstName lastName"
+    );
     if (!employee) {
       return res.status(404).json({ message: "Employee not found" });
     }
@@ -299,18 +324,32 @@ export const assignBatchToEmployee = async (req, res) => {
     batch.assignedEmployee = employeeId;
     await batch.save();
 
+    // Convert `rate` to a number (Fixes validation issue)
+    const numericRate = Number(rate);
+    if (isNaN(numericRate)) {
+      return res.status(400).json({ message: "Invalid rate value" });
+    }
+
+    // Ensure `diamondNumber` is a number
+    const numericDiamondNumber = Number(diamondNumber);
+    if (isNaN(numericDiamondNumber)) {
+      return res.status(400).json({ message: "Invalid diamondNumber value" });
+    }
+
     // Ensure `process` is correctly passed and stored
     const task = new Task({
       batchId: batch._id,
       batchTitle: batch.batchId,
       employeeId: employee._id,
       employeeName: `${employee.firstName} ${employee.lastName}`,
-      currentProcess: process,  // ✅ Correctly stores the frontend `process`
+      currentProcess: process,
       description,
       dueDate,
       priority,
+      diamondNumber: numericDiamondNumber, // ✅ Now it's correctly assigned
       status: status || "Pending",
       assignedDate: new Date(),
+      rate: numericRate, // ✅ Ensure rate is included
     });
 
     await task.save();
@@ -321,7 +360,9 @@ export const assignBatchToEmployee = async (req, res) => {
     });
   } catch (error) {
     console.error("Error assigning batch:", error.message);
-    res.status(500).json({ message: "Error assigning batch", error: error.message });
+    res
+      .status(500)
+      .json({ message: "Error assigning batch", error: error.message });
   }
 };
 
@@ -332,16 +373,22 @@ export const getTasksForEmployee = async (req, res) => {
     console.log(`Fetching tasks for employee: ${employeeId}`);
 
     // Fetch tasks and include batch details
-    const tasks = await Task.find({ employeeId }).populate("batchId", "batchTitle currentProcess");
+    const tasks = await Task.find({ employeeId }).populate(
+      "batchId",
+      "batchTitle currentProcess"
+    );
 
     if (!tasks || tasks.length === 0) {
-      return res.status(404).json({ message: "No tasks found for this employee" });
+      return res
+        .status(404)
+        .json({ message: "No tasks found for this employee" });
     }
 
     res.status(200).json(tasks);
   } catch (error) {
     console.error("Error fetching employee tasks:", error.message);
-    res.status(500).json({ message: "Error fetching employee tasks", error: error.message });
+    res
+      .status(500)
+      .json({ message: "Error fetching employee tasks", error: error.message });
   }
 };
-

@@ -1,16 +1,39 @@
 import mongoose from "mongoose";
 
 const taskSchema = new mongoose.Schema({
-  batchId: { type: mongoose.Schema.Types.ObjectId, ref: "Batch", required: true }, 
+  batchId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Batch",
+    required: true,
+  },
   batchTitle: { type: String, required: true },
-  employeeId: { type: mongoose.Schema.Types.ObjectId, ref: "Employee", required: true },
+  employeeId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Employee",
+    required: true,
+  },
   employeeName: { type: String, required: true },
+  diamondNumber: { type: Number, required: true },
   currentProcess: { type: String, required: true },
   description: { type: String, required: true },
   dueDate: { type: Date, required: true },
-  priority: { type: String, enum: ["High", "Medium", "Low"], required: true },
-  status: { type: String, enum: ["Pending", "In Progress", "Completed"], required: true },
+  priority: {
+    type: String,
+    enum: ["High", "Medium", "Low"],
+    required: true,
+  },
+  status: {
+    type: String,
+    enum: ["Pending", "In Progress", "Completed"],
+    required: true,
+  },
+  rate: { type: Number, required: true },
   assignedDate: { type: Date, default: Date.now },
+
+  // ✅ For time tracking
+  startTime: { type: Date, default: null },
+  endTime: { type: Date, default: null },
+  durationInMinutes: { type: Number, default: null }, // ✅ Add this line
 });
 
 export default mongoose.model("Task", taskSchema);
