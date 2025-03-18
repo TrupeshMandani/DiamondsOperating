@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Calendar, Clock, Users, AlertCircle, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -49,7 +49,146 @@ export default function TaskAssignment() {
     dueDate: new Date(),
     priority: "Medium",
     status: "Pending",
+    rate: 0,
+    diamondNumber: 0,
+    firstName: "",
   });
+
+  // WebSocket reference
+  const socketRef = useRef(null);
+
+  // Connect to WebSocket
+  useEffect(() => {
+    // Create WebSocket connection
+    socketRef.current = new WebSocket("ws://localhost:5023");
+
+    // Connection opened
+    socketRef.current.addEventListener("open", (event) => {
+      console.log("WebSocket Connection established");
+    });
+
+    // Listen for messages
+    socketRef.current.addEventListener("message", (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        console.log("WebSocket message received:", data);
+
+        // Handle different types of updates
+        if (data.type === "TASK_UPDATE" || data.type === "taskCompleted") {
+          console.log("Task update received via WebSocket:", data);
+
+          // Extract the task data, handling both data formats
+          let taskUpdateData;
+
+          if (data.type === "TASK_UPDATE" && data.payload) {
+            // Standard format from backend
+            taskUpdateData = data.payload;
+          } else if (data.type === "taskCompleted") {
+            // Format from EmpTaskCard
+            taskUpdateData = {
+              _id: data.taskId,
+              status: data.status || "Completed",
+            };
+          } else {
+            // Direct data format
+            taskUpdateData = data;
+          }
+
+          console.log("Processed task update data:", taskUpdateData);
+
+          // Update tasks in state with the new status
+          setTasks((prevTasks) =>
+            prevTasks.map((task) => {
+              // Check if this is the task being updated
+              if (
+                task._id === taskUpdateData._id ||
+                task._id === taskUpdateData.taskId
+              ) {
+                console.log(
+                  `Updating task ${task._id} status to ${taskUpdateData.status}`
+                );
+                return {
+                  ...task,
+                  status: taskUpdateData.status,
+                };
+              }
+              return task;
+            })
+          );
+
+          // Also check if we need to update batch status based on task completion
+          if (
+            (taskUpdateData.status === "Completed" ||
+              taskUpdateData.status === "completed") &&
+            selectedBatch
+          ) {
+            fetchUpdatedBatch(selectedBatch.batchId);
+          }
+        } else if (data.type === "BATCH_UPDATE") {
+          handleBatchUpdate(data.payload);
+        }
+      } catch (error) {
+        console.error("Error processing WebSocket message:", error);
+      }
+    });
+
+    // Handle errors
+    socketRef.current.addEventListener("error", (error) => {
+      console.error("WebSocket error:", error);
+    });
+
+    // Clean up on component unmount
+    return () => {
+      if (socketRef.current) {
+        socketRef.current.close();
+      }
+    };
+  }, []);
+
+  // Handle task updates from WebSocket
+  const handleTaskUpdate = (updatedTask) => {
+    console.log("Handling task update:", updatedTask);
+
+    // Update the task in state if it exists
+    setTasks((prevTasks) =>
+      prevTasks.map((task) =>
+        task._id === updatedTask._id
+          ? {
+              ...task,
+              status: updatedTask.status,
+              // Update other fields that might have changed
+              description: updatedTask.description || task.description,
+              priority: updatedTask.priority || task.priority,
+              dueDate: updatedTask.dueDate || task.dueDate,
+              currentProcess: updatedTask.currentProcess || task.currentProcess,
+            }
+          : task
+      )
+    );
+
+    // Also check if we need to update batch status based on the task update
+    if (updatedTask.status === "Completed" && selectedBatch) {
+      // Fetch the latest batch data to reflect any process changes
+      fetchUpdatedBatch(selectedBatch.batchId);
+    }
+  };
+
+  // Handle batch updates from WebSocket
+  const handleBatchUpdate = (updatedBatch) => {
+    // Update batches list
+    setBatches((prevBatches) =>
+      prevBatches.map((batch) =>
+        batch.batchId === updatedBatch.batchId
+          ? { ...batch, ...updatedBatch }
+          : batch
+      )
+    );
+
+    // Update selected batch if it's the one that got updated
+    if (selectedBatch && selectedBatch.batchId === updatedBatch.batchId) {
+      setSelectedBatch((prev) => ({ ...prev, ...updatedBatch }));
+    }
+  };
 
   // Fetch batch data
   const fetchBatches = async () => {
@@ -97,51 +236,59 @@ export default function TaskAssignment() {
   };
 
   // Fetch tasks for a batch
-  // TODO you have to make this function again Because this is not the correct api call
   const fetchTasksForBatch = async (batchId) => {
     try {
-      // Make an API call to fetch assigned batches for a given batchId
-      const response = await fetch("http://localhost:5023/api/batches/assign"); // Make sure the URL is correct
+      console.log(`Fetching tasks for batch: ${batchId}`);
 
-      // Check if the response is okay (status code 200-299)
-      if (!response.ok) {
-        throw new Error(`Error: ${response.statusText}`);
-      }
-
-      // Parse the JSON response body
-      const assignedBatches = await response.json();
-
-      // Filter tasks for the specific batchId (if needed)
-      const filteredTasks = assignedBatches.filter(
-        (task) => task.batchId === batchId
+      const response = await fetch(
+        `http://localhost:5023/api/batches/${batchId}/tasks`
       );
 
-      // Map the data to the format you need for the frontend
-      const tasks = filteredTasks.map((task) => ({
-        id: task._id, // Assuming the task has a unique ID
-        batchId: task.batchId,
-        employeeId: task.assignedEmployee, // Assuming 'assignedEmployee' is the employee's ID
-        employeeName: `${task.assignedEmployee.firstName} ${task.assignedEmployee.lastName}`, // If populated with employee details
-        process: task.process, // Assuming 'process' is stored in the task
-        description: task.description, // Assuming 'description' is part of the task
-        dueDate: new Date(task.dueDate),
-        assignedDate: new Date(task.assignedDate),
-        priority: task.priority, // Assuming priority is part of the task
-        status: task.status, // Assuming status is part of the task
-      }));
+      if (!response.ok) {
+        // If no tasks found, set empty array instead of throwing error
+        if (response.status === 404) {
+          setTasks([]);
+          return;
+        }
+        const errorMessage = await response.text();
+        throw new Error(`Error fetching tasks: ${errorMessage}`);
+      }
 
-      // Set the tasks to state or any other logic
+      const tasks = await response.json();
+      console.log("Fetched tasks:", tasks);
+
+      // Ensure tasks are stored in state
       setTasks(tasks);
+      console.log("Updated tasks state:", tasks); // Debugging
     } catch (err) {
-      console.error("Error fetching tasks:", err);
+      console.error("Error fetching tasks:", err.message);
+      // Set empty tasks array on error
+      setTasks([]);
     }
   };
 
   // Handle batch selection
-  const handleBatchSelect = (batchId) => {
+  const handleBatchSelect = async (batchId) => {
     const batch = batches.find((b) => b.batchId === batchId);
     setSelectedBatch(batch);
-    fetchTasksForBatch(batchId);
+    setNewTask((prev) => ({
+      ...prev,
+      diamondNumber: batch.diamondNumber,
+    }));
+
+    // Fetch initial tasks
+    await fetchTasksForBatch(batchId);
+
+    // Subscribe to updates for this specific batch via WebSocket
+    if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
+      socketRef.current.send(
+        JSON.stringify({
+          type: "SUBSCRIBE",
+          entity: "batch",
+          id: batchId,
+        })
+      );
+    }
   };
 
   // Handle process selection
@@ -150,7 +297,6 @@ export default function TaskAssignment() {
   };
 
   // Handle task assignment
-  // Handle task assignment
   const handleAssignTask = async () => {
     try {
       if (!newTask.employeeId || !newTask.description || !newTask.dueDate) {
@@ -158,18 +304,22 @@ export default function TaskAssignment() {
         return;
       }
 
-      // First, fetch the employee name before making any other API calls
-      const employeeNameStr = await fetchEmployeeDetails(newTask.employeeId);
+      console.log("Selected Process Before Sending:", selectedProcess); // ✅ Debugging
 
       const taskData = {
         batchId: selectedBatch.batchId,
         employeeId: newTask.employeeId,
+        description: newTask.description,
+        dueDate: newTask.dueDate,
+        priority: newTask.priority,
+        status: "Pending",
+        process: selectedProcess,
+        rate: parseFloat(newTask.rate) || 0,
+        diamondNumber: newTask.diamondNumber || 0,
       };
 
-      console.log(selectedBatch.batchId);
-      console.log("Employee Name:", employeeNameStr); // Log to verify the name is coming back
+      console.log("Sending Task Data:", taskData);
 
-      // Send request to the backend to assign the task
       const response = await fetch("http://localhost:5023/api/batches/assign", {
         method: "PUT",
         headers: {
@@ -178,46 +328,95 @@ export default function TaskAssignment() {
         body: JSON.stringify(taskData),
       });
 
-      // Check if the response is successful
+      const responseText = await response.text();
+      console.log("Backend Response:", responseText);
+
       if (!response.ok) {
-        const errorDetails = await response.text();
-        console.error("Error details:", errorDetails);
-        throw new Error("Failed to assign task");
+        throw new Error(
+          `Failed to assign task. Backend response: ${responseText}`
+        );
       }
 
-      const assignedTask = await response.json();
+      const assignedTask = JSON.parse(responseText);
 
-      const newTaskObj = {
-        id: tasks.length + 1,
+      // Find selected employee to get full details
+      const selectedEmployee = employees.find(
+        (emp) => emp._id === newTask.employeeId
+      );
+
+      // Create a fully detailed task object for immediate display
+      const enhancedTask = {
+        ...assignedTask,
+        _id: assignedTask._id, // Ensure ID is preserved for deletion functionality
         batchId: selectedBatch.batchId,
         employeeId: newTask.employeeId,
-        employeeName: employeeNameStr,
-        process: selectedProcess,
+        employeeName: selectedEmployee
+          ? `${selectedEmployee.firstName} ${selectedEmployee.lastName}`
+          : "Unknown Employee",
         description: newTask.description,
-        dueDate: newTask.dueDate,
-        assignedDate: new Date(),
+        dueDate: newTask.dueDate.toISOString(), // Format date correctly
+        assignedDate: new Date().toISOString(), // Add current date as assigned date
         priority: newTask.priority,
         status: "Pending",
+        currentProcess: selectedProcess, // Ensure process matches current tab
+        process: selectedProcess,
+        rate: parseFloat(newTask.rate) || 0,
+        diamondNumber: newTask.diamondNumber || 0,
       };
 
-      setTasks([...tasks, newTaskObj]);
+      console.log("Enhanced task to be added to UI:", enhancedTask);
 
-      // Use the fetched employee name in the alert
-      alert(`Task assigned to ${employeeNameStr} for ${selectedProcess}`);
+      // Update tasks state with the new task
+      setTasks((prevTasks) => [...prevTasks, enhancedTask]);
 
-      // Reset form fields
+      const employeeName = selectedEmployee
+        ? `${selectedEmployee.firstName} ${selectedEmployee.lastName}`
+        : "the employee";
+
+      // Reset task form
       setNewTask({
         employeeId: "",
         description: "",
         dueDate: new Date(),
         priority: "Medium",
         status: "Pending",
+        rate: 0,
+        diamondNumber: selectedBatch.diamondNumber || 0,
+        firstName: "",
       });
 
+      // Close the dialog before showing the alert
       setIsAssigningTask(false);
+
+      alert(
+        `Task assigned successfully to ${employeeName} for ${selectedProcess}`
+      );
+
+      await fetchUpdatedBatch(selectedBatch.batchId);
     } catch (err) {
       console.error("Error assigning task:", err.message);
       alert(`Error assigning task: ${err.message}`);
+    }
+  };
+
+  const fetchUpdatedBatch = async (batchId) => {
+    try {
+      const response = await fetch(
+        `http://localhost:5023/api/batches/${batchId}`
+      );
+      if (!response.ok) {
+        throw new Error("Failed to fetch updated batch");
+      }
+      const updatedBatch = await response.json();
+      console.log("Updated Batch Data:", updatedBatch); // ✅ Debugging
+
+      // ✅ Ensure the selected batch state is updated
+      setSelectedBatch((prevBatch) => ({
+        ...prevBatch,
+        currentProcess: updatedBatch.currentProcess, // ✅ Update current process
+      }));
+    } catch (err) {
+      console.error("Error fetching updated batch:", err.message);
     }
   };
 
@@ -260,15 +459,49 @@ export default function TaskAssignment() {
     }
   };
 
+  useEffect(() => {
+    console.log("Updated Process:", selectedBatch?.currentProcess);
+  }, [selectedBatch]);
+
   // Filter tasks by process
   const filteredTasks = tasks.filter(
-    (task) => task.process === selectedProcess
+    (task) => task.currentProcess === selectedProcess
   );
 
   useEffect(() => {
     fetchBatches();
     fetchEmployees();
   }, []);
+
+  // Add this effect to handle subscription changes when batch changes
+  useEffect(() => {
+    // When batch changes, subscribe to the new batch's updates
+    if (
+      selectedBatch &&
+      socketRef.current &&
+      socketRef.current.readyState === WebSocket.OPEN
+    ) {
+      // Subscribe to the new batch
+      socketRef.current.send(
+        JSON.stringify({
+          type: "SUBSCRIBE",
+          entity: "batch",
+          id: selectedBatch.batchId,
+        })
+      );
+
+      // Return cleanup function that unsubscribes when batch changes or component unmounts
+      return () => {
+        socketRef.current.send(
+          JSON.stringify({
+            type: "UNSUBSCRIBE",
+            entity: "batch",
+            id: selectedBatch.batchId,
+          })
+        );
+      };
+    }
+  }, [selectedBatch?.batchId]);
 
   if (loading) {
     return (
@@ -323,18 +556,18 @@ export default function TaskAssignment() {
                         Assign New Task
                       </Button>
                     </DialogTrigger>
-                    <DialogContent className="sm:max-w-[500px] bg-gray-50 text-black">
+                    <DialogContent className="sm:max-w-[500px] bg-gray-50 text-black rounded-lg p-6">
                       <DialogHeader>
-                        <DialogTitle>
+                        <DialogTitle className="text-lg font-medium">
                           Assign Task for {selectedProcess}
                         </DialogTitle>
-                        <DialogDescription>
+                        <DialogDescription className="text-sm text-gray-600">
                           Create a new task for batch {selectedBatch.batchId}
                         </DialogDescription>
                       </DialogHeader>
-                      <div className="grid gap-4 py-4">
-                        <div className="grid grid-cols-4 items-center gap-4 w-full">
-                          <label className="text-right text-sm font-medium">
+                      <div className="grid gap-4">
+                        <div className="flex flex-col space-y-2">
+                          <label className="text-sm font-medium">
                             Employee
                           </label>
                           <Select
@@ -342,12 +575,12 @@ export default function TaskAssignment() {
                               setNewTask({ ...newTask, employeeId: value })
                             }
                             value={newTask.employeeId}
-                            className="col-span-3 text-black"
+                            className="text-black"
                           >
                             <SelectTrigger>
                               <SelectValue placeholder="Select Employee" />
                             </SelectTrigger>
-                            <SelectContent className="text-black bg-white w-max">
+                            <SelectContent className="text-black bg-white w-full">
                               {employees.map((employee) => (
                                 <SelectItem
                                   key={employee._id}
@@ -359,12 +592,29 @@ export default function TaskAssignment() {
                             </SelectContent>
                           </Select>
                         </div>
-                        <div className="grid grid-cols-4 items-center gap-4">
-                          <label className="text-right text-sm font-medium">
+                        <div className="flex flex-col space-y-2">
+                          <label className="text-sm font-medium">
+                            Rate (per piece)
+                          </label>
+                          <input
+                            type="number"
+                            className="p-2 border rounded w-full"
+                            value={newTask.rate || ""}
+                            onChange={(e) =>
+                              setNewTask({
+                                ...newTask,
+                                rate: parseFloat(e.target.value),
+                              })
+                            }
+                            required
+                          />
+                        </div>
+                        <div className="flex flex-col space-y-2">
+                          <label className="text-sm font-medium">
                             Description
                           </label>
                           <Textarea
-                            className="col-span-3"
+                            className="p-2 border rounded w-full"
                             placeholder="Task description"
                             value={newTask.description}
                             onChange={(e) =>
@@ -375,21 +625,19 @@ export default function TaskAssignment() {
                             }
                           />
                         </div>
-                        <div className="grid grid-cols-4 items-center gap-4">
-                          <label className="text-right text-sm font-medium">
+                        <div className="flex flex-col space-y-2">
+                          <label className="text-sm font-medium">
                             Due Date
                           </label>
-                          <div className="col-span-3">
-                            <DatePicker
-                              date={newTask.dueDate}
-                              setDate={(date) =>
-                                setNewTask({ ...newTask, dueDate: date })
-                              }
-                            />
-                          </div>
+                          <DatePicker
+                            date={newTask.dueDate}
+                            setDate={(date) =>
+                              setNewTask({ ...newTask, dueDate: date })
+                            }
+                          />
                         </div>
-                        <div className="grid grid-cols-4 items-center gap-4">
-                          <label className="text-right text-sm font-medium">
+                        <div className="flex flex-col space-y-2">
+                          <label className="text-sm font-medium">
                             Priority
                           </label>
                           <Select
@@ -397,12 +645,12 @@ export default function TaskAssignment() {
                               setNewTask({ ...newTask, priority: value })
                             }
                             value={newTask.priority}
-                            className="col-span-3"
+                            className="text-black"
                           >
                             <SelectTrigger>
                               <SelectValue placeholder="Select Priority" />
                             </SelectTrigger>
-                            <SelectContent>
+                            <SelectContent className="text-black bg-white w-full">
                               <SelectItem value="High">High</SelectItem>
                               <SelectItem value="Medium">Medium</SelectItem>
                               <SelectItem value="Low">Low</SelectItem>
@@ -410,14 +658,16 @@ export default function TaskAssignment() {
                           </Select>
                         </div>
                       </div>
-                      <DialogFooter>
+                      <DialogFooter className="flex justify-end mt-4">
                         <Button
                           variant="outline"
                           onClick={() => setIsAssigningTask(false)}
                         >
                           Cancel
                         </Button>
-                        <Button onClick={handleAssignTask}>Assign Task</Button>
+                        <Button onClick={handleAssignTask} className="ml-2">
+                          Assign Task
+                        </Button>
                       </DialogFooter>
                     </DialogContent>
                   </Dialog>
@@ -443,7 +693,7 @@ export default function TaskAssignment() {
                         {filteredTasks.length > 0 ? (
                           filteredTasks.map((task) => (
                             <Card
-                              key={task.id}
+                              key={`${task.batchId}-${task.employeeId}-${task.dueDate}`}
                               className="border border-gray-200 hover:shadow-md transition-shadow"
                             >
                               <CardHeader className="pb-2">
@@ -487,8 +737,56 @@ export default function TaskAssignment() {
                                 </div>
                               </CardContent>
                               <CardFooter className="pt-2 flex justify-end">
-                                <Button variant="outline" size="sm">
-                                  Update Status
+                                <Button
+                                  variant="destructive"
+                                  size="sm"
+                                  onClick={async () => {
+                                    try {
+                                      const token =
+                                        localStorage.getItem("authToken");
+                                      if (!token) {
+                                        throw new Error(
+                                          "No authentication token found"
+                                        );
+                                      }
+
+                                      const response = await fetch(
+                                        `http://localhost:5023/api/tasks/${task._id}`,
+                                        {
+                                          method: "DELETE",
+                                          headers: {
+                                            "Content-Type": "application/json",
+                                            Authorization: `Bearer ${token}`,
+                                          },
+                                        }
+                                      );
+
+                                      const responseData =
+                                        await response.json();
+                                      if (!response.ok) {
+                                        throw new Error(
+                                          responseData.message ||
+                                            "Failed to delete task"
+                                        );
+                                      }
+
+                                      // Remove the task from the UI
+                                      setTasks((prevTasks) =>
+                                        prevTasks.filter(
+                                          (t) => t._id !== task._id
+                                        )
+                                      );
+                                      alert("Task deleted successfully");
+                                    } catch (error) {
+                                      console.error(
+                                        "Error deleting task:",
+                                        error
+                                      );
+                                      alert("Failed to delete task");
+                                    }
+                                  }}
+                                >
+                                  Delete Task
                                 </Button>
                               </CardFooter>
                             </Card>

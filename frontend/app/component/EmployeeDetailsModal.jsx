@@ -1,13 +1,17 @@
-// components/EmployeeDetailsModal.jsx
+"use client";
+import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "../component/ui/button";
 import { X } from "lucide-react";
+import { UpdateEmployeeModal } from "./UpdateEmployeeModal"; // Import update modal
 
 export const EmployeeDetailsModal = ({ employee, onClose, onGrantAccess }) => {
+  const [updateModalOpen, setUpdateModalOpen] = useState(false);
+
   return (
     <AnimatePresence>
       <motion.div
-        layoutId="modal"
+        key={`employee-modal-${employee._id}`} // Unique key
         initial={{ opacity: 0, scale: 0.9 }}
         animate={{ opacity: 1, scale: 1 }}
         exit={{ opacity: 0, scale: 0.9 }}
@@ -75,12 +79,19 @@ export const EmployeeDetailsModal = ({ employee, onClose, onGrantAccess }) => {
           </div>
 
           <div className="flex justify-between mt-6 pt-4 border-t border-[#e2f0f9]">
+          <Button
+              onClick={() => setUpdateModalOpen(true)}
+              className="px-4 py-2 bg-[#ffa726] text-white rounded-lg hover:bg-[#fb8c00] transition duration-200 shadow-sm"
+            >
+              Update Employee
+            </Button>
             <Button
               onClick={() => onGrantAccess(employee)}
               className="px-4 py-2 bg-[#64b5f6] text-white rounded-lg hover:bg-[#4a9fe0] transition duration-200 shadow-sm"
             >
               Add Access
             </Button>
+           
             <Button
               onClick={onClose}
               className="px-4 py-2 bg-[#236294] text-white rounded-lg hover:bg-[#1a4b70] transition duration-200 shadow-sm"
@@ -89,6 +100,15 @@ export const EmployeeDetailsModal = ({ employee, onClose, onGrantAccess }) => {
             </Button>
           </div>
         </div>
+
+        {/* Update Employee Modal */}
+        {updateModalOpen && (
+          <UpdateEmployeeModal
+            key={`update-${employee._id}`} // Unique key
+            employee={employee}
+            onClose={() => setUpdateModalOpen(false)}
+          />
+        )}
       </motion.div>
     </AnimatePresence>
   );

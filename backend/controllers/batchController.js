@@ -1,69 +1,10 @@
 import QRCode from "qrcode";
-import fs from "fs";
-import path from "path";
 import Batch from "../models/batchModel.js";
 import Task from "../models/taskModel.js";
 import Employee from "../models/Employee.js";
 import mongoose from "mongoose";
 
-/**
- * NEW FUNCTION: generateAllQRCodes
- * Creates a .json file for every batch in the DB, storing each batch's QR code (base64) in ../frontend/public/qr-codes/{batchId}.json
- */
-export const generateAllQRCodes = async (req, res) => {
-  try {
-    // 1) Get ALL batches from MongoDB
-    const allBatches = await Batch.find();
-
-    if (!allBatches.length) {
-      return res.status(404).json({ message: "No batches found" });
-    }
-
-    // 2) For each batch, generate a QR code and write a .json file
-    allBatches.forEach((batch) => {
-      const batchData = {
-        batchId: batch.batchId,
-        customer: batch.firstName,
-        currentProcess: batch.currentProcess,
-        // You can add more fields if needed: diamondWeight, materialType, etc.
-      };
-
-      // Generate the QR code as a base64 data URL
-      QRCode.toDataURL(JSON.stringify(batchData), (err, url) => {
-        if (err) {
-          console.error(`Error generating QR code for batchId: ${batch.batchId}`, err);
-          return; // Continue with next batch
-        }
-
-        try {
-          const qrCodesDir = path.join(process.cwd(), "../frontend/public/qr-codes");
-          if (!fs.existsSync(qrCodesDir)) {
-            fs.mkdirSync(qrCodesDir, { recursive: true });
-          }
-          const filePath = path.join(qrCodesDir, `${batch.batchId}.json`);
-
-          const qrJson = {
-            batchId: batch.batchId,
-            qrCode: url,
-          };
-
-          fs.writeFileSync(filePath, JSON.stringify(qrJson, null, 2));
-          console.log(`QR code JSON created for batch: ${batch.batchId}`);
-        } catch (fileErr) {
-          console.error(`Error writing JSON file for batchId: ${batch.batchId}`, fileErr);
-        }
-      });
-    });
-
-    // 3) Return success message
-    res.json({ message: "QR code JSON files created for all existing batches." });
-  } catch (error) {
-    console.error("Error in generateAllQRCodes:", error);
-    res.status(500).json({ message: "Server error while generating all QR codes" });
-  }
-};
-
-// Generate QR code for a single batch
+// Generate QR code for batch details
 export const generateQRCode = async (req, res) => {
   try {
     // Fetch the batch by ID from MongoDB
@@ -73,45 +14,20 @@ export const generateQRCode = async (req, res) => {
       return res.status(404).json({ message: "Batch not found1" });
     }
 
-    // Prepare the data you want to encode into the QR code
+    // Prepare the data you want to encode into the QR code (for example, the batch information)
     const batchData = {
-      batchId: batch.batchId,
+      batchNumber: batch.batchId,
       customer: batch.firstName,
       currentProcess: batch.currentProcess,
-      // Optionally include more fields if you want them in the QR code:
-      // materialType: batch.materialType,
-      // diamondWeight: batch.diamondWeight,
-      // diamondNumber: batch.diamondNumber,
-      // status: batch.status,
     };
 
-    // Convert the batch data to a string and generate the QR code (base64 data URL)
+    // Convert the batch data to a string and generate the QR code
     QRCode.toDataURL(JSON.stringify(batchData), (err, url) => {
       if (err) {
         return res.status(500).json({ message: "Error generating QR code" });
       }
 
-      // Save the generated QR code as a JSON file in ../frontend/public/qr-codes
-      try {
-        const qrCodesDir = path.join(process.cwd(), "../frontend/public/qr-codes");
-        if (!fs.existsSync(qrCodesDir)) {
-          fs.mkdirSync(qrCodesDir, { recursive: true });
-        }
-        const filePath = path.join(qrCodesDir, `${batch.batchId}.json`);
-
-        const qrJson = {
-          batchId: batch.batchId,
-          qrCode: url, // e.g. data:image/png;base64,...
-        };
-
-        fs.writeFileSync(filePath, JSON.stringify(qrJson, null, 2));
-      } catch (fileErr) {
-        console.error("Error saving QR code JSON file:", fileErr);
-        // If you want the request to fail if saving fails, you can:
-        // return res.status(500).json({ message: "Error writing JSON file" });
-      }
-
-      // Return the QR code in the response
+      // Send the generated QR code as a response
       res.json({ qrCode: url });
     });
   } catch (error) {
@@ -156,7 +72,7 @@ export const createBatch = async (req, res) => {
       }
     }
 
-    // Create batch
+    // Create batch without assignedEmployee if not provided
     const newBatch = new Batch({
       batchId,
       materialType,
@@ -186,7 +102,9 @@ export const createBatch = async (req, res) => {
     });
   } catch (error) {
     console.error("Error creating batch:", error.message);
-    res.status(500).json({ message: "Failed to create batch", error: error.message });
+    res
+      .status(500)
+      .json({ message: "Failed to create batch", error: error.message });
   }
 };
 
@@ -196,10 +114,11 @@ export const getBatches = async (req, res) => {
     const batches = await Batch.find();
     res.json(batches);
   } catch (error) {
-    res.status(500).json({ message: "Error fetching batches", error: error.message });
+    res
+      .status(500)
+      .json({ message: "Error fetching batches", error: error.message });
   }
 };
-
 // Get Batch By Id
 export const getBatchByID = async (req, res) => {
   try {
@@ -228,7 +147,9 @@ export const getBatchByID = async (req, res) => {
       progress: batch.progress,
     });
   } catch (error) {
-    res.status(500).json({ message: "Error fetching batch", error: error.message });
+    res
+      .status(500)
+      .json({ message: "Error fetching batch", error: error.message });
   }
 };
 
@@ -246,11 +167,14 @@ export const getBatchProgress = async (req, res) => {
     const tasks = await Task.find({ batch_id: batch._id });
 
     // Count completed tasks
-    const completedTasks = tasks.filter((task) => task.status === "Completed").length;
+    const completedTasks = tasks.filter(
+      (task) => task.status === "Completed"
+    ).length;
     const totalTasks = tasks.length;
 
     // Calculate progress percentage
-    const progress = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+    const progress =
+      totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
 
     res.json({
       batchId: batch.batchId,
@@ -262,10 +186,11 @@ export const getBatchProgress = async (req, res) => {
       progress: `${progress}%`,
     });
   } catch (error) {
-    res.status(500).json({ message: "Error fetching batch progress", error: error.message });
+    res
+      .status(500)
+      .json({ message: "Error fetching batch progress", error: error.message });
   }
 };
-
 // Update batch details
 export const updateBatch = async (req, res) => {
   try {
@@ -293,14 +218,16 @@ export const updateBatch = async (req, res) => {
 
     // If progress for the current stage is 100%, move to the next stage
     if (progress === 100) {
+      // Determine the next stage
       const currentIndex = validStages.indexOf(stage);
       if (currentIndex < validStages.length - 1) {
-        batch.currentProcess = validStages[currentIndex + 1];
+        batch.currentProcess = validStages[currentIndex + 1]; // Set the next process
       } else {
-        batch.status = "Completed";
+        batch.status = "Completed"; // Mark the batch as completed if all stages are finished
       }
     }
 
+    // Save the batch with updated progress and status
     await batch.save();
 
     // Send response with the updated batch
@@ -317,11 +244,65 @@ export const updateBatch = async (req, res) => {
   }
 };
 
-// Assign batch to employee
-export const assignBatchToEmployee = async (req, res) => {
-  const { batchId, employeeId } = req.body;
-
+//get batch for employee
+export const getTasksForBatch = async (req, res) => {
   try {
+    const { id } = req.params;
+
+    console.log(`Fetching tasks for batch: ${id}`); // Debugging
+
+    // Find the batch using its batchId (which is a string)
+    const batch = await Batch.findOne({ batchId: id });
+
+    if (!batch) {
+      return res.status(404).json({ message: "Batch not found" });
+    }
+
+    // Fetch tasks using the found batch's ObjectId
+    const tasks = await Task.find({ batchId: batch._id });
+
+    if (!tasks || tasks.length === 0) {
+      return res.status(404).json({ message: "No tasks found for this batch" });
+    }
+
+    res.status(200).json(tasks);
+  } catch (error) {
+    console.error("Error fetching tasks:", error.message);
+    res
+      .status(500)
+      .json({ message: "Error fetching tasks", error: error.message });
+  }
+};
+
+export const assignBatchToEmployee = async (req, res) => {
+  try {
+    const {
+      batchId,
+      employeeId,
+      description,
+      dueDate,
+      priority,
+      status,
+      process,
+      rate,
+      diamondNumber, // ✅ Getting it from req.body
+    } = req.body;
+
+    console.log("Received Task Data:", req.body); // ✅ Debugging
+
+    if (
+      !batchId ||
+      !employeeId ||
+      !description ||
+      !dueDate ||
+      !priority ||
+      !process ||
+      rate === undefined ||
+      diamondNumber === undefined // ✅ Ensure it's not missing
+    ) {
+      return res.status(400).json({ message: "Missing required fields" });
+    }
+
     const batch = await Batch.findOne({ batchId }).select(
       "batchId currentProcess"
     );
@@ -336,20 +317,39 @@ export const assignBatchToEmployee = async (req, res) => {
       return res.status(404).json({ message: "Employee not found" });
     }
 
-    // Assign the batch
+    batch.currentProcess = process;
+    await batch.save();
+
+    // Assign the batch to the employee
     batch.assignedEmployee = employeeId;
     await batch.save();
 
-    // Create a new task entry
+    // Convert `rate` to a number (Fixes validation issue)
+    const numericRate = Number(rate);
+    if (isNaN(numericRate)) {
+      return res.status(400).json({ message: "Invalid rate value" });
+    }
+
+    // Ensure `diamondNumber` is a number
+    const numericDiamondNumber = Number(diamondNumber);
+    if (isNaN(numericDiamondNumber)) {
+      return res.status(400).json({ message: "Invalid diamondNumber value" });
+    }
+
+    // Ensure `process` is correctly passed and stored
     const task = new Task({
       batchId: batch._id,
       batchTitle: batch.batchId,
-
       employeeId: employee._id,
-      firstName: employee.firstName,
-      lastName: employee.lastName,
-      currentProcess: batch.currentProcess, // Use batch's current process
-      status: "Pending",
+      employeeName: `${employee.firstName} ${employee.lastName}`,
+      currentProcess: process,
+      description,
+      dueDate,
+      priority,
+      diamondNumber: numericDiamondNumber, // ✅ Now it's correctly assigned
+      status: status || "Pending",
+      assignedDate: new Date(),
+      rate: numericRate, // ✅ Ensure rate is included
     });
 
     await task.save();
@@ -359,6 +359,36 @@ export const assignBatchToEmployee = async (req, res) => {
       task,
     });
   } catch (error) {
-    res.status(500).json({ message: "Error assigning batch", error: error.message });
+    console.error("Error assigning batch:", error.message);
+    res
+      .status(500)
+      .json({ message: "Error assigning batch", error: error.message });
+  }
+};
+
+export const getTasksForEmployee = async (req, res) => {
+  try {
+    const { employeeId } = req.params;
+
+    console.log(`Fetching tasks for employee: ${employeeId}`);
+
+    // Fetch tasks and include batch details
+    const tasks = await Task.find({ employeeId }).populate(
+      "batchId",
+      "batchTitle currentProcess"
+    );
+
+    if (!tasks || tasks.length === 0) {
+      return res
+        .status(404)
+        .json({ message: "No tasks found for this employee" });
+    }
+
+    res.status(200).json(tasks);
+  } catch (error) {
+    console.error("Error fetching employee tasks:", error.message);
+    res
+      .status(500)
+      .json({ message: "Error fetching employee tasks", error: error.message });
   }
 };

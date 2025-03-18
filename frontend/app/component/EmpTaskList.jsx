@@ -1,232 +1,502 @@
-import { useState } from "react";
-import EmpTaskCard from "./EmpTaskCard";
-import { IoIosArrowDown, IoIosArrowUp } from "react-icons/io";
+"use client";
 
-const initialTasks = {
-  assigned: [
-    { id: "B001", start: "10:00 AM", end: "12:00 PM" },
-    { id: "B002", start: "12:30 PM", end: "2:30 PM" },
-    { id: "B003", start: "12:45 PM", end: "2:30 PM" },
-    { id: "B004", start: "8:00 AM", end: "10:00 AM" },
-    { id: "B005", start: "9:00 AM", end: "11:00 AM" },
-    { id: "B006", start: "10:00 AM", end: "12:00 PM" },
-    { id: "B007", start: "1:00 PM", end: "3:00 PM" },
-  ],
-  inProgress: [
-    { id: "B003", start: "3:00 PM", end: "5:00 PM" },
-    { id: "B008", start: "11:00 AM", end: "1:00 PM" },
-    { id: "B009", start: "2:00 PM", end: "4:00 PM" },
-  ],
-  completed: [
-    { id: "B004", start: "8:00 AM", end: "10:00 AM" },
-    { id: "B005", start: "9:00 AM", end: "11:00 AM" },
-  ],
-};
+import { useState, useEffect } from "react";
+import { motion } from "framer-motion";
+import { IoIosArrowDown, IoIosArrowUp } from "react-icons/io";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Calendar, Clock } from "lucide-react";
+import TaskCardWithTimer from "./EmpTaskCardWithTimer"; // adjust path
+// Removed the import for Switch
 
 const EmpTaskList = () => {
-  const [tasks, setTasks] = useState(initialTasks);
-  const [assignedTasksToShow, setAssignedTasksToShow] = useState(4);
-  const [inProgressTasksToShow, setInProgressTasksToShow] = useState(4);
-  const [completedTasksToShow, setCompletedTasksToShow] = useState(4);
+  const [tasks, setTasks] = useState({
+    assigned: [],
+    inProgress: [],
+    completed: [],
+  });
+  const [taskLimits, setTaskLimits] = useState({
+    assigned: 4,
+    inProgress: 4,
+    completed: 4,
+  });
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [updatingTasks, setUpdatingTasks] = useState(new Set());
+  const [filters, setFilters] = useState({
+    priority: null,
+    timeRange: null,
+    customStartDate: null,
+    customEndDate: null,
+  });
+  const [isFilterOpen, setIsFilterOpen] = useState(false);
+  const [filtersEnabled, setFiltersEnabled] = useState(false);
 
-  // Function to update the task status (e.g., move to in-progress or completed)
-  const handleChangeStatus = (taskId, toSection) => {
-    // Find task from assigned, inProgress, or completed section based on taskId
-    let task;
-    let fromSection;
+  const fetchAssignedTasks = async () => {
+    try {
+      const employeeId = localStorage.getItem("employeeId");
+      const token = localStorage.getItem("authToken");
+      if (!employeeId || !token)
+        throw new Error("Employee ID or token not found. Please log in again.");
 
-    for (const section in tasks) {
-      task = tasks[section].find((task) => task.id === taskId);
-      if (task) {
-        fromSection = section;
-        break;
-      }
-    }
-
-    if (task && fromSection) {
-      // Remove from current section
-      const newFromSection = tasks[fromSection].filter(
-        (task) => task.id !== taskId
+      const response = await fetch(
+        `http://localhost:5023/api/employees/${employeeId}/tasks`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
       );
 
-      // Add to the new section
-      const newToSection = [...tasks[toSection], task];
+      if (!response.ok)
+        throw new Error(`Failed to fetch tasks: ${await response.text()}`);
 
-      // Update the tasks state
-      setTasks((prevTasks) => ({
-        ...prevTasks,
-        [fromSection]: newFromSection,
-        [toSection]: newToSection,
-      }));
+      const data = await response.json();
+      setTasks({
+        assigned: data.filter((task) => task.status === "Pending"),
+        inProgress: data.filter((task) => task.status === "In Progress"),
+        completed: data.filter((task) => task.status === "Completed"),
+      });
+      setError(null);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handleSeeMore = (section) => {
-    if (section === "assigned") {
-      setAssignedTasksToShow(assignedTasksToShow + 4);
-    } else if (section === "inProgress") {
-      setInProgressTasksToShow(inProgressTasksToShow + 4);
-    } else if (section === "completed") {
-      setCompletedTasksToShow(completedTasksToShow + 4);
+  useEffect(() => {
+    fetchAssignedTasks();
+  }, []);
+
+  const updateTaskStatus = async (taskId, newStatus) => {
+    try {
+      if (!taskId || !/^[0-9a-fA-F]{24}$/.test(taskId)) {
+        throw new Error("Invalid task ID format");
+      }
+  
+      setUpdatingTasks((prev) => {
+        const newSet = new Set(prev);
+        newSet.add(taskId);
+        return newSet;
+      });
+  
+      const token = localStorage.getItem("authToken");
+      const url = `http://localhost:5023/api/tasks/update-status/${taskId}`;
+  
+      const response = await fetch(url, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ status: newStatus }),
+      });
+  
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(errorText || "Failed to update task");
+      }
+  
+      const result = await response.json();
+      const updatedTask = result.task;
+  
+      // ✅ Replace task in the list with updated data
+      setTasks((prev) => {
+        const from =
+          newStatus === "In Progress"
+            ? "assigned"
+            : newStatus === "Completed"
+            ? "inProgress"
+            : null;
+        const to =
+          newStatus === "In Progress"
+            ? "inProgress"
+            : newStatus === "Completed"
+            ? "completed"
+            : null;
+  
+        if (!from || !to) return prev;
+  
+        const updatedFrom = prev[from].filter((t) => t._id !== taskId);
+        const updatedTo = [...prev[to], updatedTask];
+  
+        return {
+          ...prev,
+          [from]: updatedFrom,
+          [to]: updatedTo,
+        };
+      });
+    } catch (err) {
+      setError(err.message);
+      console.error("Update error:", err);
+      fetchAssignedTasks(); // fallback to reload
+    } finally {
+      setUpdatingTasks((prev) => {
+        const newSet = new Set(prev);
+        newSet.delete(taskId);
+        return newSet;
+      });
+    }
+  };
+  
+
+  const handleTaskLimitChange = (section, increment) => {
+    setTaskLimits((prev) => ({
+      ...prev,
+      [section]: prev[section] + (increment ? 4 : -4),
+    }));
+  };
+
+  const getPriorityColor = (priority) => {
+    switch (priority) {
+      case "High":
+        return "bg-red-100 text-red-800";
+      case "Medium":
+        return "bg-yellow-100 text-yellow-800";
+      case "Low":
+        return "bg-green-100 text-green-800";
+      default:
+        return "bg-gray-100 text-gray-800";
     }
   };
 
-  const handleSeeLess = (section) => {
-    if (section === "assigned") {
-      setAssignedTasksToShow(assignedTasksToShow - 4);
-    } else if (section === "inProgress") {
-      setInProgressTasksToShow(inProgressTasksToShow - 4);
-    } else if (section === "completed") {
-      setCompletedTasksToShow(completedTasksToShow - 4);
-    }
+  const getDuration = (start, end) => {
+    const startDate = new Date(start);
+    const endDate = new Date(end);
+    const diffMs = endDate - startDate;
+    const diffMins = Math.floor(diffMs / 60000);
+    const hours = Math.floor(diffMins / 60);
+    const minutes = diffMins % 60;
+    const days = Math.floor(diffMins / 1440);
+  
+    if (days > 0) return `${days} day(s), ${hours % 24} hr ${minutes} min`;
+    if (hours > 0) return `${hours} hr ${minutes} min`;
+    return `${minutes} min`;
   };
-
-  const renderTaskRows = (taskList, status) => {
-    return taskList.map((task) => (
-      <EmpTaskCard
-        key={task.id}
+  
+  const renderTaskRows = (taskList, section) =>
+    taskList.slice(0, taskLimits[section]).map((task) => (
+      <TaskCardWithTimer
+        key={task._id}
         task={task}
-        status={status}
-        updateTaskStatus={(taskId, newStatus) =>
-          handleChangeStatus(taskId, newStatus)
-        }
+        section={section}
+        updateTaskStatus={updateTaskStatus}
+        updatingTasks={updatingTasks}
+        getPriorityColor={getPriorityColor}
       />
     ));
+  
+    
+
+  if (loading)
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-700"></div>
+      </div>
+    );
+
+  const handleFilterChange = (type, value) => {
+    setFilters((prev) => ({
+      ...prev,
+      [type]: value === "All" ? null : value,
+    }));
   };
 
-  const checkShowMoreButton = (section, tasksToShow) => {
-    if (section === "assigned") {
-      return tasksToShow < tasks.assigned.length;
-    } else if (section === "inProgress") {
-      return tasksToShow < tasks.inProgress.length;
-    } else if (section === "completed") {
-      return tasksToShow < tasks.completed.length;
+  const getDateRange = (timeRange) => {
+    const now = new Date();
+    const endDate = new Date();
+    endDate.setHours(23, 59, 59, 999);
+
+    switch (timeRange) {
+      case "Today":
+        const todayStart = new Date(now);
+        todayStart.setHours(0, 0, 0, 0);
+        return {
+          start: todayStart,
+          end: endDate,
+        };
+      case "1 Week":
+        const weekStart = new Date(now);
+        weekStart.setDate(weekStart.getDate() - 7);
+        weekStart.setHours(0, 0, 0, 0);
+        return {
+          start: weekStart,
+          end: endDate,
+        };
+      case "1 Month":
+        const monthStart = new Date(now);
+        monthStart.setMonth(monthStart.getMonth() - 1);
+        monthStart.setHours(0, 0, 0, 0);
+        return {
+          start: monthStart,
+          end: endDate,
+        };
+      case "3 Months":
+        const threeMonthsStart = new Date(now);
+        threeMonthsStart.setMonth(threeMonthsStart.getMonth() - 3);
+        threeMonthsStart.setHours(0, 0, 0, 0);
+        return {
+          start: threeMonthsStart,
+          end: endDate,
+        };
+      case "6 Months":
+        const sixMonthsStart = new Date(now);
+        sixMonthsStart.setMonth(sixMonthsStart.getMonth() - 6);
+        sixMonthsStart.setHours(0, 0, 0, 0);
+        return {
+          start: sixMonthsStart,
+          end: endDate,
+        };
+      case "1 Year":
+        const yearStart = new Date(now);
+        yearStart.setFullYear(yearStart.getFullYear() - 1);
+        yearStart.setHours(0, 0, 0, 0);
+        return {
+          start: yearStart,
+          end: endDate,
+        };
+      default:
+        return null;
     }
-    return false;
   };
 
-  const checkShowLessButton = (section, tasksToShow) => {
-    return tasksToShow > 4;
+  const filterTasks = (tasks) => {
+    // If filters are disabled, return all tasks
+    if (!filtersEnabled) return tasks;
+
+    return tasks.filter((task) => {
+      // Priority filter
+      if (filters.priority && task.priority !== filters.priority) return false;
+
+      // Time filter
+      // Time range filter
+      if (filters.timeRange) {
+        const range = getDateRange(filters.timeRange);
+        const taskDate = new Date(task.assignedDate);
+        if (taskDate < range.start || taskDate > range.end) return false;
+      }
+
+      // Custom date range filter
+      if (filters.customStartDate && filters.customEndDate) {
+        const taskDate = new Date(task.assignedDate);
+        if (
+          taskDate < new Date(filters.customStartDate) ||
+          taskDate > new Date(filters.customEndDate)
+        )
+          return false;
+      }
+
+      return true;
+    });
   };
+
+  if (error)
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-red-500 text-center">
+          <p>{error}</p>
+          <button
+            onClick={fetchAssignedTasks}
+            className="mt-4 px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600"
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+    );
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto px-4">
-      {/* Assigned Tasks Section */}
-      <div className="w-full p-6 bg-white shadow-md rounded-lg">
-        <h2 className="text-xl font-semibold text-black text-center mb-6">
-          Assigned Tasks
-        </h2>
-        <div className="bg-white p-4 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-          {renderTaskRows(
-            tasks.assigned.slice(0, assignedTasksToShow),
-            "assigned"
-          )}
-        </div>
-        <div className="flex justify-center mt-4 gap-4">
-          {checkShowMoreButton("assigned", assignedTasksToShow) && (
-            <button
-              onClick={() => handleSeeMore("assigned")}
-              className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-black rounded-full flex items-center gap-2 transition-all"
+      <div className="flex items-center justify-between mb-6">
+        <h1 className="text-2xl font-bold">Employee Task List</h1>
+        <div className="relative">
+          <div className="inline-flex items-center">
+            <Button
+              variant="outline"
+              size="sm"
+              className="rounded-r-none border-r-0"
             >
-              <span>See More</span>
-              <IoIosArrowDown
-                className="transform animate-bounce pt-1 text-xl"
-                aria-label="See More"
-              />
-            </button>
-          )}
-          {checkShowLessButton("assigned", assignedTasksToShow) && (
-            <button
-              onClick={() => handleSeeLess("assigned")}
-              className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-black rounded-full flex items-center gap-2 transition-all"
+              Filters {filtersEnabled && "(On)"}
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="rounded-l-none px-2"
+              onClick={() => setIsFilterOpen(!isFilterOpen)}
             >
-              <span>See Less</span>
-              <IoIosArrowUp
-                className="transform animate-bounce text-xl"
-                aria-label="See Less"
-              />
-            </button>
-          )}
-        </div>
-      </div>
+              {isFilterOpen ? (
+                <IoIosArrowUp className="h-4 w-4" />
+              ) : (
+                <IoIosArrowDown className="h-4 w-4" />
+              )}
+            </Button>
+          </div>
 
-      {/* In Progress Tasks Section */}
-      <div className="w-full p-6 bg-white shadow-md rounded-lg">
-        <h2 className="text-xl font-semibold text-black text-center mb-6">
-          In Progress Tasks
-        </h2>
-        <div className="bg-white p-4 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-          {renderTaskRows(
-            tasks.inProgress.slice(0, inProgressTasksToShow),
-            "inProgress"
-          )}
-        </div>
-        <div className="flex justify-center mt-4 gap-4">
-          {checkShowMoreButton("inProgress", inProgressTasksToShow) && (
-            <button
-              onClick={() => handleSeeMore("inProgress")}
-              className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-black rounded-full flex items-center gap-2 transition-all"
-            >
-              <span>See More</span>
-              <IoIosArrowDown
-                className="transform animate-bounce pt-1 text-xl"
-                aria-label="See More"
-              />
-            </button>
-          )}
-          {checkShowLessButton("inProgress", inProgressTasksToShow) && (
-            <button
-              onClick={() => handleSeeLess("inProgress")}
-              className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-black rounded-full flex items-center gap-2 transition-all"
-            >
-              <span>See Less</span>
-              <IoIosArrowUp
-                className="transform animate-bounce text-xl"
-                aria-label="See Less"
-              />
-            </button>
-          )}
-        </div>
-      </div>
+          {isFilterOpen && (
+            <div className="absolute z-10 right-0 mt-1 w-64 bg-white rounded-md shadow-lg border border-gray-200 p-4">
+              <div className="space-y-4">
+                <div className="flex items-center justify-between pb-2 border-b">
+                  <label
+                    htmlFor="filter-toggle"
+                    className="font-medium text-sm"
+                  >
+                    Enable Filters
+                  </label>
+                  {/* Custom toggle switch */}
+                  <div className="relative inline-block w-10 h-5 align-middle select-none transition duration-200 ease-in">
+                    <input
+                      type="checkbox"
+                      name="filter-toggle"
+                      id="filter-toggle"
+                      checked={filtersEnabled}
+                      onChange={() => setFiltersEnabled(!filtersEnabled)}
+                      className="toggle-checkbox absolute block w-5 h-5 rounded-full bg-white border-4 appearance-none cursor-pointer"
+                    />
+                    <label
+                      htmlFor="filter-toggle"
+                      className={`toggle-label block overflow-hidden h-5 rounded-full cursor-pointer ${
+                        filtersEnabled ? "bg-blue-500" : "bg-gray-300"
+                      }`}
+                    ></label>
+                  </div>
+                  <style jsx>{`
+                    .toggle-checkbox {
+                      transform: translateX(${filtersEnabled ? "100%" : "0"});
+                      transition: transform 0.2s ease-in-out;
+                      border-color: ${filtersEnabled ? "#3b82f6" : "#ccc"};
+                    }
+                    .toggle-label {
+                      transition: background-color 0.2s ease-in-out;
+                      background-color: ${filtersEnabled
+                        ? "#3b82f6"
+                        : "#d1d5db"};
+                    }
+                  `}</style>
+                </div>
 
-      {/* Completed Tasks Section */}
-      <div className="w-full p-6 bg-white shadow-md rounded-lg">
-        <h2 className="text-xl font-semibold text-black text-center mb-6">
-          Completed Tasks
-        </h2>
-        <div className="bg-white p-4 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-          {renderTaskRows(
-            tasks.completed.slice(0, completedTasksToShow),
-            "completed"
-          )}
-        </div>
-        <div className="flex justify-center mt-4 gap-4">
-          {checkShowMoreButton("completed", completedTasksToShow) && (
-            <button
-              onClick={() => handleSeeMore("completed")}
-              className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-black rounded-full flex items-center gap-2 transition-all"
-            >
-              <span>See More</span>
-              <IoIosArrowDown
-                className="transform animate-bounce pt-1 text-xl"
-                aria-label="See More"
-              />
-            </button>
-          )}
-          {checkShowLessButton("completed", completedTasksToShow) && (
-            <button
-              onClick={() => handleSeeLess("completed")}
-              className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-black rounded-full flex items-center gap-2 transition-all"
-            >
-              <span>See Less</span>
-              <IoIosArrowUp
-                className="transform animate-bounce text-xl"
-                aria-label="See Less"
-              />
-            </button>
+                <div>
+                  <label className="block text-sm font-medium mb-2">
+                    Priority
+                  </label>
+                  <select
+                    className="w-full p-2 border rounded"
+                    onChange={(e) =>
+                      handleFilterChange("priority", e.target.value)
+                    }
+                    value={filters.priority || "All"}
+                    disabled={!filtersEnabled}
+                  >
+                    <option value="All">All</option>
+                    <option value="High">High</option>
+                    <option value="Medium">Medium</option>
+                    <option value="Low">Low</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-2">
+                    Time Range
+                  </label>
+                  <select
+                    className="w-full p-2 border rounded"
+                    onChange={(e) =>
+                      handleFilterChange("timeRange", e.target.value)
+                    }
+                    value={filters.timeRange || "All"}
+                    disabled={!filtersEnabled}
+                  >
+                    <option value="All">All</option>
+                    <option value="Today">Today</option>
+                    <option value="1 Week">1 Week</option>
+                    <option value="1 Month">1 Month</option>
+                    <option value="3 Months">3 Months</option>
+                    <option value="6 Months">6 Months</option>
+                    <option value="1 Year">1 Year</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-2">
+                    Custom Date Range
+                  </label>
+                  <div className="space-y-2">
+                    <div>
+                      <label className="text-xs text-gray-500">
+                        Start Date
+                      </label>
+                      <input
+                        type="date"
+                        className="w-full p-2 border rounded"
+                        value={filters.customStartDate || ""}
+                        onChange={(e) =>
+                          setFilters((prev) => ({
+                            ...prev,
+                            customStartDate: e.target.value,
+                          }))
+                        }
+                        disabled={!filtersEnabled}
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs text-gray-500">End Date</label>
+                      <input
+                        type="date"
+                        className="w-full p-2 border rounded"
+                        value={filters.customEndDate || ""}
+                        onChange={(e) =>
+                          setFilters((prev) => ({
+                            ...prev,
+                            customEndDate: e.target.value,
+                          }))
+                        }
+                        disabled={!filtersEnabled}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <Button
+                  className="w-full"
+                  onClick={() => setIsFilterOpen(false)}
+                  variant="ghost"
+                >
+                  Close
+                </Button>
+              </div>
+            </div>
           )}
         </div>
       </div>
+      {Object.keys(tasks).map((section) => (
+        <div
+          key={section}
+          className="w-full p-6 bg-white shadow-md rounded-lg mb-8"
+        >
+          <h2 className="text-xl font-semibold text-black mb-6">
+            {section.replace(/([A-Z])/g, " $1").trim()} Tasks
+          </h2>
+          <div className="bg-white p-4 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+            {renderTaskRows(filterTasks(tasks[section]), section)}
+          </div>
+          <div className="flex justify-center mt-4 gap-4">
+            {taskLimits[section] < tasks[section].length && (
+              <button
+                onClick={() => handleTaskLimitChange(section, true)}
+                className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-black rounded-full flex items-center gap-2 transition-all"
+              >
+                <span>See More</span> <IoIosArrowDown className="text-xl" />
+              </button>
+            )}
+            {taskLimits[section] > 4 && (
+              <button
+                onClick={() => handleTaskLimitChange(section, false)}
+                className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-black rounded-full flex items-center gap-2 transition-all"
+              >
+                <span>See Less</span> <IoIosArrowUp className="text-xl" />
+              </button>
+            )}
+          </div>
+        </div>
+      ))}
     </div>
   );
 };
