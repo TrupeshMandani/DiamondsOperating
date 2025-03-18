@@ -4,8 +4,9 @@ npm install lucide-react recharts
 npm install @shadcn/ui
 npm install next-themes
 npm install framer-motion
+npm install react-hot-toast
 
-
+npx shadcn-ui@latest add button
 
 
 
