@@ -1,10 +1,12 @@
 "use client";
-import { motion } from "framer-motion";
 import { useState, useEffect } from "react";
+import { motion } from "framer-motion";
 
 const EmpTaskCard = ({ task, status, updateTaskStatus }) => {
   const normalizedStatus = status?.toLowerCase();
-  const [isTaskStarted, setIsTaskStarted] = useState(normalizedStatus === "in progress");
+  const [isTaskStarted, setIsTaskStarted] = useState(
+    normalizedStatus === "in progress"
+  );
   const [elapsedTime, setElapsedTime] = useState(null);
 
   // WebSocket connection to listen for updates
@@ -73,7 +75,7 @@ const EmpTaskCard = ({ task, status, updateTaskStatus }) => {
 
     if (window.confirm(confirmationMessage)) {
       const newStatus = isTaskStarted ? "Completed" : "In Progress";
-      
+
       fetch(`http://localhost:5023/api/tasks/update-status/${task._id}`, {
         method: "PUT",
         headers: {
@@ -100,31 +102,57 @@ const EmpTaskCard = ({ task, status, updateTaskStatus }) => {
 
   const handleViewDetails = () => {
     alert(
-      `📝 Task Details:\nBatch: ${task.batchTitle}\nProcess: ${task.currentProcess}\nDescription: ${task.description}\nPriority: ${task.priority}\nStatus: ${task.status}\nStart: ${task.startTime ? new Date(task.startTime).toLocaleString() : "—"}\nEnd: ${task.endTime ? new Date(task.endTime).toLocaleString() : "—"}\nDuration: ${task.durationInMinutes ? task.durationInMinutes + " mins" : elapsedTime ? formatDuration(elapsedTime) : "—"}`
+      `📝 Task Details:\nBatch: ${task.batchTitle}\nProcess: ${
+        task.currentProcess
+      }\nDescription: ${task.description}\nPriority: ${
+        task.priority
+      }\nStatus: ${task.status}\nStart: ${
+        task.startTime ? new Date(task.startTime).toLocaleString() : "—"
+      }\nEnd: ${
+        task.endTime ? new Date(task.endTime).toLocaleString() : "—"
+      }\nDuration: ${
+        task.durationInMinutes
+          ? task.durationInMinutes + " mins"
+          : elapsedTime
+          ? formatDuration(elapsedTime)
+          : "—"
+      }`
     );
   };
 
   return (
-    <motion.div className="w-full p-4 bg-[#e9e9e9] shadow-inner-deep text-black rounded-lg mb-4 hover:shadow-lg hover:scale-102 transition-all duration-300">
+    <motion.div
+      className="w-full p-4 bg-[#e9e9e9] shadow-inner-deep text-black rounded-lg mb-4 hover:shadow-lg hover:scale-102 transition-all duration-300"
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.3 }}
+    >
       <div className="flex flex-col gap-2">
         <p className="text-lg font-medium">Batch ID: {task.batchTitle}</p>
         <div className="flex justify-between items-center text-sm">
           <p>
-            <span className="font-medium">Start:</span> {task.startTime ? new Date(task.startTime).toLocaleString() : "—"}
+            <span className="font-medium">Start:</span>{" "}
+            {task.startTime ? new Date(task.startTime).toLocaleString() : "—"}
           </p>
           <p>
-            <span className="font-medium">End:</span> {task.endTime ? new Date(task.endTime).toLocaleString() : "—"}
+            <span className="font-medium">End:</span>{" "}
+            {task.endTime ? new Date(task.endTime).toLocaleString() : "—"}
           </p>
         </div>
 
         {elapsedTime && (
-          <p className="text-sm text-blue-600">⏱ Time Spent: {formatDuration(elapsedTime)}</p>
+          <p className="text-sm text-blue-600">
+            ⏱ Time Spent: {formatDuration(elapsedTime)}
+          </p>
         )}
 
-        <p className={`text-sm font-semibold ${getStatusClass()}`}>{task.status}</p>
+        <p className={`text-sm font-semibold ${getStatusClass()}`}>
+          {task.status}
+        </p>
 
         <div className="flex gap-2 mt-4">
-          {(normalizedStatus === "assigned" || normalizedStatus === "in progress") && (
+          {(normalizedStatus === "assigned" ||
+            normalizedStatus === "in progress") && (
             <button
               onClick={handleTaskAction}
               className="flex-1 p-2 bg-[#236294] text-white rounded-lg transition-all duration-200 hover:bg-[#1A405E]"

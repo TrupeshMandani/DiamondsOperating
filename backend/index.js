@@ -32,9 +32,10 @@ const server = http.createServer(app);
 // WebSocket server setup with proper error handling
 const wss = new WebSocket.Server({ server, path: "/" });
 
-// Handle WebSocket connections
+// Update the WebSocket connection handler
 wss.on("connection", (ws) => {
   console.log("New client connected");
+  ws.subscriptions = [];
 
   // Handle messages from clients
   ws.on("message", (message) => {
@@ -42,17 +43,18 @@ wss.on("connection", (ws) => {
       const data = JSON.parse(message);
       console.log("Received message:", data);
 
-      // Handle subscription requests if needed
+      // Handle subscription requests
       if (data.type === "SUBSCRIBE") {
         console.log(`Client subscribed to ${data.entity} with ID ${data.id}`);
-        ws.subscriptions = ws.subscriptions || [];
         ws.subscriptions.push({
           entity: data.entity,
           id: data.id,
         });
+      } else if (data.type === "UNSUBSCRIBE") {
+        ws.subscriptions = ws.subscriptions.filter(
+          (sub) => !(sub.entity === data.entity && sub.id === data.id)
+        );
       }
-
-      // Handle other message types as needed
     } catch (err) {
       console.error("Error processing WebSocket message:", err);
     }
@@ -88,6 +90,33 @@ const broadcastTaskUpdate = (task) => {
               dueDate: task.dueDate,
               currentProcess: task.currentProcess,
             },
+          })
+        );
+      } catch (err) {
+        console.error("Error sending WebSocket message:", err);
+      }
+    }
+  });
+};
+
+// Add function to notify employees of new tasks
+const notifyEmployeeOfTask = (task) => {
+  if (!wss) return;
+
+  wss.clients.forEach((client) => {
+    if (
+      client.readyState === WebSocket.OPEN &&
+      client.subscriptions &&
+      client.subscriptions.some(
+        (sub) =>
+          sub.entity === "employee" && sub.id === task.employeeId.toString()
+      )
+    ) {
+      try {
+        client.send(
+          JSON.stringify({
+            type: "NEW_TASK_ASSIGNED",
+            payload: task,
           })
         );
       } catch (err) {
@@ -144,5 +173,5 @@ server.on("error", (error) => {
   console.error("Server error:", error);
 });
 
-// Export the broadcastTaskUpdate function to use in other routes
-export { broadcastTaskUpdate };
+// Export the functions
+export { broadcastTaskUpdate, notifyEmployeeOfTask };

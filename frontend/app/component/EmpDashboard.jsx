@@ -1,28 +1,115 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import EmpSidebar from "./EmpSidebar";
 
-const EmpDashboard = () => {
-  const tasks = {
-    assigned: [
-      { id: "B001", start: "10:00 AM", end: "12:00 PM" },
-      { id: "B002", start: "12:30 PM", end: "2:30 PM" },
-      { id: "B003", start: "12:45 PM", end: "2:30 PM" },
-      { id: "B004", start: "8:00 AM", end: "10:00 AM" },
-      { id: "B005", start: "9:00 AM", end: "11:00 AM" },
-      { id: "B006", start: "10:00 AM", end: "12:00 PM" },
-      { id: "B007", start: "1:00 PM", end: "3:00 PM" },
-    ],
-    inProgress: [
-      { id: "B003", start: "3:00 PM", end: "5:00 PM" },
-      { id: "B008", start: "11:00 AM", end: "1:00 PM" },
-      { id: "B009", start: "2:00 PM", end: "4:00 PM" },
-    ],
-    completed: [
-      { id: "B004", start: "8:00 AM", end: "10:00 AM" },
-      { id: "B005", start: "9:00 AM", end: "11:00 AM" },
-    ],
-  };
+export default function EmployeeDashboard() {
+  const [tasks, setTasks] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [employee, setEmployee] = useState(null);
+  const socketRef = useRef(null);
+
+  useEffect(() => {
+    // Fetch initial employee data and tasks
+    const fetchEmployeeData = async () => {
+      try {
+        // Get employee ID from localStorage or session
+        const empId = localStorage.getItem("employeeId");
+        if (!empId) {
+          console.error("No employee ID found in storage");
+          return;
+        }
+
+        // Fetch employee details
+        const empResponse = await fetch(
+          `http://localhost:5023/api/employees/${empId}`
+        );
+        const empData = await empResponse.json();
+        setEmployee(empData);
+
+        // Fetch employee tasks
+        const tasksResponse = await fetch(
+          `http://localhost:5023/api/tasks/employee/${empId}`
+        );
+        const tasksData = await tasksResponse.json();
+        setTasks(tasksData);
+      } catch (error) {
+        console.error("Error fetching employee data:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchEmployeeData();
+
+    // Setup WebSocket connection
+    socketRef.current = new WebSocket("ws://localhost:5023");
+
+    socketRef.current.addEventListener("open", () => {
+      console.log("WebSocket connection established");
+
+      // Subscribe to task updates for this employee
+      const empId = localStorage.getItem("employeeId");
+      if (empId) {
+        socketRef.current.send(
+          JSON.stringify({
+            type: "SUBSCRIBE",
+            entity: "employee",
+            id: empId,
+          })
+        );
+      }
+    });
+
+    socketRef.current.addEventListener("message", (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        console.log("WebSocket message received:", data);
+
+        if (data.type === "NEW_TASK_ASSIGNED") {
+          // Add the new task to the list
+          setTasks((prevTasks) => [...prevTasks, data.payload]);
+
+          // Show notification to user
+          if (
+            "Notification" in window &&
+            Notification.permission === "granted"
+          ) {
+            new Notification("New Task Assigned", {
+              body: `Task: ${data.payload.description}`,
+              icon: "/favicon.ico",
+            });
+          }
+        } else if (data.type === "TASK_UPDATE" && data.payload) {
+          // Update task status if it exists in our list
+          setTasks((prevTasks) =>
+            prevTasks.map((task) =>
+              task._id === data.payload._id
+                ? { ...task, ...data.payload }
+                : task
+            )
+          );
+        }
+      } catch (error) {
+        console.error("Error processing WebSocket message:", error);
+      }
+    });
+
+    socketRef.current.addEventListener("error", (error) => {
+      console.error("WebSocket error:", error);
+    });
+
+    // Request notification permission
+    if ("Notification" in window && Notification.permission !== "granted") {
+      Notification.requestPermission();
+    }
+
+    // Cleanup on unmount
+    return () => {
+      if (socketRef.current) {
+        socketRef.current.close();
+      }
+    };
+  }, []);
 
   // Extract task counts
   const assignedTasks = tasks?.assigned || [];
@@ -68,6 +155,4 @@ const EmpDashboard = () => {
       </div>
     </div>
   );
-};
-
-export default EmpDashboard;
+}
