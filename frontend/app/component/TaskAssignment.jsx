@@ -328,16 +328,20 @@ export default function TaskAssignment() {
         body: JSON.stringify(taskData),
       });
 
-      const responseText = await response.text();
-      console.log("Backend Response:", responseText);
-
       if (!response.ok) {
-        throw new Error(
-          `Failed to assign task. Backend response: ${responseText}`
-        );
+        throw new Error(`Failed to assign task: ${await response.text()}`);
       }
 
-      const assignedTask = JSON.parse(responseText);
+      const assignedTask = await response.json();
+      console.log("Assigned task:", assignedTask);
+
+      // Make sure there's an _id in the response
+      if (!assignedTask._id) {
+        console.error("API response missing _id for new task:", assignedTask);
+      }
+
+      // Update tasks with the new task that has a proper _id
+      setTasks((prevTasks) => [...prevTasks, assignedTask]);
 
       // Find selected employee to get full details
       const selectedEmployee = employees.find(
@@ -693,7 +697,7 @@ export default function TaskAssignment() {
                         {filteredTasks.length > 0 ? (
                           filteredTasks.map((task) => (
                             <Card
-                              key={`${task.batchId}-${task.employeeId}-${task.dueDate}`}
+                              key={task._id} // Use the MongoDB _id which is guaranteed to be unique
                               className="border border-gray-200 hover:shadow-md transition-shadow"
                             >
                               <CardHeader className="pb-2">

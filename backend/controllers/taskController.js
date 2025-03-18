@@ -1,5 +1,6 @@
 import Task from "../models/taskModel.js";
 import mongoose from "mongoose";
+import { broadcastTaskUpdate } from "../index.js";
 
 // Get all tasks
 export const getAllTasks = async (req, res) => {
@@ -73,6 +74,9 @@ export const updateTaskStatus = async (req, res) => {
     task.status = status;
     await task.save();
 
+    // Broadcast the update
+    broadcastTaskUpdate(task);
+
     res.status(200).json({
       message: "Task status updated successfully",
       task,
@@ -84,7 +88,6 @@ export const updateTaskStatus = async (req, res) => {
     });
   }
 };
-
 
 // Delete task
 export const deleteTask = async (req, res) => {
