@@ -9,7 +9,7 @@ import { authMiddleware } from "./middleware/authMiddleware.js";
 import taskRoutes from "./routes/tasks.js";
 import Employee from "./models/Employee.js";
 import Task from "./models/taskModel.js";
-import WebSocket from "ws"; // Import WebSocket
+import WebSocket, { WebSocketServer } from "ws"; // Import WebSocket
 
 dotenv.config();
 
@@ -30,7 +30,7 @@ const server = app.listen(process.env.PORT || 5000, () => {
   console.log(`Connected to the port ${process.env.PORT || 5000}`);
 });
 
-const wss = new WebSocket.Server({ server });
+const wss = new WebSocketServer({ server });
 
 wss.on("connection", (ws) => {
   console.log("New client connected");
@@ -62,18 +62,20 @@ app.put("/api/tasks/update-status/:taskId", async (req, res) => {
     // Emit a WebSocket message to all clients with proper format
     wss.clients.forEach((client) => {
       if (client.readyState === WebSocket.OPEN) {
-        client.send(JSON.stringify({ 
-          type: "TASK_UPDATE", 
-          payload: {
-            _id: taskId,
-            status: status,
-            // Include other relevant task fields
-            description: task.description,
-            priority: task.priority,
-            dueDate: task.dueDate,
-            currentProcess: task.currentProcess
-          }
-        }));
+        client.send(
+          JSON.stringify({
+            type: "TASK_UPDATE",
+            payload: {
+              _id: taskId,
+              status: status,
+              // Include other relevant task fields
+              description: task.description,
+              priority: task.priority,
+              dueDate: task.dueDate,
+              currentProcess: task.currentProcess,
+            },
+          })
+        );
       }
     });
 
