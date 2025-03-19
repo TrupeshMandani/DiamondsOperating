@@ -29,11 +29,9 @@ const taskSchema = new mongoose.Schema({
   },
   rate: { type: Number, required: true },
   assignedDate: { type: Date, default: Date.now },
-
-  // ✅ For time tracking
   startTime: { type: Date, default: null },
   endTime: { type: Date, default: null },
-  durationInMinutes: { type: Number, default: null }, // ✅ Add this line
+  durationInMinutes: { type: Number, default: null },
 });
 
 export default mongoose.model("Task", taskSchema);

@@ -274,6 +274,7 @@ export const getTasksForBatch = async (req, res) => {
   }
 };
 
+// Fix the assignBatchToEmployee function
 export const assignBatchToEmployee = async (req, res) => {
   try {
     const {
@@ -285,10 +286,10 @@ export const assignBatchToEmployee = async (req, res) => {
       status,
       process,
       rate,
-      diamondNumber, // ✅ Getting it from req.body
+      diamondNumber,
     } = req.body;
 
-    console.log("Received Task Data:", req.body); // ✅ Debugging
+    console.log("Received Task Data:", req.body); // Debug log
 
     if (
       !batchId ||
@@ -298,11 +299,12 @@ export const assignBatchToEmployee = async (req, res) => {
       !priority ||
       !process ||
       rate === undefined ||
-      diamondNumber === undefined // ✅ Ensure it's not missing
+      diamondNumber === undefined
     ) {
       return res.status(400).json({ message: "Missing required fields" });
     }
 
+    // Find the batch by batchId (string)
     const batch = await Batch.findOne({ batchId }).select(
       "batchId currentProcess"
     );
@@ -324,39 +326,33 @@ export const assignBatchToEmployee = async (req, res) => {
     batch.assignedEmployee = employeeId;
     await batch.save();
 
-    // Convert `rate` to a number (Fixes validation issue)
+    // Convert values to proper types
     const numericRate = Number(rate);
-    if (isNaN(numericRate)) {
-      return res.status(400).json({ message: "Invalid rate value" });
-    }
-
-    // Ensure `diamondNumber` is a number
     const numericDiamondNumber = Number(diamondNumber);
-    if (isNaN(numericDiamondNumber)) {
-      return res.status(400).json({ message: "Invalid diamondNumber value" });
-    }
 
-    // Ensure `process` is correctly passed and stored
+    // Create and save the task
     const task = new Task({
       batchId: batch._id,
-      batchTitle: batch.batchId,
+      batchTitle: batch.batchId, // Use the string batch ID as the title
       employeeId: employee._id,
       employeeName: `${employee.firstName} ${employee.lastName}`,
       currentProcess: process,
       description,
       dueDate,
       priority,
-      diamondNumber: numericDiamondNumber, // ✅ Now it's correctly assigned
+      diamondNumber: numericDiamondNumber,
       status: status || "Pending",
       assignedDate: new Date(),
-      rate: numericRate, // ✅ Ensure rate is included
+      rate: numericRate,
     });
 
-    await task.save();
+    const savedTask = await task.save();
+    console.log("Saved task:", savedTask); // Debug log
 
+    // Important: Send the task response after successfully saving
     res.status(200).json({
       message: "Batch assigned & task created successfully",
-      task,
+      task: savedTask, // Send the saved task with _id
     });
   } catch (error) {
     console.error("Error assigning batch:", error.message);
