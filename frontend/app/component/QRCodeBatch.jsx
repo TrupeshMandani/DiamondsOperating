@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 
 const QRCodeBatch = ({ batchId }) => {
-  const [qrCodeUrl, setQrCodeUrl] = useState(null);
+  const [qrCodeData, setQrCodeData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -13,24 +13,18 @@ const QRCodeBatch = ({ batchId }) => {
       return;
     }
 
-    fetch(`http://localhost:5023/api/batches/${batchId}/generate-label`)
+    fetch(`/qr-codes/${batchId}.json`)
       .then((res) => {
         if (!res.ok) {
-          throw new Error(
-            `Failed to fetch QR code: ${res.status} ${res.statusText}`
-          );
+          throw new Error(`Failed to fetch QR code JSON: ${res.status} ${res.statusText}`);
         }
         return res.json();
       })
       .then((data) => {
-        if (data.qrCode) {
-          setQrCodeUrl(data.qrCode);
-        } else {
-          throw new Error("QR Code data is missing in the response");
-        }
+        setQrCodeData(data);
       })
       .catch((err) => {
-        console.error("Error fetching QR code:", err);
+        console.error("Error fetching QR code JSON:", err);
         setError(err.message);
       })
       .finally(() => setLoading(false));
@@ -38,12 +32,12 @@ const QRCodeBatch = ({ batchId }) => {
 
   if (loading) return <p>Loading QR Code...</p>;
   if (error) return <p style={{ color: "red" }}>Error: {error}</p>;
-  if (!qrCodeUrl) return <p>No QR Code Available</p>;
+  if (!qrCodeData) return <p>No QR Code Data</p>;
 
   return (
     <div>
-      <img src={qrCodeUrl} alt="QR Code" style={{ width: 128, height: 128 }} />
-      <a href={qrCodeUrl} download={`batch-${batchId}-qrcode.png`}>
+      <img src={qrCodeData.qrCode} alt="QR Code" style={{ width: 128, height: 128 }} />
+      <a href={qrCodeData.qrCode} download={`batch-${batchId}-qrcode.png`}>
         Download QR Code
       </a>
     </div>
