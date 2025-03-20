@@ -11,8 +11,7 @@ import Employee from "./models/Employee.js";
 import Task from "./models/taskModel.js";
 import WebSocket from "ws";
 import http from "http"; // Add this import
-import pkg from "ws"; // Add this import
-const { WebSocketServer } = pkg; // Add this import
+import { WebSocketServer } from "ws"; // Add this import
 
 dotenv.config();
 
