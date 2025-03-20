@@ -1,23 +1,20 @@
 import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
-import connecDB from "./configurations/db.js";
+import http from "http";
+import { WebSocketServer } from "ws";
+import connectDB from "./configurations/db.js";
 import authRoutes from "./routes/authRoutes.js";
 import employeeRoutes from "./routes/employeeRoutes.js";
 import batchRoutes from "./routes/batchRoutes.js";
-import { authMiddleware } from "./middleware/authMiddleware.js";
 import taskRoutes from "./routes/tasks.js";
-import Employee from "./models/Employee.js";
+import earningRoutes from "./routes/earningRoutes.js";
 import Task from "./models/taskModel.js";
-import WebSocket from "ws";
-import http from "http"; // Add this import
-import { WebSocketServer } from "ws"; // Add this import
 
 dotenv.config();
+connectDB();
 
 const app = express();
-connecDB();
-
 app.use(cors());
 app.use(express.json());
 
@@ -26,31 +23,22 @@ app.use("/api/auth", authRoutes);
 app.use("/api/employees", employeeRoutes);
 app.use("/api/tasks", taskRoutes);
 app.use("/api/batches", batchRoutes);
+app.use("/api/earnings", earningRoutes);
 
-// Create HTTP server explicitly
 const server = http.createServer(app);
-
-// WebSocket server setup with proper error handling
 const wss = new WebSocketServer({ server, path: "/" });
 
-// Update the WebSocket connection handler
 wss.on("connection", (ws) => {
   console.log("New client connected");
   ws.subscriptions = [];
 
-  // Handle messages from clients
   ws.on("message", (message) => {
     try {
       const data = JSON.parse(message);
       console.log("Received message:", data);
 
-      // Handle subscription requests
       if (data.type === "SUBSCRIBE") {
-        console.log(`Client subscribed to ${data.entity} with ID ${data.id}`);
-        ws.subscriptions.push({
-          entity: data.entity,
-          id: data.id,
-        });
+        ws.subscriptions.push({ entity: data.entity, id: data.id });
       } else if (data.type === "UNSUBSCRIBE") {
         ws.subscriptions = ws.subscriptions.filter(
           (sub) => !(sub.entity === data.entity && sub.id === data.id)
@@ -61,21 +49,12 @@ wss.on("connection", (ws) => {
     }
   });
 
-  // Handle client disconnections
-  ws.on("close", () => {
-    console.log("Client disconnected");
-  });
-
-  // Handle errors
-  ws.on("error", (error) => {
-    console.error("WebSocket error:", error);
-  });
+  ws.on("close", () => console.log("Client disconnected"));
+  ws.on("error", (error) => console.error("WebSocket error:", error));
 });
 
-// Broadcast task updates to all connected clients
 const broadcastTaskUpdate = (task) => {
   if (!wss) return;
-
   wss.clients.forEach((client) => {
     if (client.readyState === WebSocket.OPEN) {
       try {
@@ -84,7 +63,7 @@ const broadcastTaskUpdate = (task) => {
             type: "TASK_UPDATE",
             payload: {
               _id: task._id,
-              taskId: task._id, // Include both formats for compatibility
+              taskId: task._id,
               status: task.status,
               description: task.description,
               priority: task.priority,
@@ -100,14 +79,11 @@ const broadcastTaskUpdate = (task) => {
   });
 };
 
-// Add function to notify employees of new tasks
 const notifyEmployeeOfTask = (task) => {
   if (!wss) return;
-
   wss.clients.forEach((client) => {
     if (
       client.readyState === WebSocket.OPEN &&
-      client.subscriptions &&
       client.subscriptions.some(
         (sub) =>
           sub.entity === "employee" && sub.id === task.employeeId.toString()
@@ -115,10 +91,7 @@ const notifyEmployeeOfTask = (task) => {
     ) {
       try {
         client.send(
-          JSON.stringify({
-            type: "NEW_TASK_ASSIGNED",
-            payload: task,
-          })
+          JSON.stringify({ type: "NEW_TASK_ASSIGNED", payload: task })
         );
       } catch (err) {
         console.error("Error sending WebSocket message:", err);
@@ -127,7 +100,6 @@ const notifyEmployeeOfTask = (task) => {
   });
 };
 
-// PUT route to update task status
 app.put("/api/tasks/update-status/:taskId", async (req, res) => {
   const { taskId } = req.params;
   const { status } = req.body;
@@ -138,18 +110,12 @@ app.put("/api/tasks/update-status/:taskId", async (req, res) => {
 
   try {
     const task = await Task.findById(taskId);
+    if (!task) return res.status(404).json({ message: "Task not found" });
 
-    if (!task) {
-      return res.status(404).json({ message: "Task not found" });
-    }
-
-    // Update task status
     task.status = status;
     await task.save();
 
-    // Broadcast the update via WebSocket
     broadcastTaskUpdate(task);
-
     res.status(200).json({ message: "Task updated successfully", task });
   } catch (err) {
     console.error("Error updating task:", err);
@@ -159,20 +125,12 @@ app.put("/api/tasks/update-status/:taskId", async (req, res) => {
   }
 });
 
-app.get("/", (req, res) => {
-  res.send("Welcome to the Diamond Management System API!");
-});
+app.get("/", (req, res) =>
+  res.send("Welcome to the Diamond Management System API!")
+);
 
-// Start the server
 const PORT = process.env.PORT || 5023;
-server.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-});
+server.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+server.on("error", (error) => console.error("Server error:", error));
 
-// Handle server errors
-server.on("error", (error) => {
-  console.error("Server error:", error);
-});
-
-// Export the functions
 export { broadcastTaskUpdate, notifyEmployeeOfTask };

@@ -8,6 +8,7 @@ const EmpTaskCard = ({ task, status, updateTaskStatus }) => {
     normalizedStatus === "in progress"
   );
   const [elapsedTime, setElapsedTime] = useState(null);
+  const [isUpdating, setIsUpdating] = useState(false);
 
   // WebSocket connection to listen for updates
   useEffect(() => {
@@ -15,29 +16,32 @@ const EmpTaskCard = ({ task, status, updateTaskStatus }) => {
 
     socket.onmessage = (event) => {
       const message = JSON.parse(event.data);
-      if (message.type === "taskCompleted" && message.taskId === task.id) {
-        updateTaskStatus(task.id, "completed");
+      if (message.type === "taskUpdated" && message.taskId === task._id) {
+        updateTaskStatus(task._id, message.newStatus.toLowerCase());
       }
     };
 
-    return () => {
-      socket.close();
-    };
-  }, [task.id, updateTaskStatus]);
+    return () => socket.close();
+  }, [task._id, updateTaskStatus]);
 
+  // Time calculation effect
   useEffect(() => {
     let interval;
-
-    if (normalizedStatus === "in progress" && task.startTime && !task.endTime) {
-      const start = new Date(task.startTime).getTime();
-
-      interval = setInterval(() => {
+    const calculateElapsedTime = () => {
+      if (task.startTime) {
+        const start = new Date(task.startTime).getTime();
         const now = Date.now();
-        setElapsedTime(now - start);
-      }, 1000);
-    }
+        return now - start;
+      }
+      return 0;
+    };
 
-    if (normalizedStatus === "completed" && task.startTime && task.endTime) {
+    if (normalizedStatus === "in progress" && !task.endTime) {
+      setElapsedTime(calculateElapsedTime());
+      interval = setInterval(() => {
+        setElapsedTime(calculateElapsedTime());
+      }, 1000);
+    } else if (task.endTime) {
       const start = new Date(task.startTime).getTime();
       const end = new Date(task.endTime).getTime();
       setElapsedTime(end - start);
@@ -54,70 +58,60 @@ const EmpTaskCard = ({ task, status, updateTaskStatus }) => {
     return `${hours}h ${minutes}m ${seconds}s`;
   };
 
-  const getStatusClass = () => {
-    switch (normalizedStatus) {
-      case "assigned":
-        return "text-blue-400";
-      case "in progress":
-        return "text-yellow-500";
-      case "completed":
-        return "text-green-400";
-      default:
-        return "";
-    }
-  };
+  const handleTaskAction = async () => {
+    const newStatus = isTaskStarted ? "Completed" : "In Progress";
+    const confirmationMessage = `Are you sure you want to ${
+      isTaskStarted ? "complete" : "start"
+    } this task?`;
 
-  const handleTaskAction = () => {
-    const action = isTaskStarted ? "End Task" : "Start Task";
-    const confirmationMessage = isTaskStarted
-      ? "Are you sure you want to end the task?"
-      : "Are you sure you want to start the task?";
+    if (!window.confirm(confirmationMessage)) return;
 
-    if (window.confirm(confirmationMessage)) {
-      const newStatus = isTaskStarted ? "Completed" : "In Progress";
+    try {
+      setIsUpdating(true);
+      const token = localStorage.getItem("authToken");
 
-      fetch(`http://localhost:5023/api/tasks/update-status/${task._id}`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          status: newStatus,
-          taskId: task._id,
-        }),
-      })
-        .then((response) => response.json())
-        .then((data) => {
-          console.log("Task status updated:", data);
-          updateTaskStatus(task._id, newStatus.toLowerCase().replace(" ", ""));
-          setIsTaskStarted(!isTaskStarted);
-          alert(`${action} for Batch ID: ${task.id || task.batchId} confirmed`);
-        })
-        .catch((error) => {
-          console.error("Error updating task status:", error);
-          alert("Failed to update task status");
-        });
+      const response = await fetch(
+        `http://localhost:5023/api/tasks/${task._id}/update-status`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ status: newStatus }),
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(await response.text());
+      }
+
+      const data = await response.json();
+      updateTaskStatus(task._id, newStatus.toLowerCase());
+      setIsTaskStarted(!isTaskStarted);
+    } catch (error) {
+      console.error("Update error:", error);
+      alert(`Failed to update task: ${error.message}`);
+    } finally {
+      setIsUpdating(false);
     }
   };
 
   const handleViewDetails = () => {
-    alert(
-      `📝 Task Details:\nBatch: ${task.batchTitle}\nProcess: ${
-        task.currentProcess
-      }\nDescription: ${task.description}\nPriority: ${
-        task.priority
-      }\nStatus: ${task.status}\nStart: ${
-        task.startTime ? new Date(task.startTime).toLocaleString() : "—"
-      }\nEnd: ${
-        task.endTime ? new Date(task.endTime).toLocaleString() : "—"
-      }\nDuration: ${
-        task.durationInMinutes
-          ? task.durationInMinutes + " mins"
-          : elapsedTime
-          ? formatDuration(elapsedTime)
-          : "—"
-      }`
-    );
+    const details = [
+      `Batch: ${task.batchTitle}`,
+      `Process: ${task.currentProcess}`,
+      `Description: ${task.description}`,
+      `Priority: ${task.priority}`,
+      `Status: ${task.status}`,
+      `Start: ${
+        task.startTime ? new Date(task.startTime).toLocaleString() : "N/A"
+      }`,
+      `End: ${task.endTime ? new Date(task.endTime).toLocaleString() : "N/A"}`,
+      `Duration: ${elapsedTime ? formatDuration(elapsedTime) : "N/A"}`,
+    ].join("\n");
+
+    alert(`📝 Task Details:\n${details}`);
   };
 
   return (
@@ -128,41 +122,60 @@ const EmpTaskCard = ({ task, status, updateTaskStatus }) => {
       transition={{ duration: 0.3 }}
     >
       <div className="flex flex-col gap-2">
-        <p className="text-lg font-medium">Batch ID: {task.batchTitle}</p>
-        <div className="flex justify-between items-center text-sm">
-          <p>
-            <span className="font-medium">Start:</span>{" "}
-            {task.startTime ? new Date(task.startTime).toLocaleString() : "—"}
-          </p>
-          <p>
-            <span className="font-medium">End:</span>{" "}
-            {task.endTime ? new Date(task.endTime).toLocaleString() : "—"}
-          </p>
+        <div className="flex justify-between items-start">
+          <p className="text-lg font-medium">{task.batchTitle}</p>
+          <span
+            className={`text-sm font-semibold ${getStatusColor(
+              normalizedStatus
+            )}`}
+          >
+            {task.status}
+          </span>
+        </div>
+
+        <div className="grid grid-cols-2 gap-2 text-sm">
+          <div>
+            <p className="font-medium">Start Time</p>
+            <p>
+              {task.startTime
+                ? new Date(task.startTime).toLocaleString()
+                : "N/A"}
+            </p>
+          </div>
+          <div>
+            <p className="font-medium">End Time</p>
+            <p>
+              {task.endTime ? new Date(task.endTime).toLocaleString() : "N/A"}
+            </p>
+          </div>
         </div>
 
         {elapsedTime && (
-          <p className="text-sm text-blue-600">
-            ⏱ Time Spent: {formatDuration(elapsedTime)}
-          </p>
+          <div className="bg-blue-100 p-2 rounded">
+            <p className="text-sm text-blue-600">
+              ⏱ Elapsed Time: {formatDuration(elapsedTime)}
+            </p>
+          </div>
         )}
-
-        <p className={`text-sm font-semibold ${getStatusClass()}`}>
-          {task.status}
-        </p>
 
         <div className="flex gap-2 mt-4">
           {(normalizedStatus === "assigned" ||
             normalizedStatus === "in progress") && (
             <button
               onClick={handleTaskAction}
-              className="flex-1 p-2 bg-[#236294] text-white rounded-lg transition-all duration-200 hover:bg-[#1A405E]"
+              disabled={isUpdating}
+              className="flex-1 p-2 bg-[#236294] text-white rounded-lg hover:bg-[#1A405E] disabled:bg-gray-400 transition-colors"
             >
-              {isTaskStarted ? "End Task" : "Start Task"}
+              {isUpdating
+                ? "Updating..."
+                : isTaskStarted
+                ? "Complete Task"
+                : "Start Task"}
             </button>
           )}
           <button
             onClick={handleViewDetails}
-            className="flex-1 p-2 bg-gray-700 text-white rounded-lg transition-all duration-200 hover:bg-gray-900"
+            className="flex-1 p-2 bg-gray-700 text-white rounded-lg hover:bg-gray-900 transition-colors"
           >
             View Details
           </button>
@@ -170,6 +183,20 @@ const EmpTaskCard = ({ task, status, updateTaskStatus }) => {
       </div>
     </motion.div>
   );
+};
+
+// Helper function for status colors
+const getStatusColor = (status) => {
+  switch (status) {
+    case "assigned":
+      return "text-blue-500";
+    case "in progress":
+      return "text-yellow-600";
+    case "completed":
+      return "text-green-600";
+    default:
+      return "text-gray-600";
+  }
 };
 
 export default EmpTaskCard;
