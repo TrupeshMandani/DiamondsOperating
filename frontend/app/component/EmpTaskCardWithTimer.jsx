@@ -5,7 +5,13 @@ import { Calendar, Clock } from "lucide-react";
 import { Button } from "../../components/ui/button";
 import { Badge } from "../../components/ui/badge";
 
-const EmpTaskCardWithTimer = ({ task, section, updateTaskStatus, updatingTasks, getPriorityColor }) => {
+const EmpTaskCardWithTimer = ({
+  task,
+  section,
+  updateTaskStatus,
+  updatingTasks,
+  getPriorityColor,
+}) => {
   const [elapsedTime, setElapsedTime] = useState(null);
 
   useEffect(() => {
@@ -54,19 +60,17 @@ const EmpTaskCardWithTimer = ({ task, section, updateTaskStatus, updatingTasks, 
       <h3 className="text-lg font-semibold">
         Batch ID: {task.batchTitle || "Unknown"}
       </h3>
-      <p className="text-gray-600 text-sm">Process: {task.currentProcess || "N/A"}</p>
-      <p className="text-gray-600 text-sm">Description: {task.description || "No details"}</p>
+      <p className="text-gray-600 text-sm">
+        Process: {task.currentProcess || "N/A"}
+      </p>
+      <p className="text-gray-600 text-sm">
+        Description: {task.description || "No details"}
+      </p>
 
       <div className="flex items-center gap-2 mt-2">
         <Calendar className="h-4 w-4 text-gray-600" />
         <span className="text-sm">
           Due: {new Date(task.dueDate).toLocaleDateString()}
-        </span>
-      </div>
-
-      <div className="flex items-center gap-2 mt-2">
-        <span className="text-sm font-medium">
-          Earnings: ₹{(task.rate * task.diamondNumber || 0).toFixed(2)}
         </span>
       </div>
 

@@ -27,11 +27,11 @@ const taskSchema = new mongoose.Schema({
     enum: ["Pending", "In Progress", "Completed"],
     required: true,
   },
-  rate: { type: Number, required: true },
   assignedDate: { type: Date, default: Date.now },
   startTime: { type: Date, default: null },
   endTime: { type: Date, default: null },
   durationInMinutes: { type: Number, default: null },
+  completedAt: { type: Date }, // Date when the task is completed
 });
 
 export default mongoose.model("Task", taskSchema);

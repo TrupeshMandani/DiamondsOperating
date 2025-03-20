@@ -596,23 +596,7 @@ export default function TaskAssignment() {
                             </SelectContent>
                           </Select>
                         </div>
-                        <div className="flex flex-col space-y-2">
-                          <label className="text-sm font-medium">
-                            Rate (per piece)
-                          </label>
-                          <input
-                            type="number"
-                            className="p-2 border rounded w-full"
-                            value={newTask.rate || ""}
-                            onChange={(e) =>
-                              setNewTask({
-                                ...newTask,
-                                rate: parseFloat(e.target.value),
-                              })
-                            }
-                            required
-                          />
-                        </div>
+
                         <div className="flex flex-col space-y-2">
                           <label className="text-sm font-medium">
                             Description

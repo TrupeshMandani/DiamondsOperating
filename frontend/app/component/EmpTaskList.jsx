@@ -72,16 +72,13 @@ const EmpTaskList = () => {
       if (!taskId || !/^[0-9a-fA-F]{24}$/.test(taskId)) {
         throw new Error("Invalid task ID format");
       }
-  
-      setUpdatingTasks((prev) => {
-        const newSet = new Set(prev);
-        newSet.add(taskId);
-        return newSet;
-      });
-  
+
+      setUpdatingTasks((prev) => new Set([...prev, taskId]));
+
       const token = localStorage.getItem("authToken");
-      const url = `http://localhost:5023/api/tasks/update-status/${taskId}`;
-  
+      // Corrected API endpoint URL
+      const url = `http://localhost:5023/api/tasks/${taskId}/update-status`;
+
       const response = await fetch(url, {
         method: "PUT",
         headers: {
@@ -90,45 +87,52 @@ const EmpTaskList = () => {
         },
         body: JSON.stringify({ status: newStatus }),
       });
-  
+
+      const responseData = await response.json();
+
       if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(errorText || "Failed to update task");
+        throw new Error(responseData.message || "Failed to update task status");
       }
-  
-      const result = await response.json();
-      const updatedTask = result.task;
-  
-      // ✅ Replace task in the list with updated data
+
+      const updatedTask = responseData.task;
+
+      // Optimized state update logic
       setTasks((prev) => {
-        const from =
-          newStatus === "In Progress"
-            ? "assigned"
-            : newStatus === "Completed"
-            ? "inProgress"
-            : null;
-        const to =
-          newStatus === "In Progress"
-            ? "inProgress"
-            : newStatus === "Completed"
-            ? "completed"
-            : null;
-  
-        if (!from || !to) return prev;
-  
-        const updatedFrom = prev[from].filter((t) => t._id !== taskId);
-        const updatedTo = [...prev[to], updatedTask];
-  
-        return {
-          ...prev,
-          [from]: updatedFrom,
-          [to]: updatedTo,
+        const statusMap = {
+          Pending: "assigned",
+          "In Progress": "inProgress",
+          Completed: "completed",
         };
+
+        const newState = { ...prev };
+        const oldStatusKey = Object.keys(prev).find((key) =>
+          prev[key].some((t) => t._id === taskId)
+        );
+
+        if (oldStatusKey) {
+          newState[oldStatusKey] = newState[oldStatusKey].filter(
+            (t) => t._id !== taskId
+          );
+        }
+
+        const newStatusKey = statusMap[newStatus];
+        if (newStatusKey) {
+          newState[newStatusKey] = [
+            ...(newState[newStatusKey] || []),
+            updatedTask,
+          ];
+        }
+
+        return newState;
       });
+
+      return updatedTask;
     } catch (err) {
       setError(err.message);
       console.error("Update error:", err);
-      fetchAssignedTasks(); // fallback to reload
+      // Consider adding a retry mechanism instead of immediate refresh
+      setTimeout(fetchAssignedTasks, 3000);
+      throw err;
     } finally {
       setUpdatingTasks((prev) => {
         const newSet = new Set(prev);
@@ -137,7 +141,6 @@ const EmpTaskList = () => {
       });
     }
   };
-  
 
   const handleTaskLimitChange = (section, increment) => {
     setTaskLimits((prev) => ({
@@ -167,25 +170,25 @@ const EmpTaskList = () => {
     const hours = Math.floor(diffMins / 60);
     const minutes = diffMins % 60;
     const days = Math.floor(diffMins / 1440);
-  
+
     if (days > 0) return `${days} day(s), ${hours % 24} hr ${minutes} min`;
     if (hours > 0) return `${hours} hr ${minutes} min`;
     return `${minutes} min`;
   };
-  
+
   const renderTaskRows = (taskList, section) =>
-    taskList.slice(0, taskLimits[section]).map((task) => (
-      <TaskCardWithTimer
-        key={task._id}
-        task={task}
-        section={section}
-        updateTaskStatus={updateTaskStatus}
-        updatingTasks={updatingTasks}
-        getPriorityColor={getPriorityColor}
-      />
-    ));
-  
-    
+    taskList
+      .slice(0, taskLimits[section])
+      .map((task) => (
+        <TaskCardWithTimer
+          key={task._id}
+          task={task}
+          section={section}
+          updateTaskStatus={updateTaskStatus}
+          updatingTasks={updatingTasks}
+          getPriorityColor={getPriorityColor}
+        />
+      ));
 
   if (loading)
     return (
