@@ -34,24 +34,7 @@ router.get("/:id/tasks", getTasksForBatch); // 👈 Add this
 router.put("/:id/progress", updateBatch);
 
 // Assign the batch to employee
-router.put("/assign", async (req, res) => {
-  try {
-    // Your existing task creation code
-    const newTask = new Task({
-      employeeId: req.body.employeeId,
-      // other task fields...
-    });
-
-    await newTask.save();
-
-    // Add this line to notify the employee
-    notifyEmployeeOfTask(newTask);
-
-    res.status(201).json(newTask);
-  } catch (error) {
-    res.status(500).json({ message: error.message });
-  }
-});
+router.put("/assign", assignBatchToEmployee);
 
 // Fetching employees with assigned batches
 router.get("/employees/assigned", getEmployeesWithAssignedBatches);

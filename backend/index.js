@@ -11,6 +11,7 @@ import Employee from "./models/Employee.js";
 import Task from "./models/taskModel.js";
 import WebSocket from "ws";
 import http from "http"; // Add this import
+import { WebSocketServer } from "ws"; // Add this import
 
 dotenv.config();
 
@@ -30,7 +31,7 @@ app.use("/api/batches", batchRoutes);
 const server = http.createServer(app);
 
 // WebSocket server setup with proper error handling
-const wss = new WebSocket.Server({ server, path: "/" });
+const wss = new WebSocketServer({ server, path: "/" });
 
 // Update the WebSocket connection handler
 wss.on("connection", (ws) => {
