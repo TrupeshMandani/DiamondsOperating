@@ -11,6 +11,9 @@ import taskRoutes from "./routes/tasks.js";
 import earningRoutes from "./routes/earningRoutes.js";
 import Task from "./models/taskModel.js";
 
+import WebSocket, { WebSocketServer } from "ws"; // Import WebSocket
+
+
 dotenv.config();
 connectDB();
 
@@ -25,8 +28,10 @@ app.use("/api/tasks", taskRoutes);
 app.use("/api/batches", batchRoutes);
 app.use("/api/earnings", earningRoutes);
 
-const server = http.createServer(app);
-const wss = new WebSocketServer({ server, path: "/" });
+
+
+const wss = new WebSocketServer({ server });
+
 
 wss.on("connection", (ws) => {
   console.log("New client connected");
@@ -115,7 +120,26 @@ app.put("/api/tasks/update-status/:taskId", async (req, res) => {
     task.status = status;
     await task.save();
 
-    broadcastTaskUpdate(task);
+]
+    // Emit a WebSocket message to all clients with proper format
+    wss.clients.forEach((client) => {
+      if (client.readyState === WebSocket.OPEN) {
+        client.send(
+          JSON.stringify({
+            type: "TASK_UPDATE",
+            payload: {
+              _id: taskId,
+              status: status,
+              // Include other relevant task fields
+              description: task.description,
+              priority: task.priority,
+              dueDate: task.dueDate,
+              currentProcess: task.currentProcess,
+            },
+          })
+        );
+      }
+    });
     res.status(200).json({ message: "Task updated successfully", task });
   } catch (err) {
     console.error("Error updating task:", err);
