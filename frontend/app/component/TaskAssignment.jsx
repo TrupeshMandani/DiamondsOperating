@@ -234,10 +234,11 @@ export default function TaskAssignment() {
       const assignedTask = await response.json();
       console.log("Assigned task:", assignedTask);
 
-      // Make sure there's an _id in the response
-      if (!assignedTask._id) {
-        console.error("API response missing _id for new task:", assignedTask);
-      }
+      // Generate a guaranteed unique ID if the API response doesn't include one
+      const taskId =
+        assignedTask._id ||
+        `temp-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+      console.log("Using task ID:", taskId);
 
       // Find selected employee to get full details
       const selectedEmployee = employees.find(
@@ -247,7 +248,7 @@ export default function TaskAssignment() {
       // Create a fully detailed task object for immediate display
       const enhancedTask = {
         ...assignedTask,
-        _id: assignedTask._id, // Ensure ID is preserved for deletion functionality
+        _id: taskId, // Use our guaranteed ID instead of the potentially missing assignedTask._id
         batchId: selectedBatch.batchId,
         employeeId: newTask.employeeId,
         employeeName: selectedEmployee
@@ -395,8 +396,11 @@ export default function TaskAssignment() {
                 <SelectValue placeholder="Select Batch" />
               </SelectTrigger>
               <SelectContent className="text-black bg-white">
-                {batches.map((batch) => (
-                  <SelectItem key={batch.batchId} value={batch.batchId}>
+                {batches.map((batch, index) => (
+                  <SelectItem
+                    key={`batch-${batch.batchId}-${index}`}
+                    value={batch.batchId}
+                  >
                     {batch.batchId} - {batch.status}
                   </SelectItem>
                 ))}
@@ -451,9 +455,9 @@ export default function TaskAssignment() {
                               <SelectValue placeholder="Select Employee" />
                             </SelectTrigger>
                             <SelectContent className="text-black bg-white w-full">
-                              {employees.map((employee) => (
+                              {employees.map((employee, index) => (
                                 <SelectItem
-                                  key={employee._id}
+                                  key={`employee-${employee._id}-${index}`}
                                   value={employee._id.toString()}
                                 >
                                   {employee.firstName} {employee.lastName}
@@ -530,9 +534,9 @@ export default function TaskAssignment() {
               <CardContent className="p-0">
                 <Tabs defaultValue={PROCESS_TYPES[0]} className="w-full">
                   <TabsList className="w-full justify-start border-b rounded-none bg-gray-50 p-0">
-                    {PROCESS_TYPES.map((process) => (
+                    {PROCESS_TYPES.map((process, index) => (
                       <TabsTrigger
-                        key={process}
+                        key={`process-tab-${process}-${index}`}
                         value={process}
                         onClick={() => handleProcessSelect(process)}
                         className="flex-1 py-3 data-[state=active]:border-b-2 data-[state=active]:border-blue-600 rounded-none"
@@ -541,13 +545,17 @@ export default function TaskAssignment() {
                       </TabsTrigger>
                     ))}
                   </TabsList>
-                  {PROCESS_TYPES.map((process) => (
-                    <TabsContent key={process} value={process} className="p-4">
+                  {PROCESS_TYPES.map((process, index) => (
+                    <TabsContent
+                      key={`tab-content-${process}-${index}`}
+                      value={process}
+                      className="p-4"
+                    >
                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                         {filteredTasks.length > 0 ? (
-                          filteredTasks.map((task) => (
+                          filteredTasks.map((task, index) => (
                             <Card
-                              key={task._id} // Use the MongoDB _id which is guaranteed to be unique
+                              key={task._id || `task-${index}-${Date.now()}`}
                               className="border border-gray-200 hover:shadow-md transition-shadow"
                             >
                               <CardHeader className="pb-2">
@@ -675,7 +683,10 @@ export default function TaskAssignment() {
               <CardContent>
                 <div className="flex items-center justify-between">
                   {PROCESS_TYPES.map((process, index) => (
-                    <div key={process} className="flex flex-col items-center">
+                    <div
+                      key={`process-flow-${process}-${index}`}
+                      className="flex flex-col items-center"
+                    >
                       <div
                         className={`w-16 h-16 rounded-full flex items-center justify-center ${
                           selectedBatch.currentProcess === process

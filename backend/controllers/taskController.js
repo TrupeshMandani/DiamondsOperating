@@ -101,9 +101,6 @@ export const updateTaskStatus = async (req, res) => {
     task.status = status;
     await task.save();
 
-    // Broadcast the update
-    broadcastTaskUpdate(task);
-
     res.status(200).json({
       message: "Task status updated successfully",
       task,
