@@ -1,8 +1,6 @@
 import Task from "../models/taskModel.js";
 import Earnings from "../models/earnings.js";
 import mongoose from "mongoose";
-import { broadcastTaskUpdate } from "../index.js";
-
 const FIXED_CHARGE_PER_DIAMOND = 0.25;
 
 // Get all tasks

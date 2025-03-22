@@ -1,12 +1,11 @@
 "use client";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import EmpSidebar from "./EmpSidebar";
 
 export default function EmployeeDashboard() {
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [employee, setEmployee] = useState(null);
-  const socketRef = useRef(null);
 
   useEffect(() => {
     // Fetch initial employee data and tasks
@@ -40,75 +39,6 @@ export default function EmployeeDashboard() {
     };
 
     fetchEmployeeData();
-
-    // Setup WebSocket connection
-    socketRef.current = new WebSocket("ws://localhost:5023");
-
-    socketRef.current.addEventListener("open", () => {
-      console.log("WebSocket connection established");
-
-      // Subscribe to task updates for this employee
-      const empId = localStorage.getItem("employeeId");
-      if (empId) {
-        socketRef.current.send(
-          JSON.stringify({
-            type: "SUBSCRIBE",
-            entity: "employee",
-            id: empId,
-          })
-        );
-      }
-    });
-
-    socketRef.current.addEventListener("message", (event) => {
-      try {
-        const data = JSON.parse(event.data);
-        console.log("WebSocket message received:", data);
-
-        if (data.type === "NEW_TASK_ASSIGNED") {
-          // Add the new task to the list
-          setTasks((prevTasks) => [...prevTasks, data.payload]);
-
-          // Show notification to user
-          if (
-            "Notification" in window &&
-            Notification.permission === "granted"
-          ) {
-            new Notification("New Task Assigned", {
-              body: `Task: ${data.payload.description}`,
-              icon: "/favicon.ico",
-            });
-          }
-        } else if (data.type === "TASK_UPDATE" && data.payload) {
-          // Update task status if it exists in our list
-          setTasks((prevTasks) =>
-            prevTasks.map((task) =>
-              task._id === data.payload._id
-                ? { ...task, ...data.payload }
-                : task
-            )
-          );
-        }
-      } catch (error) {
-        console.error("Error processing WebSocket message:", error);
-      }
-    });
-
-    socketRef.current.addEventListener("error", (error) => {
-      console.error("WebSocket error:", error);
-    });
-
-    // Request notification permission
-    if ("Notification" in window && Notification.permission !== "granted") {
-      Notification.requestPermission();
-    }
-
-    // Cleanup on unmount
-    return () => {
-      if (socketRef.current) {
-        socketRef.current.close();
-      }
-    };
   }, []);
 
   // Extract task counts
