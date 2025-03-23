@@ -101,9 +101,6 @@ export const updateTaskStatus = async (req, res) => {
     task.status = status;
     await task.save();
 
-    // Broadcast the update
-    broadcastTaskUpdate(task);
-
     res.status(200).json({
       message: "Task status updated successfully",
       task,
@@ -142,6 +139,9 @@ export const deleteTask = async (req, res) => {
     if (!deletedTask) {
       return res.status(500).json({ message: "Task could not be deleted" });
     }
+
+    // 🔹 Emit WebSocket event to notify employees about task deletion
+    req.io.emit("taskDeleted", { taskId, employeeId: task.employeeId });
 
     res.status(200).json({
       message: "Task deleted successfully",
