@@ -8,7 +8,9 @@ import { Button } from "@/components/ui/button";
 import { Calendar, Clock } from "lucide-react";
 import TaskCardWithTimer from "./EmpTaskCardWithTimer"; // adjust path
 // Removed the import for Switch
+import { io } from "socket.io-client";
 
+const socket = io("http://localhost:5023");
 const EmpTaskList = () => {
   const [tasks, setTasks] = useState({
     assigned: [],
@@ -50,11 +52,13 @@ const EmpTaskList = () => {
         throw new Error(`Failed to fetch tasks: ${await response.text()}`);
 
       const data = await response.json();
+
       setTasks({
         assigned: data.filter((task) => task.status === "Pending"),
         inProgress: data.filter((task) => task.status === "In Progress"),
         completed: data.filter((task) => task.status === "Completed"),
       });
+
       setError(null);
     } catch (err) {
       setError(err.message);
@@ -65,13 +69,38 @@ const EmpTaskList = () => {
 
   useEffect(() => {
     fetchAssignedTasks();
+
+    // ✅ Listen for WebSocket updates
+    socket.on("taskAssigned", (newTask) => {
+      console.log("Real-time task assigned:", newTask);
+
+      // Get logged-in employee ID
+      const employeeId = localStorage.getItem("employeeId");
+
+      // Only update tasks if the assigned task is for this employee
+      if (newTask.employeeId === employeeId) {
+        setTasks((prevTasks) => ({
+          assigned: [...prevTasks.assigned, newTask], // Add new pending task
+          inProgress: prevTasks.inProgress,
+          completed: prevTasks.completed,
+        }));
+      }
+    });
+
+    return () => {
+      socket.off("taskAssigned"); // Cleanup when component unmounts
+    };
   }, []);
 
   const updateTaskStatus = async (taskId, newStatus) => {
     try {
-      if (!taskId || !/^[0-9a-fA-F]{24}$/.test(taskId)) {
-        throw new Error("Invalid task ID format");
+      // Modified condition to handle different ID formats
+      if (!taskId) {
+        throw new Error("Task ID is missing");
       }
+
+      // Add debug logging to help diagnose the issue
+      console.log("Updating task with ID:", taskId, typeof taskId);
 
       setUpdatingTasks((prev) => new Set([...prev, taskId]));
 
@@ -88,12 +117,17 @@ const EmpTaskList = () => {
         body: JSON.stringify({ status: newStatus }),
       });
 
-      const responseData = await response.json();
-
       if (!response.ok) {
-        throw new Error(responseData.message || "Failed to update task status");
+        const errorText = await response.text();
+        try {
+          const errorData = JSON.parse(errorText);
+          throw new Error(errorData.message || "Failed to update task status");
+        } catch (e) {
+          throw new Error(`Failed to update task status: ${errorText}`);
+        }
       }
 
+      const responseData = await response.json();
       const updatedTask = responseData.task;
 
       // Optimized state update logic
@@ -131,8 +165,7 @@ const EmpTaskList = () => {
       setError(err.message);
       console.error("Update error:", err);
       // Consider adding a retry mechanism instead of immediate refresh
-      setTimeout(fetchAssignedTasks, 3000);
-      throw err;
+      return null;
     } finally {
       setUpdatingTasks((prev) => {
         const newSet = new Set(prev);

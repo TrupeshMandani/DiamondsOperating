@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Calendar, Clock, Users, AlertCircle, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -31,10 +31,11 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { DatePicker } from "@/components/ui/date-picker";
+import io from "socket.io-client";
 
 // Process types for diamond processing
 const PROCESS_TYPES = ["Sarin", "Stitching", "4P Cutting"];
-
+const socket = io("http://localhost:5023");
 export default function TaskAssignment() {
   const [batches, setBatches] = useState([]);
   const [employees, setEmployees] = useState([]);
@@ -53,6 +54,34 @@ export default function TaskAssignment() {
     diamondNumber: 0,
     firstName: "",
   });
+
+  // Use a ref to store task IDs that don't have a real _id
+  const tempTaskIds = useRef(new Map());
+
+  useEffect(() => {
+    // Listen for real-time task assignments
+    socket.on("taskAssigned", (newTask) => {
+      console.log("Real-time Task Assigned:", newTask);
+      // Only add the task if it doesn't already exist in the tasks array
+      setTasks((prevTasks) => {
+        // Check if this task already exists in our state
+        const taskExists = prevTasks.some(
+          (task) =>
+            (task._id && task._id === newTask._id) ||
+            (task.employeeId === newTask.employeeId &&
+              task.description === newTask.description &&
+              task.process === newTask.process)
+        );
+
+        // Only add if it doesn't exist
+        return taskExists ? prevTasks : [...prevTasks, newTask];
+      });
+    });
+
+    return () => {
+      socket.off("taskAssigned");
+    };
+  }, []);
 
   // Handle task updates (previously from WebSocket)
   const handleTaskUpdate = (updatedTask) => {
@@ -179,6 +208,10 @@ export default function TaskAssignment() {
 
   // Handle batch selection
   const handleBatchSelect = async (batchId) => {
+    // Clear existing tasks and temp IDs when switching batches
+    setTasks([]);
+    tempTaskIds.current.clear();
+
     const batch = batches.find((b) => b.batchId === batchId);
     setSelectedBatch(batch);
     setNewTask((prev) => ({
@@ -195,6 +228,25 @@ export default function TaskAssignment() {
     setSelectedProcess(process);
   };
 
+  // Get a stable ID for a task
+  const getTaskId = (task) => {
+    if (task._id) return task._id;
+
+    // Create a unique identifier based on task properties
+    const taskIdentifier = `${task.employeeId}-${task.description}-${
+      task.process
+    }-${task.assignedDate || Date.now()}`;
+
+    // Check if we already have a temporary ID for this task
+    if (!tempTaskIds.current.has(taskIdentifier)) {
+      // Only generate a new UUID if we don't have one yet
+      tempTaskIds.current.set(taskIdentifier, `temp-${crypto.randomUUID()}`);
+    }
+
+    // Return the stable temporary ID
+    return tempTaskIds.current.get(taskIdentifier);
+  };
+
   // Handle task assignment
   const handleAssignTask = async () => {
     try {
@@ -203,7 +255,7 @@ export default function TaskAssignment() {
         return;
       }
 
-      console.log("Selected Process Before Sending:", selectedProcess); // ✅ Debugging
+      console.log("Selected Process Before Sending:", selectedProcess);
 
       const taskData = {
         batchId: selectedBatch.batchId,
@@ -213,7 +265,7 @@ export default function TaskAssignment() {
         priority: newTask.priority,
         status: "Pending",
         process: selectedProcess,
-        rate: parseFloat(newTask.rate) || 0,
+        rate: Number.parseFloat(newTask.rate) || 0,
         diamondNumber: newTask.diamondNumber || 0,
       };
 
@@ -221,9 +273,7 @@ export default function TaskAssignment() {
 
       const response = await fetch("http://localhost:5023/api/batches/assign", {
         method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(taskData),
       });
 
@@ -234,47 +284,48 @@ export default function TaskAssignment() {
       const assignedTask = await response.json();
       console.log("Assigned task:", assignedTask);
 
-      // Generate a guaranteed unique ID if the API response doesn't include one
-      const taskId =
-        assignedTask._id ||
-        `temp-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
-      console.log("Using task ID:", taskId);
-
-      // Find selected employee to get full details
       const selectedEmployee = employees.find(
         (emp) => emp._id === newTask.employeeId
       );
 
-      // Create a fully detailed task object for immediate display
+      // Create a task identifier for stable key generation
+      const taskIdentifier = `${newTask.employeeId}-${newTask.description}-${selectedProcess}`;
+      const tempId = assignedTask._id || `temp-${crypto.randomUUID()}`;
+
+      // Store the temporary ID if needed
+      if (!assignedTask._id) {
+        tempTaskIds.current.set(taskIdentifier, tempId);
+      }
+
       const enhancedTask = {
         ...assignedTask,
-        _id: taskId, // Use our guaranteed ID instead of the potentially missing assignedTask._id
+        _id: tempId, // This ensures the task has a unique ID
         batchId: selectedBatch.batchId,
         employeeId: newTask.employeeId,
         employeeName: selectedEmployee
           ? `${selectedEmployee.firstName} ${selectedEmployee.lastName}`
           : "Unknown Employee",
         description: newTask.description,
-        dueDate: newTask.dueDate.toISOString(), // Format date correctly
-        assignedDate: new Date().toISOString(), // Add current date as assigned date
+        dueDate: newTask.dueDate.toISOString(),
+        assignedDate: new Date().toISOString(),
         priority: newTask.priority,
         status: "Pending",
-        currentProcess: selectedProcess, // Ensure process matches current tab
+        currentProcess: selectedProcess,
         process: selectedProcess,
-        rate: parseFloat(newTask.rate) || 0,
+        rate: Number.parseFloat(newTask.rate) || 0,
         diamondNumber: newTask.diamondNumber || 0,
       };
 
       console.log("Enhanced task to be added to UI:", enhancedTask);
 
-      // Update tasks state with the new task
+      // 🔹 Update the state with the new task
       setTasks((prevTasks) => [...prevTasks, enhancedTask]);
 
       const employeeName = selectedEmployee
         ? `${selectedEmployee.firstName} ${selectedEmployee.lastName}`
         : "the employee";
 
-      // Reset task form
+      // Reset the form
       setNewTask({
         employeeId: "",
         description: "",
@@ -286,14 +337,22 @@ export default function TaskAssignment() {
         firstName: "",
       });
 
-      // Close the dialog before showing the alert
       setIsAssigningTask(false);
-
       alert(
         `Task assigned successfully to ${employeeName} for ${selectedProcess}`
       );
 
       await fetchUpdatedBatch(selectedBatch.batchId);
+
+      // 🔹 Emit WebSocket event for real-time update
+      if (socket && socket.connected) {
+        // Only emit to others, not back to ourselves
+        socket.emit("taskAssigned", enhancedTask, { selfExclude: true });
+      } else {
+        console.warn(
+          "WebSocket is not connected. Task assignment not broadcasted."
+        );
+      }
     } catch (err) {
       console.error("Error assigning task:", err.message);
       alert(`Error assigning task: ${err.message}`);
@@ -555,7 +614,7 @@ export default function TaskAssignment() {
                         {filteredTasks.length > 0 ? (
                           filteredTasks.map((task, index) => (
                             <Card
-                              key={task._id || `task-${index}-${Date.now()}`}
+                              key={`${getTaskId(task)}-${index}`}
                               className="border border-gray-200 hover:shadow-md transition-shadow"
                             >
                               <CardHeader className="pb-2">
