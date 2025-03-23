@@ -53,6 +53,7 @@ const EmpTaskList = () => {
 
       const data = await response.json();
 
+      // Now, update the state with all tasks, including assigned tasks
       setTasks({
         assigned: data.filter((task) => task.status === "Pending"),
         inProgress: data.filter((task) => task.status === "In Progress"),
@@ -70,7 +71,7 @@ const EmpTaskList = () => {
   useEffect(() => {
     fetchAssignedTasks();
 
-    // ✅ Listen for WebSocket updates
+    // ✅ Listen for WebSocket updates for task assignment
     socket.on("taskAssigned", (newTask) => {
       console.log("Real-time task assigned:", newTask);
 
@@ -79,16 +80,33 @@ const EmpTaskList = () => {
 
       // Only update tasks if the assigned task is for this employee
       if (newTask.employeeId === employeeId) {
+        // Update the task state for the specific employee immediately
         setTasks((prevTasks) => ({
           assigned: [...prevTasks.assigned, newTask], // Add new pending task
           inProgress: prevTasks.inProgress,
           completed: prevTasks.completed,
         }));
       }
+
+      // Immediately call fetchAssignedTasks to refresh the full list from the backend
+      fetchAssignedTasks(); // This will fetch the latest tasks with updated batch ID
+    });
+
+    // ✅ Listen for WebSocket updates for task deletion
+    socket.on("taskDeleted", ({ taskId }) => {
+      console.log("Real-time task deleted:", taskId);
+
+      // Update tasks by removing the deleted task
+      setTasks((prevTasks) => ({
+        assigned: prevTasks.assigned.filter((task) => task._id !== taskId),
+        inProgress: prevTasks.inProgress.filter((task) => task._id !== taskId),
+        completed: prevTasks.completed.filter((task) => task._id !== taskId),
+      }));
     });
 
     return () => {
       socket.off("taskAssigned"); // Cleanup when component unmounts
+      socket.off("taskDeleted"); // Cleanup when component unmounts
     };
   }, []);
 
@@ -209,8 +227,21 @@ const EmpTaskList = () => {
     return `${minutes} min`;
   };
 
-  const renderTaskRows = (taskList, section) =>
-    taskList
+  const renderTaskRows = (taskList, section) => {
+    if (taskList.length === 0) {
+      return (
+        <div className="col-span-full text-center text-gray-500">
+          No tasks{" "}
+          {section === "assigned"
+            ? "assigned"
+            : section === "inProgress"
+            ? "in progress"
+            : "completed"}
+        </div>
+      );
+    }
+
+    return taskList
       .slice(0, taskLimits[section])
       .map((task) => (
         <TaskCardWithTimer
@@ -222,6 +253,7 @@ const EmpTaskList = () => {
           getPriorityColor={getPriorityColor}
         />
       ));
+  };
 
   if (loading)
     return (

@@ -50,6 +50,11 @@ io.on("connection", (socket) => {
     io.emit("taskAssigned", task);
   });
 
+  socket.on("taskDeleted", ({ taskId }) => {
+    console.log(`Broadcasting task deletion: ${taskId}`);
+    io.emit("taskDeleted", { taskId });
+  });
+
   socket.on("disconnect", () => {
     console.log("A user disconnected:", socket.id);
   });

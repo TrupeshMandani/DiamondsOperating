@@ -36,6 +36,7 @@ import io from "socket.io-client";
 // Process types for diamond processing
 const PROCESS_TYPES = ["Sarin", "Stitching", "4P Cutting"];
 const socket = io("http://localhost:5023");
+
 export default function TaskAssignment() {
   const [batches, setBatches] = useState([]);
   const [employees, setEmployees] = useState([]);
@@ -78,8 +79,18 @@ export default function TaskAssignment() {
       });
     });
 
+    // Listen for task deletions
+    socket.on("taskDeleted", (deletedTaskData) => {
+      const deletedTaskId = deletedTaskData.taskId || deletedTaskData;
+      console.log("Real-time Task Deleted:", deletedTaskId);
+      setTasks((prevTasks) =>
+        prevTasks.filter((task) => task._id !== deletedTaskId)
+      );
+    });
+
     return () => {
       socket.off("taskAssigned");
+      socket.off("taskDeleted");
     };
   }, []);
 
@@ -174,7 +185,7 @@ export default function TaskAssignment() {
     }
   };
 
-  // Fetch tasks for a batch
+  // Improved fetchTasksForBatch function
   const fetchTasksForBatch = async (batchId) => {
     try {
       console.log(`Fetching tasks for batch: ${batchId}`);
@@ -193,16 +204,25 @@ export default function TaskAssignment() {
         throw new Error(`Error fetching tasks: ${errorMessage}`);
       }
 
-      const tasks = await response.json();
-      console.log("Fetched tasks:", tasks);
+      const fetchedTasks = await response.json();
+      console.log("Fetched tasks:", fetchedTasks);
+
+      // Validate and clean up task data
+      const validTasks = fetchedTasks.filter((task) => task && task._id);
 
       // Ensure tasks are stored in state
-      setTasks(tasks);
-      console.log("Updated tasks state:", tasks); // Debugging
+      setTasks(validTasks);
+      console.log("Updated tasks state:", validTasks); // Debugging
+
+      // Clear any temporary IDs that might be causing issues
+      tempTaskIds.current.clear();
+
+      return validTasks;
     } catch (err) {
       console.error("Error fetching tasks:", err.message);
       // Set empty tasks array on error
       setTasks([]);
+      return [];
     }
   };
 
@@ -353,9 +373,98 @@ export default function TaskAssignment() {
           "WebSocket is not connected. Task assignment not broadcasted."
         );
       }
+
+      // Refresh tasks in the background to ensure we have proper IDs
+      setTimeout(() => {
+        fetchTasksForBatch(selectedBatch.batchId);
+      }, 500);
     } catch (err) {
       console.error("Error assigning task:", err.message);
       alert(`Error assigning task: ${err.message}`);
+    }
+  };
+
+  // Handle task deletion - FIXED FUNCTION
+  const handleDeleteTask = async (taskId) => {
+    try {
+      // Validate task ID format
+      if (!taskId || typeof taskId !== "string") {
+        console.error("Invalid task ID:", taskId);
+
+        // Refresh tasks to get proper IDs
+        if (selectedBatch) {
+          await fetchTasksForBatch(selectedBatch.batchId);
+        }
+
+        throw new Error("Invalid task ID format");
+      }
+
+      // Confirm task deletion
+      const isConfirmed = window.confirm(
+        "Are you sure you want to delete this task?"
+      );
+      if (!isConfirmed) {
+        console.log("Task deletion canceled by the user.");
+        return; // Exit if the user cancels the deletion
+      }
+
+      // First update the UI immediately to provide instant feedback
+      setTasks((prevTasks) => prevTasks.filter((t) => t._id !== taskId));
+
+      const token = localStorage.getItem("authToken");
+      if (!token) throw new Error("No authentication token found");
+
+      const response = await fetch(
+        `http://localhost:5023/api/tasks/${taskId}`,
+        {
+          method: "DELETE",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      // Parse response data
+      let responseData;
+      try {
+        responseData = await response.json();
+      } catch (e) {
+        // If response is not JSON, use empty object
+        responseData = {};
+      }
+
+      // Handle the response
+      if (!response.ok) {
+        throw new Error(responseData.message || "Failed to delete task");
+      }
+
+      console.log(`Task deleted: ${taskId}`);
+
+      // Emit WebSocket event for real-time task deletion
+      if (socket && socket.connected) {
+        socket.emit("taskDeleted", { taskId });
+        console.log("Emitted taskDeleted event for task:", taskId);
+      } else {
+        console.warn(
+          "WebSocket is not connected. Task deletion not broadcasted."
+        );
+      }
+
+      // Show success alert
+      alert("Task successfully deleted!");
+
+      // No need to alert here as we've already updated the UI
+    } catch (error) {
+      console.error("Error deleting task:", error);
+
+      // If there was an error, fetch the tasks again to ensure UI is in sync
+      if (selectedBatch) {
+        await fetchTasksForBatch(selectedBatch.batchId);
+      }
+
+      // Show failure alert
+      alert("Failed to delete task: " + error.message);
     }
   };
 
@@ -613,6 +722,7 @@ export default function TaskAssignment() {
                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                         {filteredTasks.length > 0 ? (
                           filteredTasks.map((task, index) => (
+                            // This is the code for Assigned task section which is in manager side
                             <Card
                               key={`${getTaskId(task)}-${index}`}
                               className="border border-gray-200 hover:shadow-md transition-shadow"
@@ -661,51 +771,7 @@ export default function TaskAssignment() {
                                 <Button
                                   variant="destructive"
                                   size="sm"
-                                  onClick={async () => {
-                                    try {
-                                      const token =
-                                        localStorage.getItem("authToken");
-                                      if (!token) {
-                                        throw new Error(
-                                          "No authentication token found"
-                                        );
-                                      }
-
-                                      const response = await fetch(
-                                        `http://localhost:5023/api/tasks/${task._id}`,
-                                        {
-                                          method: "DELETE",
-                                          headers: {
-                                            "Content-Type": "application/json",
-                                            Authorization: `Bearer ${token}`,
-                                          },
-                                        }
-                                      );
-
-                                      const responseData =
-                                        await response.json();
-                                      if (!response.ok) {
-                                        throw new Error(
-                                          responseData.message ||
-                                            "Failed to delete task"
-                                        );
-                                      }
-
-                                      // Remove the task from the UI
-                                      setTasks((prevTasks) =>
-                                        prevTasks.filter(
-                                          (t) => t._id !== task._id
-                                        )
-                                      );
-                                      alert("Task deleted successfully");
-                                    } catch (error) {
-                                      console.error(
-                                        "Error deleting task:",
-                                        error
-                                      );
-                                      alert("Failed to delete task");
-                                    }
-                                  }}
+                                  onClick={() => handleDeleteTask(task._id)}
                                 >
                                   Delete Task
                                 </Button>
