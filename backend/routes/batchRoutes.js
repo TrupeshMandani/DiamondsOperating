@@ -11,7 +11,6 @@ import {
   getTasksForEmployee, // Add this function
 } from "../controllers/batchController.js"; // Import function
 import { getEmployeesWithAssignedBatches } from "../controllers/employeeController.js";
-import { notifyEmployeeOfTask } from "../index.js";
 
 const router = express.Router();
 

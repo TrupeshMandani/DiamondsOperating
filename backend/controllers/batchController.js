@@ -289,7 +289,7 @@ export const assignBatchToEmployee = async (req, res) => {
       diamondNumber,
     } = req.body;
 
-    console.log("Received Task Data:", req.body); // Debug log
+    console.log("Received Task Data:", req.body);
 
     if (
       !batchId ||
@@ -304,7 +304,7 @@ export const assignBatchToEmployee = async (req, res) => {
       return res.status(400).json({ message: "Missing required fields" });
     }
 
-    // Find the batch by batchId (string)
+    // Find the batch
     const batch = await Batch.findOne({ batchId }).select(
       "batchId currentProcess"
     );
@@ -322,18 +322,17 @@ export const assignBatchToEmployee = async (req, res) => {
     batch.currentProcess = process;
     await batch.save();
 
-    // Assign the batch to the employee
     batch.assignedEmployee = employeeId;
     await batch.save();
 
-    // Convert values to proper types
+    // Convert values
     const numericRate = Number(rate);
     const numericDiamondNumber = Number(diamondNumber);
 
     // Create and save the task
     const task = new Task({
       batchId: batch._id,
-      batchTitle: batch.batchId, // Use the string batch ID as the title
+      batchTitle: batch.batchId,
       employeeId: employee._id,
       employeeName: `${employee.firstName} ${employee.lastName}`,
       currentProcess: process,
@@ -347,12 +346,17 @@ export const assignBatchToEmployee = async (req, res) => {
     });
 
     const savedTask = await task.save();
-    console.log("Saved task:", savedTask); // Debug log
+    console.log("Saved task:", savedTask);
 
-    // Important: Send the task response after successfully saving
+    // Emit WebSocket event when a new task is assigned
+    req.io.emit("taskAssigned", {
+      message: "A new task has been assigned!",
+      task: savedTask,
+    });
+
     res.status(200).json({
       message: "Batch assigned & task created successfully",
-      task: savedTask, // Send the saved task with _id
+      task: savedTask,
     });
   } catch (error) {
     console.error("Error assigning batch:", error.message);
@@ -365,10 +369,8 @@ export const assignBatchToEmployee = async (req, res) => {
 export const getTasksForEmployee = async (req, res) => {
   try {
     const { employeeId } = req.params;
-
     console.log(`Fetching tasks for employee: ${employeeId}`);
 
-    // Fetch tasks and include batch details
     const tasks = await Task.find({ employeeId }).populate(
       "batchId",
       "batchTitle currentProcess"
@@ -379,6 +381,12 @@ export const getTasksForEmployee = async (req, res) => {
         .status(404)
         .json({ message: "No tasks found for this employee" });
     }
+
+    // Emit WebSocket event to notify that tasks have been fetched
+    req.io.emit(`tasksFetched-${employeeId}`, {
+      message: "Your tasks have been updated!",
+      tasks,
+    });
 
     res.status(200).json(tasks);
   } catch (error) {

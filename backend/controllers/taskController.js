@@ -1,6 +1,7 @@
 import Task from "../models/taskModel.js";
+import Earnings from "../models/earnings.js";
 import mongoose from "mongoose";
-import { broadcastTaskUpdate } from "../index.js";
+const FIXED_CHARGE_PER_DIAMOND = 0.25;
 
 // Get all tasks
 export const getAllTasks = async (req, res) => {
@@ -41,7 +42,7 @@ export const getTasksByBatchId = async (req, res) => {
   }
 };
 
-// Update task status and record start/end time
+// Update task status and record start/end time, calculate earnings
 export const updateTaskStatus = async (req, res) => {
   try {
     const { taskId } = req.params;
@@ -69,13 +70,36 @@ export const updateTaskStatus = async (req, res) => {
         const durationMs = task.endTime.getTime() - task.startTime.getTime();
         task.durationInMinutes = Math.round(durationMs / 60000); // convert ms to minutes
       }
+
+      // Calculate earnings
+      const Earning = task.diamondNumber * FIXED_CHARGE_PER_DIAMOND;
+      task.completedAt = new Date(); // Mark task as completed
+
+      console.log("Task completed by employee:", task.employeeId);
+      console.log("Diamonds completed:", task.diamondNumber);
+      console.log("Calculated earnings:", Earning);
+
+      console.log("Updating earnings for:", {
+        employeeId: task.employeeId,
+        month: new Date().getMonth() + 1,
+        year: new Date().getFullYear(),
+      });
+
+      // Save earnings to Earning model
+      const now = new Date();
+      await Earnings.findOneAndUpdate(
+        {
+          employeeId: task.employeeId,
+          month: now.getMonth() + 1,
+          year: now.getFullYear(),
+        },
+        { $inc: { totalEarnings: Earning } },
+        { upsert: true, new: true }
+      );
     }
 
     task.status = status;
     await task.save();
-
-    // Broadcast the update
-    broadcastTaskUpdate(task);
 
     res.status(200).json({
       message: "Task status updated successfully",
@@ -115,6 +139,9 @@ export const deleteTask = async (req, res) => {
     if (!deletedTask) {
       return res.status(500).json({ message: "Task could not be deleted" });
     }
+
+    // 🔹 Emit WebSocket event to notify employees about task deletion
+    req.io.emit("taskDeleted", { taskId, employeeId: task.employeeId });
 
     res.status(200).json({
       message: "Task deleted successfully",

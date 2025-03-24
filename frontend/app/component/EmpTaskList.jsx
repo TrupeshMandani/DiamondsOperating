@@ -8,7 +8,9 @@ import { Button } from "@/components/ui/button";
 import { Calendar, Clock } from "lucide-react";
 import TaskCardWithTimer from "./EmpTaskCardWithTimer"; // adjust path
 // Removed the import for Switch
+import { io } from "socket.io-client";
 
+const socket = io("http://localhost:5023");
 const EmpTaskList = () => {
   const [tasks, setTasks] = useState({
     assigned: [],
@@ -50,11 +52,14 @@ const EmpTaskList = () => {
         throw new Error(`Failed to fetch tasks: ${await response.text()}`);
 
       const data = await response.json();
+
+      // Now, update the state with all tasks, including assigned tasks
       setTasks({
         assigned: data.filter((task) => task.status === "Pending"),
         inProgress: data.filter((task) => task.status === "In Progress"),
         completed: data.filter((task) => task.status === "Completed"),
       });
+
       setError(null);
     } catch (err) {
       setError(err.message);
@@ -65,23 +70,62 @@ const EmpTaskList = () => {
 
   useEffect(() => {
     fetchAssignedTasks();
+
+    // ✅ Listen for WebSocket updates for task assignment
+    socket.on("taskAssigned", (newTask) => {
+      console.log("Real-time task assigned:", newTask);
+
+      // Get logged-in employee ID
+      const employeeId = localStorage.getItem("employeeId");
+
+      // Only update tasks if the assigned task is for this employee
+      if (newTask.employeeId === employeeId) {
+        // Update the task state for the specific employee immediately
+        setTasks((prevTasks) => ({
+          assigned: [...prevTasks.assigned, newTask], // Add new pending task
+          inProgress: prevTasks.inProgress,
+          completed: prevTasks.completed,
+        }));
+      }
+
+      // Immediately call fetchAssignedTasks to refresh the full list from the backend
+      fetchAssignedTasks(); // This will fetch the latest tasks with updated batch ID
+    });
+
+    // ✅ Listen for WebSocket updates for task deletion
+    socket.on("taskDeleted", ({ taskId }) => {
+      console.log("Real-time task deleted:", taskId);
+
+      // Update tasks by removing the deleted task
+      setTasks((prevTasks) => ({
+        assigned: prevTasks.assigned.filter((task) => task._id !== taskId),
+        inProgress: prevTasks.inProgress.filter((task) => task._id !== taskId),
+        completed: prevTasks.completed.filter((task) => task._id !== taskId),
+      }));
+    });
+
+    return () => {
+      socket.off("taskAssigned"); // Cleanup when component unmounts
+      socket.off("taskDeleted"); // Cleanup when component unmounts
+    };
   }, []);
 
   const updateTaskStatus = async (taskId, newStatus) => {
     try {
-      if (!taskId || !/^[0-9a-fA-F]{24}$/.test(taskId)) {
-        throw new Error("Invalid task ID format");
+      // Modified condition to handle different ID formats
+      if (!taskId) {
+        throw new Error("Task ID is missing");
       }
-  
-      setUpdatingTasks((prev) => {
-        const newSet = new Set(prev);
-        newSet.add(taskId);
-        return newSet;
-      });
-  
+
+      // Add debug logging to help diagnose the issue
+      console.log("Updating task with ID:", taskId, typeof taskId);
+
+      setUpdatingTasks((prev) => new Set([...prev, taskId]));
+
       const token = localStorage.getItem("authToken");
-      const url = `http://localhost:5023/api/tasks/update-status/${taskId}`;
-  
+      // Corrected API endpoint URL
+      const url = `http://localhost:5023/api/tasks/${taskId}/update-status`;
+
       const response = await fetch(url, {
         method: "PUT",
         headers: {
@@ -90,45 +134,56 @@ const EmpTaskList = () => {
         },
         body: JSON.stringify({ status: newStatus }),
       });
-  
+
       if (!response.ok) {
         const errorText = await response.text();
-        throw new Error(errorText || "Failed to update task");
+        try {
+          const errorData = JSON.parse(errorText);
+          throw new Error(errorData.message || "Failed to update task status");
+        } catch (e) {
+          throw new Error(`Failed to update task status: ${errorText}`);
+        }
       }
-  
-      const result = await response.json();
-      const updatedTask = result.task;
-  
-      // ✅ Replace task in the list with updated data
+
+      const responseData = await response.json();
+      const updatedTask = responseData.task;
+
+      // Optimized state update logic
       setTasks((prev) => {
-        const from =
-          newStatus === "In Progress"
-            ? "assigned"
-            : newStatus === "Completed"
-            ? "inProgress"
-            : null;
-        const to =
-          newStatus === "In Progress"
-            ? "inProgress"
-            : newStatus === "Completed"
-            ? "completed"
-            : null;
-  
-        if (!from || !to) return prev;
-  
-        const updatedFrom = prev[from].filter((t) => t._id !== taskId);
-        const updatedTo = [...prev[to], updatedTask];
-  
-        return {
-          ...prev,
-          [from]: updatedFrom,
-          [to]: updatedTo,
+        const statusMap = {
+          Pending: "assigned",
+          "In Progress": "inProgress",
+          Completed: "completed",
         };
+
+        const newState = { ...prev };
+        const oldStatusKey = Object.keys(prev).find((key) =>
+          prev[key].some((t) => t._id === taskId)
+        );
+
+        if (oldStatusKey) {
+          newState[oldStatusKey] = newState[oldStatusKey].filter(
+            (t) => t._id !== taskId
+          );
+        }
+
+        const newStatusKey = statusMap[newStatus];
+        if (newStatusKey) {
+          newState[newStatusKey] = [
+            ...(newState[newStatusKey] || []),
+            updatedTask,
+          ];
+        }
+
+        return newState;
       });
+
+      return updatedTask;
     } catch (err) {
       setError(err.message);
       console.error("Update error:", err);
-      fetchAssignedTasks(); // fallback to reload
+      // Consider adding a retry mechanism instead of immediate refresh
+      return null;
     } finally {
       setUpdatingTasks((prev) => {
         const newSet = new Set(prev);
@@ -137,7 +192,6 @@ const EmpTaskList = () => {
       });
     }
   };
-  
 
   const handleTaskLimitChange = (section, increment) => {
     setTaskLimits((prev) => ({
@@ -167,25 +221,39 @@ const EmpTaskList = () => {
     const hours = Math.floor(diffMins / 60);
     const minutes = diffMins % 60;
     const days = Math.floor(diffMins / 1440);
-  
+
     if (days > 0) return `${days} day(s), ${hours % 24} hr ${minutes} min`;
     if (hours > 0) return `${hours} hr ${minutes} min`;
     return `${minutes} min`;
   };
-  
-  const renderTaskRows = (taskList, section) =>
-    taskList.slice(0, taskLimits[section]).map((task) => (
-      <TaskCardWithTimer
-        key={task._id}
-        task={task}
-        section={section}
-        updateTaskStatus={updateTaskStatus}
-        updatingTasks={updatingTasks}
-        getPriorityColor={getPriorityColor}
-      />
-    ));
-  
-    
+
+  const renderTaskRows = (taskList, section) => {
+    if (taskList.length === 0) {
+      return (
+        <div className="col-span-full text-center text-gray-500">
+          No tasks{" "}
+          {section === "assigned"
+            ? "assigned"
+            : section === "inProgress"
+            ? "in progress"
+            : "completed"}
+        </div>
+      );
+    }
+
+    return taskList
+      .slice(0, taskLimits[section])
+      .map((task) => (
+        <TaskCardWithTimer
+          key={task._id}
+          task={task}
+          section={section}
+          updateTaskStatus={updateTaskStatus}
+          updatingTasks={updatingTasks}
+          getPriorityColor={getPriorityColor}
+        />
+      ));
+  };
 
   if (loading)
     return (
