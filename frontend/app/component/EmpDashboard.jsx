@@ -27,7 +27,7 @@ export default function EmployeeDashboard() {
 
         // Fetch employee tasks
         const tasksResponse = await fetch(
-          `http://localhost:5023/api/tasks/employee/${empId}`
+          `http://localhost:5023/api/batches/${empId}/tasks`
         );
         const tasksData = await tasksResponse.json();
         setTasks(tasksData);
