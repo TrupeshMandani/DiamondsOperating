@@ -81,23 +81,37 @@ export const updateTaskStatus = async (req, res) => {
       console.log("Diamonds completed:", task.diamondNumber);
       console.log("Calculated earnings:", Earning);
 
+      // Use task.endTime to determine the month and year
+      const endTime = task.endTime;
       console.log("Updating earnings for:", {
         employeeId: task.employeeId,
-        month: new Date().getMonth() + 1,
-        year: new Date().getFullYear(),
+        month: endTime.getMonth() + 1, // getMonth() returns 0-11
+        year: endTime.getFullYear(),
       });
 
-      // Save earnings to Earning model
-      const now = new Date();
-      await Earnings.findOneAndUpdate(
+      // Add logging before the update query to verify the data being sent to the database
+      console.log("Updating earnings in the database for:", {
+        employeeId: task.employeeId,
+        month: endTime.getMonth() + 1, // The month (1-12)
+        year: endTime.getFullYear(), // The year
+        earnings: Earning,
+      });
+
+      // Save earnings to Earning model using task's endTime
+      const earningsUpdate = await Earnings.findOneAndUpdate(
         {
           employeeId: task.employeeId,
-          month: now.getMonth() + 1,
-          year: now.getFullYear(),
+          month: endTime.getMonth() + 1,
+          year: endTime.getFullYear(),
         },
-        { $inc: { totalEarnings: Earning } },
-        { upsert: true, new: true }
+        {
+          $inc: { totalEarnings: Earning }, // Increment earnings by the calculated value
+          $set: { updatedAt: new Date() }, // Set updatedAt to the current time
+        },
+        { upsert: true, new: true } // Create new document if it doesn't exist, return the updated document
       );
+
+      console.log("Earnings updated:", earningsUpdate);
     }
 
     task.status = status;
@@ -111,6 +125,7 @@ export const updateTaskStatus = async (req, res) => {
       task,
     });
   } catch (error) {
+    console.error("Error updating task status:", error);
     res.status(500).json({
       message: "Error updating task status",
       error: error.message,
