@@ -21,9 +21,12 @@ const InfoModal = ({ isOpen, onClose, title, items }) => {
     items[0].description !== undefined;
 
   const filterByDate = (task) => {
-    if (!task.completedAt) return false;
-
     const now = new Date();
+
+    if (!task.completedAt) {
+      return taskFilter === "all";
+    }
+
     const taskDate = new Date(task.completedAt);
     const diffInMs = now - taskDate;
     const diffInDays = diffInMs / (1000 * 60 * 60 * 24);
@@ -177,22 +180,47 @@ const InfoModal = ({ isOpen, onClose, title, items }) => {
             </div>
           </div>
         ) : (
-          <ul className="space-y-2 text-sm text-gray-700">
-            {items.length > 0 ? (
-              items.map((item, index) => (
-                <li key={index} className="border-b pb-1">
-                  <div>{item.message || item}</div>
-                  {item.createdAt && (
-                    <div className="text-xs text-gray-500">
-                      {new Date(item.createdAt).toLocaleString()}
-                    </div>
-                  )}
-                </li>
-              ))
-            ) : (
-              <li>No data available.</li>
-            )}
-          </ul>
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border border-gray-200 rounded overflow-hidden">
+              <thead className="bg-gray-100 text-sm text-gray-700">
+                <tr>
+                  <th className="p-3 border">#</th>
+                  <th className="p-3 border">Message</th>
+                </tr>
+              </thead>
+              <tbody className="text-sm text-gray-800">
+                {items.length > 0 ? (
+                  items.map((item, index) => (
+                    <tr key={index} className="even:bg-gray-50">
+                      <td className="p-3 border">{index + 1}</td>
+                      <td className="p-3 border">
+                        {item.employeeId && typeof item.employeeId === "object" && item.taskId ? (
+                          <>
+                            Task completed by employee:{" "}
+                            <strong>{item.employeeId.firstName} {item.employeeId.lastName}</strong>{" "}
+                            (Task ID: {item.taskId})
+                          </>
+                        ) : (
+                          item.message || item
+                        )}
+                      </td>
+                      <td className="p-3 border">
+                        {item.createdAt
+                          ? new Date(item.createdAt).toLocaleString()
+                          : "N/A"}
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan="3" className="p-3 border text-center">
+                      No data available.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
         )}
 
         <div className="mt-6 text-center">
