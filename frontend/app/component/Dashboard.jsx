@@ -1,15 +1,22 @@
 import { useEffect, useState } from "react";
 import Sidebar from "./Sidebar";
 import BatchModal from "./BatchModal";
+import InfoModal from "./InfoModal";
 import { motion } from "framer-motion";
 import { Bell, CheckCircle, ClipboardList, Loader2, Users } from "lucide-react";
 import StatsCard from "./StatsCard";
+import io from "socket.io-client";
+
+const socket = io("http://localhost:5023");
 
 const Dashboard = () => {
   const [mounted, setMounted] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedBatch, setSelectedBatch] = useState(null);
-  const [selectedEmployee, setSelectedEmployee] = useState(null); // State for selected employee
+  const [selectedEmployee, setSelectedEmployee] = useState(null);
+  const [infoModalOpen, setInfoModalOpen] = useState(false);
+  const [infoModalTitle, setInfoModalTitle] = useState("");
+  const [infoModalItems, setInfoModalItems] = useState([]);
 
   const [batches, setBatches] = useState([]);
   const [employees, setEmployees] = useState([]);
@@ -19,12 +26,10 @@ const Dashboard = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // Fetch batch data
   const fetchBatches = async () => {
     try {
       const response = await fetch("http://localhost:5023/api/batches");
       if (!response.ok) throw new Error("Failed to fetch batches");
-
       const data = await response.json();
       setBatches(data);
     } catch (err) {
@@ -34,12 +39,10 @@ const Dashboard = () => {
     }
   };
 
-  // Fetch employee data
   const fetchEmployees = async () => {
     try {
       const response = await fetch("http://localhost:5023/api/employees");
       if (!response.ok) throw new Error("Failed to fetch employees");
-
       const data = await response.json();
       setEmployees(data);
     } catch (err) {
@@ -47,27 +50,39 @@ const Dashboard = () => {
     }
   };
 
+  const fetchTasks = async () => {
+    try {
+      const response = await fetch("http://localhost:5023/api/tasks");
+      if (!response.ok) throw new Error("Failed to fetch tasks");
+      const data = await response.json();
+      const completed = data.filter((task) => task.status === "Completed");
+      const pending = data.filter(
+        (task) => task.status === "Pending" || task.status === "In Progress"
+      );
+      setCompletedTasks(completed);
+      setPendingTasks(pending);
+    } catch (err) {
+      console.error("Task fetch error:", err.message);
+    }
+  };
+
   useEffect(() => {
     setMounted(true);
-    fetchEmployees(); // Fetch employee data
+    fetchEmployees();
     fetchBatches();
+    fetchTasks();
 
-    // Static data for demo purposes (you can remove this when using real API)
-    setCompletedTasks([
-      { id: 1, task: "Complete Report", status: "Completed" },
-      { id: 2, task: "Approve Budget", status: "Completed" },
-    ]);
+    socket.on("taskCompletedNotification", (data) => {
+      setNotifications((prev) => [
+        `${data.message} (Task ID: ${data.taskId})`,
+        ...prev,
+      ]);
+      fetchTasks();
+    });
 
-    setPendingTasks([
-      { id: 3, task: "Review Code", status: "Pending" },
-      { id: 4, task: "Client Meeting", status: "Pending" },
-    ]);
-
-    setNotifications([
-      "New project assigned to John Doe",
-      "Meeting scheduled with CEO",
-      "Deadline reminder for Budget Approval",
-    ]);
+    return () => {
+      socket.off("taskCompletedNotification");
+    };
   }, []);
 
   if (!mounted || loading) {
@@ -106,6 +121,12 @@ const Dashboard = () => {
   const closeBatchModal = () => {
     setSelectedBatch(null);
     setModalOpen(false);
+  };
+
+  const openModal = (title, items) => {
+    setInfoModalTitle(title);
+    setInfoModalItems(items);
+    setInfoModalOpen(true);
   };
 
   const getIcon = (iconName) => {
@@ -163,7 +184,6 @@ const Dashboard = () => {
             </motion.div>
           </div>
 
-          {/* Stats Cards */}
           <motion.div
             initial={{ y: 20, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
@@ -255,6 +275,15 @@ const Dashboard = () => {
             isOpen={modalOpen}
             onClose={closeBatchModal}
             batch={selectedBatch}
+          />
+        )}
+
+        {infoModalOpen && (
+          <InfoModal
+            isOpen={infoModalOpen}
+            onClose={() => setInfoModalOpen(false)}
+            title={infoModalTitle}
+            items={infoModalItems}
           />
         )}
       </motion.div>

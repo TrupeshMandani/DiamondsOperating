@@ -10,20 +10,6 @@ const EmpTaskCard = ({ task, status, updateTaskStatus }) => {
   const [elapsedTime, setElapsedTime] = useState(null);
   const [isUpdating, setIsUpdating] = useState(false);
 
-  // WebSocket connection to listen for updates
-  useEffect(() => {
-    const socket = new WebSocket("ws://localhost:5023");
-
-    socket.onmessage = (event) => {
-      const message = JSON.parse(event.data);
-      if (message.type === "taskUpdated" && message.taskId === task._id) {
-        updateTaskStatus(task._id, message.newStatus.toLowerCase());
-      }
-    };
-
-    return () => socket.close();
-  }, [task._id, updateTaskStatus]);
-
   // Time calculation effect
   useEffect(() => {
     let interval;

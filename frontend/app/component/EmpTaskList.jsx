@@ -8,7 +8,9 @@ import { Button } from "@/components/ui/button";
 import { Calendar, Clock } from "lucide-react";
 import TaskCardWithTimer from "./EmpTaskCardWithTimer"; // adjust path
 // Removed the import for Switch
+import { io } from "socket.io-client";
 
+const socket = io("http://localhost:5023");
 const EmpTaskList = () => {
   const [tasks, setTasks] = useState({
     assigned: [],
@@ -50,11 +52,14 @@ const EmpTaskList = () => {
         throw new Error(`Failed to fetch tasks: ${await response.text()}`);
 
       const data = await response.json();
+
+      // Now, update the state with all tasks, including assigned tasks
       setTasks({
         assigned: data.filter((task) => task.status === "Pending"),
         inProgress: data.filter((task) => task.status === "In Progress"),
         completed: data.filter((task) => task.status === "Completed"),
       });
+
       setError(null);
     } catch (err) {
       setError(err.message);
@@ -65,13 +70,55 @@ const EmpTaskList = () => {
 
   useEffect(() => {
     fetchAssignedTasks();
+
+    // ✅ Listen for WebSocket updates for task assignment
+    socket.on("taskAssigned", (newTask) => {
+      console.log("Real-time task assigned:", newTask);
+
+      // Get logged-in employee ID
+      const employeeId = localStorage.getItem("employeeId");
+
+      // Only update tasks if the assigned task is for this employee
+      if (newTask.employeeId === employeeId) {
+        // Update the task state for the specific employee immediately
+        setTasks((prevTasks) => ({
+          assigned: [...prevTasks.assigned, newTask], // Add new pending task
+          inProgress: prevTasks.inProgress,
+          completed: prevTasks.completed,
+        }));
+      }
+
+      // Immediately call fetchAssignedTasks to refresh the full list from the backend
+      fetchAssignedTasks(); // This will fetch the latest tasks with updated batch ID
+    });
+
+    // ✅ Listen for WebSocket updates for task deletion
+    socket.on("taskDeleted", ({ taskId }) => {
+      console.log("Real-time task deleted:", taskId);
+
+      // Update tasks by removing the deleted task
+      setTasks((prevTasks) => ({
+        assigned: prevTasks.assigned.filter((task) => task._id !== taskId),
+        inProgress: prevTasks.inProgress.filter((task) => task._id !== taskId),
+        completed: prevTasks.completed.filter((task) => task._id !== taskId),
+      }));
+    });
+
+    return () => {
+      socket.off("taskAssigned"); // Cleanup when component unmounts
+      socket.off("taskDeleted"); // Cleanup when component unmounts
+    };
   }, []);
 
   const updateTaskStatus = async (taskId, newStatus) => {
     try {
-      if (!taskId || !/^[0-9a-fA-F]{24}$/.test(taskId)) {
-        throw new Error("Invalid task ID format");
+      // Modified condition to handle different ID formats
+      if (!taskId) {
+        throw new Error("Task ID is missing");
       }
+
+      // Add debug logging to help diagnose the issue
+      console.log("Updating task with ID:", taskId, typeof taskId);
 
       setUpdatingTasks((prev) => new Set([...prev, taskId]));
 
@@ -88,12 +135,17 @@ const EmpTaskList = () => {
         body: JSON.stringify({ status: newStatus }),
       });
 
-      const responseData = await response.json();
-
       if (!response.ok) {
-        throw new Error(responseData.message || "Failed to update task status");
+        const errorText = await response.text();
+        try {
+          const errorData = JSON.parse(errorText);
+          throw new Error(errorData.message || "Failed to update task status");
+        } catch (e) {
+          throw new Error(`Failed to update task status: ${errorText}`);
+        }
       }
 
+      const responseData = await response.json();
       const updatedTask = responseData.task;
 
       // Optimized state update logic
@@ -131,8 +183,7 @@ const EmpTaskList = () => {
       setError(err.message);
       console.error("Update error:", err);
       // Consider adding a retry mechanism instead of immediate refresh
-      setTimeout(fetchAssignedTasks, 3000);
-      throw err;
+      return null;
     } finally {
       setUpdatingTasks((prev) => {
         const newSet = new Set(prev);
@@ -176,8 +227,21 @@ const EmpTaskList = () => {
     return `${minutes} min`;
   };
 
-  const renderTaskRows = (taskList, section) =>
-    taskList
+  const renderTaskRows = (taskList, section) => {
+    if (taskList.length === 0) {
+      return (
+        <div className="col-span-full text-center text-gray-500">
+          No tasks{" "}
+          {section === "assigned"
+            ? "assigned"
+            : section === "inProgress"
+            ? "in progress"
+            : "completed"}
+        </div>
+      );
+    }
+
+    return taskList
       .slice(0, taskLimits[section])
       .map((task) => (
         <TaskCardWithTimer
@@ -189,6 +253,7 @@ const EmpTaskList = () => {
           getPriorityColor={getPriorityColor}
         />
       ));
+  };
 
   if (loading)
     return (

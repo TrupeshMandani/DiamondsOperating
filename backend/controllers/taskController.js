@@ -1,8 +1,6 @@
 import Task from "../models/taskModel.js";
 import Earnings from "../models/earnings.js";
 import mongoose from "mongoose";
-import { broadcastTaskUpdate } from "../index.js";
-
 const FIXED_CHARGE_PER_DIAMOND = 0.25;
 
 // Get all tasks
@@ -70,12 +68,11 @@ export const updateTaskStatus = async (req, res) => {
       task.endTime = new Date();
       if (task.startTime) {
         const durationMs = task.endTime.getTime() - task.startTime.getTime();
-        task.durationInMinutes = Math.round(durationMs / 60000); // convert ms to minutes
+        task.durationInMinutes = Math.round(durationMs / 60000);
       }
 
-      // Calculate earnings
       const Earning = task.diamondNumber * FIXED_CHARGE_PER_DIAMOND;
-      task.completedAt = new Date(); // Mark task as completed
+      task.completedAt = new Date();
 
       console.log("Task completed by employee:", task.employeeId);
       console.log("Diamonds completed:", task.diamondNumber);
@@ -112,13 +109,20 @@ export const updateTaskStatus = async (req, res) => {
       );
 
       console.log("Earnings updated:", earningsUpdate);
+
+      // 🔔 Emit taskCompletedNotification to manager
+      if (req.io) {
+        req.io.emit("taskCompletedNotification", {
+          message: `Task completed by employee: ${task.employeeId}`,
+          taskId: task._id,
+          employeeId: task.employeeId,
+          process: task.process,
+        });
+      }
     }
 
     task.status = status;
     await task.save();
-
-    // Broadcast the update
-    broadcastTaskUpdate(task);
 
     res.status(200).json({
       message: "Task status updated successfully",
@@ -141,9 +145,7 @@ export const deleteTask = async (req, res) => {
     console.log("Received taskId:", taskId);
 
     if (!taskId || !mongoose.Types.ObjectId.isValid(taskId)) {
-      return res
-        .status(400)
-        .json({ message: "Invalid task ID format", taskId });
+      return res.status(400).json({ message: "Invalid task ID format", taskId });
     }
 
     const task = await Task.findById(taskId);
@@ -158,6 +160,10 @@ export const deleteTask = async (req, res) => {
 
     if (!deletedTask) {
       return res.status(500).json({ message: "Task could not be deleted" });
+    }
+
+    if (req.io) {
+      req.io.emit("taskDeleted", { taskId, employeeId: task.employeeId });
     }
 
     res.status(200).json({
