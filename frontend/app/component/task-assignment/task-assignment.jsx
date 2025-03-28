@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, AlertCircle } from "lucide-react";
 import { motion } from "framer-motion";
 import {
   Card,
@@ -22,7 +22,6 @@ import io from "socket.io-client";
 
 import { TaskAssignmentDialog } from "./task-assignment-dialog";
 import { TaskCard } from "./task-card";
-import { ProcessFlow } from "./process-flow";
 import { EmptyTasksPlaceholder } from "./empty-tasks-placeholder";
 import { useTaskManagement } from "./use-task-management";
 import { useBatchManagement } from "./use-batch-management";
@@ -35,6 +34,7 @@ export default function TaskAssignment() {
   const [selectedProcess, setSelectedProcess] = useState(PROCESS_TYPES[0]);
   const [isAssigningTask, setIsAssigningTask] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
+  const [availableProcesses, setAvailableProcesses] = useState([]);
 
   const {
     batches,
@@ -67,9 +67,31 @@ export default function TaskAssignment() {
     fetchEmployees();
   }, [fetchBatches, fetchEmployees]);
 
+  useEffect(() => {
+    // Update available processes when selected batch changes
+    if (selectedBatch) {
+      // Check if selectedProcesses exists (new format) or use currentProcess (old format)
+      const processes =
+        selectedBatch.selectedProcesses ||
+        (Array.isArray(selectedBatch.currentProcess)
+          ? selectedBatch.currentProcess
+          : [selectedBatch.currentProcess]);
+
+      setAvailableProcesses(processes);
+
+      // If current selected process is not in available processes, select the first available one
+      if (processes.length > 0 && !processes.includes(selectedProcess)) {
+        setSelectedProcess(processes[0]);
+      }
+    }
+  }, [selectedBatch, selectedProcess]);
+
   const handleProcessSelect = (process) => {
-    setSelectedProcess(process);
-    setCurrentPage(1);
+    // Only allow selecting processes that are available for this batch
+    if (availableProcesses.includes(process)) {
+      setSelectedProcess(process);
+      setCurrentPage(1);
+    }
   };
 
   const filteredTasks = tasks.filter(
@@ -129,6 +151,9 @@ export default function TaskAssignment() {
                     Current Process: {selectedBatch.currentProcess} | Status:{" "}
                     {selectedBatch.status}
                   </CardDescription>
+                  <div className="mt-1 text-sm text-gray-500">
+                    Available Processes: {availableProcesses.join(", ")}
+                  </div>
                 </div>
                 <TaskAssignmentDialog
                   isOpen={isAssigningTask}
@@ -143,71 +168,95 @@ export default function TaskAssignment() {
               </div>
             </CardHeader>
             <CardContent className="p-0">
-              <Tabs defaultValue={PROCESS_TYPES[0]} className="w-full">
+              <Tabs
+                defaultValue={availableProcesses[0] || PROCESS_TYPES[0]}
+                className="w-full"
+              >
                 <TabsList className="w-full justify-start border-b rounded-none bg-gray-50 p-0">
-                  {PROCESS_TYPES.map((process, index) => (
-                    <TabsTrigger
-                      key={`process-tab-${process}-${index}`}
-                      value={process}
-                      onClick={() => handleProcessSelect(process)}
-                      className="flex-1 py-3 data-[state=active]:border-b-2 data-[state=active]:border-blue-600 rounded-none"
-                    >
-                      {process}
-                    </TabsTrigger>
-                  ))}
+                  {PROCESS_TYPES.map((process, index) => {
+                    const isAvailable = availableProcesses.includes(process);
+                    return (
+                      <TabsTrigger
+                        key={`process-tab-${process}-${index}`}
+                        value={process}
+                        onClick={() => handleProcessSelect(process)}
+                        className={`flex-1 py-3 data-[state=active]:border-b-2 data-[state=active]:border-blue-600 rounded-none ${
+                          !isAvailable ? "opacity-50 cursor-not-allowed" : ""
+                        }`}
+                        disabled={!isAvailable}
+                      >
+                        {process}
+                        {!isAvailable && " (N/A)"}
+                      </TabsTrigger>
+                    );
+                  })}
                 </TabsList>
-                {PROCESS_TYPES.map((process, index) => (
-                  <TabsContent
-                    key={`tab-content-${process}-${index}`}
-                    value={process}
-                    className="p-4"
-                  >
-                    <motion.div
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ duration: 0.5 }}
-                      className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"
+                {PROCESS_TYPES.map((process, index) => {
+                  const isAvailable = availableProcesses.includes(process);
+                  return (
+                    <TabsContent
+                      key={`tab-content-${process}-${index}`}
+                      value={process}
+                      className="p-4"
                     >
-                      {paginatedTasks.length > 0 ? (
-                        paginatedTasks.map((task, index) => (
-                          <TaskCard
-                            key={`${getTaskId(task)}-${index}`}
-                            task={task}
-                            handleDeleteTask={handleDeleteTask}
-                          />
-                        ))
+                      {!isAvailable ? (
+                        <div className="col-span-full flex flex-col items-center justify-center py-8 text-gray-500">
+                          <AlertCircle className="h-12 w-12 mb-2 text-gray-400" />
+                          <p>
+                            Process {process} was not selected for this batch
+                          </p>
+                        </div>
                       ) : (
-                        <EmptyTasksPlaceholder
-                          process={process}
-                          setIsAssigningTask={setIsAssigningTask}
-                        />
+                        <motion.div
+                          initial={{ opacity: 0, y: 10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ duration: 0.5 }}
+                          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"
+                        >
+                          {paginatedTasks.length > 0 ? (
+                            paginatedTasks.map((task, index) => (
+                              <TaskCard
+                                key={`${getTaskId(task)}-${index}`}
+                                task={task}
+                                handleDeleteTask={handleDeleteTask}
+                              />
+                            ))
+                          ) : (
+                            <EmptyTasksPlaceholder
+                              process={process}
+                              setIsAssigningTask={setIsAssigningTask}
+                            />
+                          )}
+                        </motion.div>
                       )}
-                    </motion.div>
-                    <div className="flex justify-center space-x-4 mt-4">
-                      <button
-                        onClick={() =>
-                          setCurrentPage((prev) => Math.max(prev - 1, 1))
-                        }
-                        disabled={currentPage === 1}
-                      >
-                        Prev
-                      </button>
-                      <span>
-                        Page {currentPage} of {totalPages}
-                      </span>
-                      <button
-                        onClick={() =>
-                          setCurrentPage((prev) =>
-                            Math.min(prev + 1, totalPages)
-                          )
-                        }
-                        disabled={currentPage === totalPages}
-                      >
-                        Next
-                      </button>
-                    </div>
-                  </TabsContent>
-                ))}
+                      {isAvailable && paginatedTasks.length > 0 && (
+                        <div className="flex justify-center space-x-4 mt-4">
+                          <button
+                            onClick={() =>
+                              setCurrentPage((prev) => Math.max(prev - 1, 1))
+                            }
+                            disabled={currentPage === 1}
+                          >
+                            Prev
+                          </button>
+                          <span>
+                            Page {currentPage} of {totalPages}
+                          </span>
+                          <button
+                            onClick={() =>
+                              setCurrentPage((prev) =>
+                                Math.min(prev + 1, totalPages)
+                              )
+                            }
+                            disabled={currentPage === totalPages}
+                          >
+                            Next
+                          </button>
+                        </div>
+                      )}
+                    </TabsContent>
+                  );
+                })}
               </Tabs>
             </CardContent>
           </Card>

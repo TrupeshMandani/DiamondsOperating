@@ -13,7 +13,9 @@ export function useBatchManagement(socket) {
     const handleBatchUpdate = (updatedBatch) => {
       setBatches((prev) =>
         prev.map((batch) =>
-          batch.batchId === updatedBatch.batchId ? { ...batch, ...updatedBatch } : batch
+          batch.batchId === updatedBatch.batchId
+            ? { ...batch, ...updatedBatch }
+            : batch
         )
       );
 
@@ -36,7 +38,18 @@ export function useBatchManagement(socket) {
       const res = await fetch("http://localhost:5023/api/batches");
       if (!res.ok) throw new Error("Failed to fetch batches");
       const data = await res.json();
-      setBatches(data);
+
+      // Ensure each batch has a selectedProcesses property
+      const processedBatches = data.map((batch) => ({
+        ...batch,
+        selectedProcesses:
+          batch.selectedProcesses ||
+          (Array.isArray(batch.currentProcess)
+            ? batch.currentProcess
+            : [batch.currentProcess]),
+      }));
+
+      setBatches(processedBatches);
     } catch (err) {
       console.error("Error fetching batches:", err);
     } finally {
@@ -58,10 +71,27 @@ export function useBatchManagement(socket) {
   }, []);
 
   // ✅ Select a batch
-  const handleBatchSelect = useCallback((batchId) => {
-    const batch = batches.find((b) => b.batchId === batchId);
-    setSelectedBatch(batch || null);
-  }, [batches]);
+  const handleBatchSelect = useCallback(
+    (batchId) => {
+      const batch = batches.find((b) => b.batchId === batchId);
+
+      // Ensure the batch has a selectedProcesses property
+      if (batch) {
+        const enhancedBatch = {
+          ...batch,
+          selectedProcesses:
+            batch.selectedProcesses ||
+            (Array.isArray(batch.currentProcess)
+              ? batch.currentProcess
+              : [batch.currentProcess]),
+        };
+        setSelectedBatch(enhancedBatch);
+      } else {
+        setSelectedBatch(null);
+      }
+    },
+    [batches]
+  );
 
   // 🔁 Fetch updated batch
   const fetchUpdatedBatch = useCallback(async (batchId) => {
@@ -72,8 +102,19 @@ export function useBatchManagement(socket) {
       const updatedBatch = await res.json();
       console.log("Updated Batch Data:", updatedBatch);
 
+      // Ensure the batch has a selectedProcesses property
+      const enhancedBatch = {
+        ...updatedBatch,
+        selectedProcesses:
+          updatedBatch.selectedProcesses ||
+          (Array.isArray(updatedBatch.currentProcess)
+            ? updatedBatch.currentProcess
+            : [updatedBatch.currentProcess]),
+      };
+
       setSelectedBatch((prev) => ({
         ...prev,
+        ...enhancedBatch,
         currentProcess: updatedBatch.currentProcess,
       }));
     } catch (err) {

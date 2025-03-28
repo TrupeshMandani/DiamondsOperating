@@ -181,6 +181,22 @@ export function useTaskManagement(
         return;
       }
 
+      // Check if the selected process is available for this batch
+      const availableProcesses =
+        selectedBatch.selectedProcesses ||
+        (Array.isArray(selectedBatch.currentProcess)
+          ? selectedBatch.currentProcess
+          : [selectedBatch.currentProcess]);
+
+      if (!availableProcesses.includes(selectedProcess)) {
+        alert(
+          `Process "${selectedProcess}" is not available for this batch. Available processes: ${availableProcesses.join(
+            ", "
+          )}`
+        );
+        return;
+      }
+
       console.log("Selected Process Before Sending:", selectedProcess);
 
       const taskData = {
@@ -204,7 +220,8 @@ export function useTaskManagement(
       });
 
       if (!response.ok) {
-        throw new Error(`Failed to assign task: ${await response.text()}`);
+        const errorText = await response.text();
+        throw new Error(`Failed to assign task: ${errorText}`);
       }
 
       const assignedTask = await response.json();

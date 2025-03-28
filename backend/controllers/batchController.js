@@ -19,6 +19,7 @@ export const generateQRCode = async (req, res) => {
       batchNumber: batch.batchId,
       customer: batch.firstName,
       currentProcess: batch.currentProcess,
+      selectedProcesses: batch.selectedProcesses || [batch.currentProcess],
     };
 
     // Convert the batch data to a string and generate the QR code
@@ -113,6 +114,7 @@ export const getBatches = async (req, res) => {
       .json({ message: "Error fetching batches", error: error.message });
   }
 };
+
 // Get Batch By Id
 export const getBatchByID = async (req, res) => {
   try {
@@ -137,6 +139,7 @@ export const getBatchByID = async (req, res) => {
       expectedDate: batch.expectedDate,
       currentDate: batch.currentDate,
       currentProcess: batch.currentProcess,
+      selectedProcesses: batch.selectedProcesses || [batch.currentProcess], // Include selected processes
       status: batch.status,
       progress: batch.progress,
     });
@@ -174,6 +177,7 @@ export const getBatchProgress = async (req, res) => {
       batchId: batch.batchId,
       materialType: batch.materialType,
       currentProcess: batch.currentProcess,
+      selectedProcesses: batch.selectedProcesses || [batch.currentProcess],
       status: batch.status,
       totalTasks,
       completedTasks,
@@ -185,6 +189,7 @@ export const getBatchProgress = async (req, res) => {
       .json({ message: "Error fetching batch progress", error: error.message });
   }
 };
+
 // Update batch details
 export const updateBatch = async (req, res) => {
   try {
@@ -197,12 +202,16 @@ export const updateBatch = async (req, res) => {
       return res.status(404).json({ message: "Batch not found 11" });
     }
 
-    const validStages = ["Sarin", "Stitching", "4P Cutting"];
+    const validStages = batch.selectedProcesses || [
+      "Sarin",
+      "Stitching",
+      "4P Cutting",
+    ];
 
-    // Validate if the stage is valid
+    // Validate if the stage is valid for this batch
     if (!validStages.includes(stage)) {
       return res.status(400).json({
-        message: "Invalid stage",
+        message: "Invalid stage for this batch",
         validStages: validStages,
       });
     }
@@ -300,10 +309,19 @@ export const assignBatchToEmployee = async (req, res) => {
 
     // Find the batch
     const batch = await Batch.findOne({ batchId }).select(
-      "batchId currentProcess"
+      "batchId currentProcess selectedProcesses"
     );
     if (!batch) {
       return res.status(404).json({ message: "Batch not found" });
+    }
+
+    // Check if the process is valid for this batch
+    const selectedProcesses = batch.selectedProcesses || [batch.currentProcess];
+    if (!selectedProcesses.includes(process)) {
+      return res.status(400).json({
+        message: `Process "${process}" is not available for this batch`,
+        availableProcesses: selectedProcesses,
+      });
     }
 
     const employee = await Employee.findById(employeeId).select(
@@ -367,7 +385,7 @@ export const getTasksForEmployee = async (req, res) => {
 
     const tasks = await Task.find({ employeeId }).populate(
       "batchId",
-      "batchTitle currentProcess"
+      "batchTitle currentProcess selectedProcesses"
     );
 
     if (!tasks || tasks.length === 0) {
