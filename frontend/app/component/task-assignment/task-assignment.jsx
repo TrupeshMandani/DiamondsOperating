@@ -30,7 +30,7 @@ const PROCESS_TYPES = ["Sarin", "Stitching", "4P Cutting"];
 const socket = io("http://localhost:5023");
 const ITEMS_PER_PAGE = 6;
 
-export default function TaskAssignment() {
+export default function TaskAssignment({ selectedBatchId }) {
   const [selectedProcess, setSelectedProcess] = useState(PROCESS_TYPES[0]);
   const [isAssigningTask, setIsAssigningTask] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
@@ -45,7 +45,7 @@ export default function TaskAssignment() {
     fetchEmployees,
     handleBatchSelect,
     fetchUpdatedBatch,
-  } = useBatchManagement(socket);
+  } = useBatchManagement(socket, selectedBatchId);
 
   const {
     tasks,
@@ -77,10 +77,8 @@ export default function TaskAssignment() {
           ? selectedBatch.currentProcess
           : [selectedBatch.currentProcess]);
 
-      // Fix for nested arrays - flatten if needed
-      if (Array.isArray(processes[0])) {
-        processes = processes.flat();
-      }
+      // Flatten the array if it's nested
+      processes = Array.isArray(processes[0]) ? processes.flat() : processes;
 
       setAvailableProcesses(processes);
 
@@ -90,6 +88,13 @@ export default function TaskAssignment() {
       }
     }
   }, [selectedBatch, selectedProcess]);
+
+  // If a selectedBatchId is provided, select that batch
+  useEffect(() => {
+    if (selectedBatchId && batches.length > 0) {
+      handleBatchSelect(selectedBatchId);
+    }
+  }, [selectedBatchId, batches, handleBatchSelect]);
 
   const handleProcessSelect = (process) => {
     // Only allow selecting processes that are available for this batch
@@ -121,30 +126,34 @@ export default function TaskAssignment() {
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5 }}
-      className="container mx-auto p-6 text-black"
+      className="container mx-auto text-black"
     >
       <div className="flex flex-col space-y-6">
-        <div className="flex justify-between items-center">
-          <h1 className="text-2xl font-bold text-gray-800">Task Assignment</h1>
-          <Select
-            onValueChange={handleBatchSelect}
-            value={selectedBatch?.batchId || ""}
-          >
-            <SelectTrigger className="text-black w-[200px]">
-              <SelectValue placeholder="Select Batch" />
-            </SelectTrigger>
-            <SelectContent className="text-black bg-white">
-              {batches.map((batch, index) => (
-                <SelectItem
-                  key={`batch-${batch.batchId}-${index}`}
-                  value={batch.batchId}
-                >
-                  {batch.batchId} - {batch.status}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
+        {!selectedBatchId && (
+          <div className="flex justify-between items-center">
+            <h1 className="text-2xl font-bold text-gray-800">
+              Task Assignment
+            </h1>
+            <Select
+              onValueChange={handleBatchSelect}
+              value={selectedBatch?.batchId || ""}
+            >
+              <SelectTrigger className="text-black w-[200px]">
+                <SelectValue placeholder="Select Batch" />
+              </SelectTrigger>
+              <SelectContent className="text-black bg-white">
+                {batches.map((batch, index) => (
+                  <SelectItem
+                    key={`batch-${batch.batchId}-${index}`}
+                    value={batch.batchId}
+                  >
+                    {batch.batchId} - {batch.status}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
 
         {selectedBatch ? (
           <Card className="bg-white shadow-md">

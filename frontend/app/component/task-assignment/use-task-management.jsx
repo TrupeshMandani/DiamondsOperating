@@ -182,21 +182,18 @@ export function useTaskManagement(
       }
 
       // Check if the selected process is available for this batch
-      // FIX: Flatten the array structure to handle nested arrays
-      let availableProcesses =
+      const availableProcesses =
         selectedBatch.selectedProcesses ||
         (Array.isArray(selectedBatch.currentProcess)
           ? selectedBatch.currentProcess
           : [selectedBatch.currentProcess]);
 
-      // Fix for nested arrays - flatten if needed
-      if (Array.isArray(availableProcesses[0])) {
-        availableProcesses = availableProcesses.flat();
-      }
+      // Flatten the array if it's nested (handles both [["Sarin", "Stitching"]] and ["Sarin", "Stitching"] formats)
+      const flattenedProcesses = availableProcesses.flat();
 
-      if (!availableProcesses.includes(selectedProcess)) {
+      if (!flattenedProcesses.includes(selectedProcess)) {
         alert(
-          `Process "${selectedProcess}" is not available for this batch. Available processes: ${availableProcesses.join(
+          `Process "${selectedProcess}" is not available for this batch. Available processes: ${flattenedProcesses.join(
             ", "
           )}`
         );
