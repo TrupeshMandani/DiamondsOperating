@@ -1,6 +1,7 @@
-"use client"
+"use client";
 
-import { Button } from "@/components/ui/button"
+import { useState, useEffect } from "react";
+import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -9,10 +10,17 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "@/components/ui/dialog"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Textarea } from "@/components/ui/textarea"
-import { DatePicker } from "@/components/ui/date-picker"
+} from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
+import { DatePicker } from "@/components/ui/date-picker";
+import { AlertCircle } from "lucide-react";
 
 export function TaskAssignmentDialog({
   isOpen,
@@ -24,23 +32,73 @@ export function TaskAssignmentDialog({
   employees,
   handleAssignTask,
 }) {
+  const [availableProcesses, setAvailableProcesses] = useState([]);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    // Reset error when dialog opens/closes
+    setError("");
+
+    // Set available processes based on the selected batch
+    if (selectedBatch && selectedBatch.selectedProcesses) {
+      setAvailableProcesses(selectedBatch.selectedProcesses);
+    } else if (selectedBatch) {
+      // Fallback to currentProcess if selectedProcesses is not available
+      // This is for backward compatibility
+      setAvailableProcesses(
+        Array.isArray(selectedBatch.currentProcess)
+          ? selectedBatch.currentProcess
+          : [selectedBatch.currentProcess]
+      );
+    }
+  }, [selectedBatch, isOpen]);
+
+  const isProcessAvailable =
+    !selectedProcess ||
+    (availableProcesses && availableProcesses.includes(selectedProcess));
+
+  const handleSubmit = () => {
+    if (!isProcessAvailable) {
+      setError(
+        `Process "${selectedProcess}" is not available for this batch. Please select a valid process.`
+      );
+      return;
+    }
+
+    handleAssignTask();
+  };
+
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
-        <Button className="bg-blue-600 hover:bg-blue-700">Assign New Task</Button>
+        <Button className="bg-blue-600 hover:bg-blue-700">
+          Assign New Task
+        </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-[500px] bg-gray-50 text-black rounded-lg p-6">
         <DialogHeader>
-          <DialogTitle className="text-lg font-medium">Assign Task for {selectedProcess}</DialogTitle>
+          <DialogTitle className="text-lg font-medium">
+            Assign Task for {selectedProcess}
+          </DialogTitle>
           <DialogDescription className="text-sm text-gray-600">
-            Create a new task for batch {selectedBatch.batchId}
+            Create a new task for batch {selectedBatch?.batchId}
           </DialogDescription>
         </DialogHeader>
+
+        {error && (
+          <div className="flex items-start space-x-2 rounded-md border border-red-300 bg-red-50 p-3 text-sm text-red-800 mb-4">
+            <AlertCircle className="h-4 w-4 mt-0.5 text-red-600" />
+            <div>{error}</div>
+          </div>
+        )}
+
         <div className="grid gap-4">
           <div className="flex flex-col space-y-2">
             <label className="text-sm font-medium">Employee</label>
             <Select
-              onValueChange={(value) => setNewTask({ ...newTask, employeeId: value })}
+              onValueChange={(value) =>
+                setNewTask({ ...newTask, employeeId: value })
+              }
               value={newTask.employeeId}
               className="text-black"
             >
@@ -49,7 +107,10 @@ export function TaskAssignmentDialog({
               </SelectTrigger>
               <SelectContent className="text-black bg-white w-full">
                 {employees.map((employee, index) => (
-                  <SelectItem key={`employee-${employee._id}-${index}`} value={employee._id.toString()}>
+                  <SelectItem
+                    key={`employee-${employee._id}-${index}`}
+                    value={employee._id.toString()}
+                  >
                     {employee.firstName} {employee.lastName}
                   </SelectItem>
                 ))}
@@ -73,12 +134,17 @@ export function TaskAssignmentDialog({
           </div>
           <div className="flex flex-col space-y-2">
             <label className="text-sm font-medium">Due Date</label>
-            <DatePicker date={newTask.dueDate} setDate={(date) => setNewTask({ ...newTask, dueDate: date })} />
+            <DatePicker
+              date={newTask.dueDate}
+              setDate={(date) => setNewTask({ ...newTask, dueDate: date })}
+            />
           </div>
           <div className="flex flex-col space-y-2">
             <label className="text-sm font-medium">Priority</label>
             <Select
-              onValueChange={(value) => setNewTask({ ...newTask, priority: value })}
+              onValueChange={(value) =>
+                setNewTask({ ...newTask, priority: value })
+              }
               value={newTask.priority}
               className="text-black"
             >
@@ -97,12 +163,15 @@ export function TaskAssignmentDialog({
           <Button variant="outline" onClick={() => setIsOpen(false)}>
             Cancel
           </Button>
-          <Button onClick={handleAssignTask} className="ml-2">
+          <Button
+            onClick={handleSubmit}
+            className="ml-2"
+            disabled={!isProcessAvailable}
+          >
             Assign Task
           </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
-  )
+  );
 }
-

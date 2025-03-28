@@ -19,6 +19,7 @@ export const generateQRCode = async (req, res) => {
       batchNumber: batch.batchId,
       customer: batch.firstName,
       currentProcess: batch.currentProcess,
+      selectedProcesses: batch.selectedProcesses || [batch.currentProcess],
     };
 
     // Convert the batch data to a string and generate the QR code
@@ -49,30 +50,25 @@ export const createBatch = async (req, res) => {
     diamondWeight,
     diamondNumber,
     expectedDate,
-    currentProcess,
+    currentProcess, // This will now be an array
     assignedEmployee, // Optional
   } = req.body;
 
   try {
     let employee = null;
 
-    // Check if assignedEmployee is provided
     if (assignedEmployee) {
-      console.log("Received assignedEmployee ID:", assignedEmployee);
-
-      // Validate if assignedEmployee is a valid MongoDB ObjectId
       if (!mongoose.Types.ObjectId.isValid(assignedEmployee)) {
         return res.status(400).json({ message: "Invalid employee ID format" });
       }
 
-      // Find employee in the database
       employee = await Employee.findById(assignedEmployee);
       if (!employee) {
         return res.status(404).json({ message: "Assigned employee not found" });
       }
     }
 
-    // Create batch without assignedEmployee if not provided
+    // Create batch with multiple processes
     const newBatch = new Batch({
       batchId,
       materialType,
@@ -84,15 +80,14 @@ export const createBatch = async (req, res) => {
       diamondWeight,
       diamondNumber,
       expectedDate,
-      currentProcess,
+      currentProcess, // Store multiple selected processes
       processStartDate: new Date(),
       status: "Pending",
-      assignedEmployee: assignedEmployee || null, // Allow null initially
-      progress: {
-        Sarin: 0,
-        Stitching: 0,
-        "4P Cutting": 0,
-      },
+      assignedEmployee: assignedEmployee || null,
+      progress: currentProcess.reduce((acc, process) => {
+        acc[process] = 0;
+        return acc;
+      }, {}),
     });
 
     await newBatch.save();
@@ -119,6 +114,7 @@ export const getBatches = async (req, res) => {
       .json({ message: "Error fetching batches", error: error.message });
   }
 };
+
 // Get Batch By Id
 export const getBatchByID = async (req, res) => {
   try {
@@ -143,6 +139,7 @@ export const getBatchByID = async (req, res) => {
       expectedDate: batch.expectedDate,
       currentDate: batch.currentDate,
       currentProcess: batch.currentProcess,
+      selectedProcesses: batch.selectedProcesses || [batch.currentProcess], // Include selected processes
       status: batch.status,
       progress: batch.progress,
     });
@@ -180,6 +177,7 @@ export const getBatchProgress = async (req, res) => {
       batchId: batch.batchId,
       materialType: batch.materialType,
       currentProcess: batch.currentProcess,
+      selectedProcesses: batch.selectedProcesses || [batch.currentProcess],
       status: batch.status,
       totalTasks,
       completedTasks,
@@ -191,6 +189,7 @@ export const getBatchProgress = async (req, res) => {
       .json({ message: "Error fetching batch progress", error: error.message });
   }
 };
+
 // Update batch details
 export const updateBatch = async (req, res) => {
   try {
@@ -203,12 +202,16 @@ export const updateBatch = async (req, res) => {
       return res.status(404).json({ message: "Batch not found 11" });
     }
 
-    const validStages = ["Sarin", "Stitching", "4P Cutting"];
+    const validStages = batch.selectedProcesses || [
+      "Sarin",
+      "Stitching",
+      "4P Cutting",
+    ];
 
-    // Validate if the stage is valid
+    // Validate if the stage is valid for this batch
     if (!validStages.includes(stage)) {
       return res.status(400).json({
-        message: "Invalid stage",
+        message: "Invalid stage for this batch",
         validStages: validStages,
       });
     }
@@ -291,6 +294,7 @@ export const assignBatchToEmployee = async (req, res) => {
 
     console.log("Received Task Data:", req.body);
 
+    // Ensure all required fields are provided
     if (
       !batchId ||
       !employeeId ||
@@ -306,10 +310,30 @@ export const assignBatchToEmployee = async (req, res) => {
 
     // Find the batch
     const batch = await Batch.findOne({ batchId }).select(
-      "batchId currentProcess"
+      "batchId currentProcess selectedProcesses"
     );
     if (!batch) {
       return res.status(404).json({ message: "Batch not found" });
+    }
+
+    // Ensure currentProcess is treated as an array, even if it's a single string
+    let availableProcesses =
+      batch.selectedProcesses ||
+      (Array.isArray(batch.currentProcess)
+        ? batch.currentProcess
+        : [batch.currentProcess]);
+
+    // Flatten available processes if necessary (in case it's a nested array)
+    if (Array.isArray(availableProcesses[0])) {
+      availableProcesses = availableProcesses.flat();
+    }
+
+    // Check if the process is available for this batch
+    if (!availableProcesses.includes(process)) {
+      return res.status(400).json({
+        message: `Process "${process}" is not available for this batch`,
+        availableProcesses: availableProcesses,
+      });
     }
 
     const employee = await Employee.findById(employeeId).select(
@@ -319,9 +343,11 @@ export const assignBatchToEmployee = async (req, res) => {
       return res.status(404).json({ message: "Employee not found" });
     }
 
+    // Update batch with the new process
     batch.currentProcess = process;
     await batch.save();
 
+    // Assign the batch to the employee
     batch.assignedEmployee = employeeId;
     await batch.save();
 
@@ -373,7 +399,7 @@ export const getTasksForEmployee = async (req, res) => {
 
     const tasks = await Task.find({ employeeId }).populate(
       "batchId",
-      "batchTitle currentProcess"
+      "batchTitle currentProcess selectedProcesses"
     );
 
     if (!tasks || tasks.length === 0) {

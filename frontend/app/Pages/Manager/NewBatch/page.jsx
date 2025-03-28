@@ -36,6 +36,14 @@ export default function BatchCreationForm() {
   });
 
   const router = useRouter(); // Correctly using useRouter directly inside the component
+  const [selectedProcesses, setSelectedProcesses] = useState([]);
+
+  const handleChangeProcess = (e) => {
+    const { value, checked } = e.target;
+    setSelectedProcesses((prev) =>
+      checked ? [...prev, value] : prev.filter((process) => process !== value)
+    );
+  };
 
   useEffect(() => {
     // Regenerate a new Batch ID on mount
@@ -58,17 +66,16 @@ export default function BatchCreationForm() {
       phone: formData.phone,
       address: formData.address,
       diamondWeight: formData.diamondWeight,
-      diamondNumber: formData.numOfDiamonds, // Fixed field name
+      diamondNumber: formData.numOfDiamonds,
       expectedDate: formData.expectedDate,
       currentDate: formData.currentDate,
-      currentProcess: formData.currentProcess,
+      currentProcess: selectedProcesses, // Updated to include multiple processes
       processStartDate: new Date().toISOString(),
       status: "Pending",
-      progress: {
-        Sarin: 0,
-        Stitching: 0,
-        "4P Cutting": 0,
-      },
+      progress: selectedProcesses.reduce((acc, process) => {
+        acc[process] = 0;
+        return acc;
+      }, {}),
     };
 
     try {
@@ -78,8 +85,6 @@ export default function BatchCreationForm() {
       );
       toast.success("Batch Created Successfully!");
       alert("Batch Created successfully");
-
-      // Redirect to the dashboard after batch creation
     } catch (error) {
       console.error("Error Details:", error.response?.data || error.message);
       toast.error("Error Creating Batch!");
@@ -209,23 +214,60 @@ export default function BatchCreationForm() {
 
               {/* Current Process */}
               <div>
-                <Label htmlFor="currentProcess">Current Process</Label>
-                <Select
-                  name="currentProcess"
-                  value={formData.currentProcess} // Added value
-                  onValueChange={(value) =>
-                    setFormData({ ...formData, currentProcess: value })
-                  }
+                <Label
+                  htmlFor="processes"
+                  className="text-lg font-semibold text-gray-700"
                 >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select Current Process" />
-                  </SelectTrigger>
-                  <SelectContent className="bg-white text-black z-50">
-                    <SelectItem value="Sarin">Sarin</SelectItem>
-                    <SelectItem value="Stitching">Stitching</SelectItem>
-                    <SelectItem value="4P Cutting">4P Cutting</SelectItem>
-                  </SelectContent>
-                </Select>
+                  Processes to be Done
+                </Label>
+                <div className="flex items-center space-x-8 mt-4">
+                  {/* Sarin Process */}
+                  <div className="flex items-center space-x-2">
+                    <input
+                      type="checkbox"
+                      id="Sarin"
+                      name="processes"
+                      value="Sarin"
+                      onChange={handleChangeProcess}
+                      className="h-5 w-5 text-blue-600 border-gray-300 rounded"
+                    />
+                    <Label htmlFor="Sarin" className="text-gray-600">
+                      Sarin
+                    </Label>
+                  </div>
+                  {/* Connector Line */}
+                  <div className="h-1 w-16 bg-gray-300"></div>
+                  {/* Stitching Process */}
+                  <div className="flex items-center space-x-2">
+                    <input
+                      type="checkbox"
+                      id="Stitching"
+                      name="processes"
+                      value="Stitching"
+                      onChange={handleChangeProcess}
+                      className="h-5 w-5 text-blue-600 border-gray-300 rounded"
+                    />
+                    <Label htmlFor="Stitching" className="text-gray-600">
+                      Stitching
+                    </Label>
+                  </div>
+                  {/* Connector Line */}
+                  <div className="h-1 w-16 bg-gray-300"></div>
+                  {/* 4P Cutting Process */}
+                  <div className="flex items-center space-x-2">
+                    <input
+                      type="checkbox"
+                      id="4P Cutting"
+                      name="processes"
+                      value="4P Cutting"
+                      onChange={handleChangeProcess}
+                      className="h-5 w-5 text-blue-600 border-gray-300 rounded"
+                    />
+                    <Label htmlFor="4P Cutting" className="text-gray-600">
+                      4P Cutting
+                    </Label>
+                  </div>
+                </div>
               </div>
 
               {/* Diamond Weight & Number of Diamonds */}
