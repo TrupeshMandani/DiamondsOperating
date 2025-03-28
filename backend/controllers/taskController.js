@@ -124,6 +124,14 @@ export const updateTaskStatus = async (req, res) => {
     task.status = status;
     await task.save();
 
+    // Emit task updated event for real-time update
+    if (req.io) {
+      req.io.emit("taskUpdated", {
+        message: `Task status updated to ${status} for task: ${taskId}`,
+        task,
+      });
+    }
+
     res.status(200).json({
       message: "Task status updated successfully",
       task,
@@ -145,7 +153,9 @@ export const deleteTask = async (req, res) => {
     console.log("Received taskId:", taskId);
 
     if (!taskId || !mongoose.Types.ObjectId.isValid(taskId)) {
-      return res.status(400).json({ message: "Invalid task ID format", taskId });
+      return res
+        .status(400)
+        .json({ message: "Invalid task ID format", taskId });
     }
 
     const task = await Task.findById(taskId);
@@ -162,6 +172,7 @@ export const deleteTask = async (req, res) => {
       return res.status(500).json({ message: "Task could not be deleted" });
     }
 
+    // Emit taskDeleted event for real-time update
     if (req.io) {
       req.io.emit("taskDeleted", { taskId, employeeId: task.employeeId });
     }

@@ -1,4 +1,7 @@
-import Sidebar from "@/app/component/Sidebar"; // Import Sidebar component
+import { lazy, Suspense } from "react";
+
+const Sidebar = lazy(() => import("../../../component/Sidebar"));
+
 import TaskAssignment from "../../../component/task-assignment/task-assignment";
 import Batch from "../../../component/Batch";
 

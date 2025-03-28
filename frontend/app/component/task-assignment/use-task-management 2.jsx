@@ -1,14 +1,9 @@
-"use client";
+"use client"
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef } from "react"
 
-export function useTaskManagement(
-  socket,
-  selectedBatch,
-  selectedProcess,
-  fetchUpdatedBatch
-) {
-  const [tasks, setTasks] = useState([]);
+export function useTaskManagement(socket, selectedBatch, selectedProcess, fetchUpdatedBatch) {
+  const [tasks, setTasks] = useState([])
   const [newTask, setNewTask] = useState({
     employeeId: "",
     description: "",
@@ -18,15 +13,15 @@ export function useTaskManagement(
     rate: 0,
     diamondNumber: 0,
     firstName: "",
-  });
+  })
 
   // Use a ref to store task IDs that don't have a real _id
-  const tempTaskIds = useRef(new Map());
+  const tempTaskIds = useRef(new Map())
 
   useEffect(() => {
     // Listen for real-time task assignments
     socket.on("taskAssigned", (newTask) => {
-      console.log("Real-time Task Assigned:", newTask);
+      console.log("Real-time Task Assigned:", newTask)
       // Only add the task if it doesn't already exist in the tasks array
       setTasks((prevTasks) => {
         // Check if this task already exists in our state
@@ -35,42 +30,32 @@ export function useTaskManagement(
             (task._id && task._id === newTask._id) ||
             (task.employeeId === newTask.employeeId &&
               task.description === newTask.description &&
-              task.process === newTask.process)
-        );
+              task.process === newTask.process),
+        )
 
         // Only add if it doesn't exist
-        return taskExists ? prevTasks : [...prevTasks, newTask];
-      });
-    });
+        return taskExists ? prevTasks : [...prevTasks, newTask]
+      })
+    })
 
     // Listen for task deletions
     socket.on("taskDeleted", (deletedTaskData) => {
-      const deletedTaskId = deletedTaskData.taskId || deletedTaskData;
-      console.log("Real-time Task Deleted:", deletedTaskId);
-      setTasks((prevTasks) =>
-        prevTasks.filter((task) => task._id !== deletedTaskId)
-      );
-    });
+      const deletedTaskId = deletedTaskData.taskId || deletedTaskData
+      console.log("Real-time Task Deleted:", deletedTaskId)
+      setTasks((prevTasks) => prevTasks.filter((task) => task._id !== deletedTaskId))
+    })
 
     // Handle task updates
     socket.on("taskUpdated", (updatedTask) => {
-      console.log("Real-time Task Updated:", updatedTask);
-      // Update task status or other fields in the state
-      setTasks((prevTasks) =>
-        prevTasks.map((task) =>
-          task._id === updatedTask.taskId
-            ? { ...task, status: updatedTask.status }
-            : task
-        )
-      );
-    });
+      handleTaskUpdate(updatedTask)
+    })
 
     return () => {
-      socket.off("taskAssigned");
-      socket.off("taskDeleted");
-      socket.off("taskUpdated");
-    };
-  }, [socket]);
+      socket.off("taskAssigned")
+      socket.off("taskDeleted")
+      socket.off("taskUpdated")
+    }
+  }, [socket])
 
   useEffect(() => {
     // Update newTask when selectedBatch changes
@@ -78,16 +63,16 @@ export function useTaskManagement(
       setNewTask((prev) => ({
         ...prev,
         diamondNumber: selectedBatch.diamondNumber,
-      }));
+      }))
 
       // Fetch tasks for the selected batch
-      fetchTasksForBatch(selectedBatch.batchId);
+      fetchTasksForBatch(selectedBatch.batchId)
     }
-  }, [selectedBatch]);
+  }, [selectedBatch])
 
   // Handle task updates
   const handleTaskUpdate = (updatedTask) => {
-    console.log("Handling task update:", updatedTask);
+    console.log("Handling task update:", updatedTask)
 
     // Update the task in state if it exists
     setTasks((prevTasks) =>
@@ -102,86 +87,82 @@ export function useTaskManagement(
               dueDate: updatedTask.dueDate || task.dueDate,
               currentProcess: updatedTask.currentProcess || task.currentProcess,
             }
-          : task
-      )
-    );
+          : task,
+      ),
+    )
 
     // Also check if we need to update batch status based on the task update
     if (updatedTask.status === "Completed" && selectedBatch) {
       // Fetch the latest batch data to reflect any process changes
-      fetchUpdatedBatch(selectedBatch.batchId);
+      fetchUpdatedBatch(selectedBatch.batchId)
     }
-  };
+  }
 
   // Improved fetchTasksForBatch function
   const fetchTasksForBatch = async (batchId) => {
     try {
-      console.log(`Fetching tasks for batch: ${batchId}`);
+      console.log(`Fetching tasks for batch: ${batchId}`)
 
-      const response = await fetch(
-        `http://localhost:5023/api/batches/${batchId}/tasks`
-      );
+      const response = await fetch(`http://localhost:5023/api/batches/${batchId}/tasks`)
 
       if (!response.ok) {
         // If no tasks found, set empty array instead of throwing error
         if (response.status === 404) {
-          setTasks([]);
-          return;
+          setTasks([])
+          return
         }
-        const errorMessage = await response.text();
-        throw new Error(`Error fetching tasks: ${errorMessage}`);
+        const errorMessage = await response.text()
+        throw new Error(`Error fetching tasks: ${errorMessage}`)
       }
 
-      const fetchedTasks = await response.json();
-      console.log("Fetched tasks:", fetchedTasks);
+      const fetchedTasks = await response.json()
+      console.log("Fetched tasks:", fetchedTasks)
 
       // Validate and clean up task data
-      const validTasks = fetchedTasks.filter((task) => task && task._id);
+      const validTasks = fetchedTasks.filter((task) => task && task._id)
 
       // Ensure tasks are stored in state
-      setTasks(validTasks);
-      console.log("Updated tasks state:", validTasks); // Debugging
+      setTasks(validTasks)
+      console.log("Updated tasks state:", validTasks) // Debugging
 
       // Clear any temporary IDs that might be causing issues
-      tempTaskIds.current.clear();
+      tempTaskIds.current.clear()
 
-      return validTasks;
+      return validTasks
     } catch (err) {
-      console.error("Error fetching tasks:", err.message);
+      console.error("Error fetching tasks:", err.message)
       // Set empty tasks array on error
-      setTasks([]);
-      return [];
+      setTasks([])
+      return []
     }
-  };
+  }
 
   // Get a stable ID for a task
   const getTaskId = (task) => {
-    if (task._id) return task._id;
+    if (task._id) return task._id
 
     // Create a unique identifier based on task properties
-    const taskIdentifier = `${task.employeeId}-${task.description}-${
-      task.process
-    }-${task.assignedDate || Date.now()}`;
+    const taskIdentifier = `${task.employeeId}-${task.description}-${task.process}-${task.assignedDate || Date.now()}`
 
     // Check if we already have a temporary ID for this task
     if (!tempTaskIds.current.has(taskIdentifier)) {
       // Only generate a new UUID if we don't have one yet
-      tempTaskIds.current.set(taskIdentifier, `temp-${crypto.randomUUID()}`);
+      tempTaskIds.current.set(taskIdentifier, `temp-${crypto.randomUUID()}`)
     }
 
     // Return the stable temporary ID
-    return tempTaskIds.current.get(taskIdentifier);
-  };
+    return tempTaskIds.current.get(taskIdentifier)
+  }
 
   // Handle task assignment
   const handleAssignTask = async () => {
     try {
       if (!newTask.employeeId || !newTask.description || !newTask.dueDate) {
-        alert("Please fill in all required fields");
-        return;
+        alert("Please fill in all required fields")
+        return
       }
 
-      console.log("Selected Process Before Sending:", selectedProcess);
+      console.log("Selected Process Before Sending:", selectedProcess)
 
       const taskData = {
         batchId: selectedBatch.batchId,
@@ -193,32 +174,32 @@ export function useTaskManagement(
         process: selectedProcess,
         rate: Number.parseFloat(newTask.rate) || 0,
         diamondNumber: newTask.diamondNumber || 0,
-      };
+      }
 
-      console.log("Sending Task Data:", taskData);
+      console.log("Sending Task Data:", taskData)
 
       const response = await fetch("http://localhost:5023/api/batches/assign", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(taskData),
-      });
+      })
 
       if (!response.ok) {
-        throw new Error(`Failed to assign task: ${await response.text()}`);
+        throw new Error(`Failed to assign task: ${await response.text()}`)
       }
 
-      const assignedTask = await response.json();
-      console.log("Assigned task:", assignedTask);
+      const assignedTask = await response.json()
+      console.log("Assigned task:", assignedTask)
 
-      const selectedEmployee = await fetchEmployeeDetails(newTask.employeeId);
+      const selectedEmployee = await fetchEmployeeDetails(newTask.employeeId)
 
       // Create a task identifier for stable key generation
-      const taskIdentifier = `${newTask.employeeId}-${newTask.description}-${selectedProcess}`;
-      const tempId = assignedTask._id || `temp-${crypto.randomUUID()}`;
+      const taskIdentifier = `${newTask.employeeId}-${newTask.description}-${selectedProcess}`
+      const tempId = assignedTask._id || `temp-${crypto.randomUUID()}`
 
       // Store the temporary ID if needed
       if (!assignedTask._id) {
-        tempTaskIds.current.set(taskIdentifier, tempId);
+        tempTaskIds.current.set(taskIdentifier, tempId)
       }
 
       const enhancedTask = {
@@ -236,14 +217,14 @@ export function useTaskManagement(
         process: selectedProcess,
         rate: Number.parseFloat(newTask.rate) || 0,
         diamondNumber: newTask.diamondNumber || 0,
-      };
+      }
 
-      console.log("Enhanced task to be added to UI:", enhancedTask);
+      console.log("Enhanced task to be added to UI:", enhancedTask)
 
       // 🔹 Update the state with the new task
-      setTasks((prevTasks) => [...prevTasks, enhancedTask]);
+      setTasks((prevTasks) => [...prevTasks, enhancedTask])
 
-      const employeeName = selectedEmployee || "the employee";
+      const employeeName = selectedEmployee || "the employee"
 
       // Reset the form
       setNewTask({
@@ -255,134 +236,121 @@ export function useTaskManagement(
         rate: 0,
         diamondNumber: selectedBatch.diamondNumber || 0,
         firstName: "",
-      });
+      })
 
-      alert(
-        `Task assigned successfully to ${employeeName} for ${selectedProcess}`
-      );
+      alert(`Task assigned successfully to ${employeeName} for ${selectedProcess}`)
 
-      await fetchUpdatedBatch(selectedBatch.batchId);
+      await fetchUpdatedBatch(selectedBatch.batchId)
 
       // 🔹 Emit WebSocket event for real-time update
       if (socket && socket.connected) {
         // Only emit to others, not back to ourselves
-        socket.emit("taskAssigned", enhancedTask, { selfExclude: true });
+        socket.emit("taskAssigned", enhancedTask, { selfExclude: true })
       } else {
-        console.warn(
-          "WebSocket is not connected. Task assignment not broadcasted."
-        );
+        console.warn("WebSocket is not connected. Task assignment not broadcasted.")
       }
 
       // Refresh tasks in the background to ensure we have proper IDs
       setTimeout(() => {
-        fetchTasksForBatch(selectedBatch.batchId);
-      }, 500);
+        fetchTasksForBatch(selectedBatch.batchId)
+      }, 500)
     } catch (err) {
-      console.error("Error assigning task:", err.message);
-      alert(`Error assigning task: ${err.message}`);
+      console.error("Error assigning task:", err.message)
+      alert(`Error assigning task: ${err.message}`)
     }
-  };
+  }
 
   // Fetch Employee with the ID
   const fetchEmployeeDetails = async (employeeId) => {
     try {
-      const response = await fetch(
-        `http://localhost:5023/api/employees/id/${employeeId}`
-      );
+      const response = await fetch(`http://localhost:5023/api/employees/id/${employeeId}`)
       if (!response.ok) {
-        throw new Error("Failed to fetch employee details");
+        throw new Error("Failed to fetch employee details")
       }
-      const employeeData = await response.json();
-      return `${employeeData.firstName} ${employeeData.lastName}`;
+      const employeeData = await response.json()
+      return `${employeeData.firstName} ${employeeData.lastName}`
     } catch (err) {
-      console.error("Error fetching employee details:", err.message);
-      return "Unknown Employee"; // Fallback if there's an error
+      console.error("Error fetching employee details:", err.message)
+      return "Unknown Employee" // Fallback if there's an error
     }
-  };
+  }
 
   // Handle task deletion
   const handleDeleteTask = async (taskId) => {
     try {
       // Validate task ID format
       if (!taskId || typeof taskId !== "string") {
-        console.error("Invalid task ID:", taskId);
+        console.error("Invalid task ID:", taskId)
 
         // Refresh tasks to get proper IDs
         if (selectedBatch) {
-          await fetchTasksForBatch(selectedBatch.batchId);
+          await fetchTasksForBatch(selectedBatch.batchId)
         }
 
-        throw new Error("Invalid task ID format");
+        throw new Error("Invalid task ID format")
       }
 
       // Confirm task deletion
-      const isConfirmed = window.confirm(
-        "Are you sure you want to delete this task?"
-      );
+      const isConfirmed = window.confirm("Are you sure you want to delete this task?")
       if (!isConfirmed) {
-        console.log("Task deletion canceled by the user.");
-        return; // Exit if the user cancels the deletion
+        console.log("Task deletion canceled by the user.")
+        return // Exit if the user cancels the deletion
       }
 
       // First update the UI immediately to provide instant feedback
-      setTasks((prevTasks) => prevTasks.filter((t) => t._id !== taskId));
+      setTasks((prevTasks) => prevTasks.filter((t) => t._id !== taskId))
 
-      const token = localStorage.getItem("authToken");
-      if (!token) throw new Error("No authentication token found");
+      const token = localStorage.getItem("authToken")
+      if (!token) throw new Error("No authentication token found")
 
-      const response = await fetch(
-        `http://localhost:5023/api/tasks/${taskId}`,
-        {
-          method: "DELETE",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
+      const response = await fetch(`http://localhost:5023/api/tasks/${taskId}`, {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+      })
 
       // Parse response data
-      let responseData;
+      let responseData
       try {
-        responseData = await response.json();
+        responseData = await response.json()
       } catch (e) {
         // If response is not JSON, use empty object
-        responseData = {};
+        responseData = {}
       }
 
       // Handle the response
       if (!response.ok) {
-        throw new Error(responseData.message || "Failed to delete task");
+        throw new Error(responseData.message || "Failed to delete task")
       }
 
-      console.log(`Task deleted: ${taskId}`);
+      console.log(`Task deleted: ${taskId}`)
 
       // Emit WebSocket event for real-time task deletion
       if (socket && socket.connected) {
-        socket.emit("taskDeleted", { taskId });
-        console.log("Emitted taskDeleted event for task:", taskId);
+        socket.emit("taskDeleted", { taskId })
+        console.log("Emitted taskDeleted event for task:", taskId)
       } else {
-        console.warn(
-          "WebSocket is not connected. Task deletion not broadcasted."
-        );
+        console.warn("WebSocket is not connected. Task deletion not broadcasted.")
       }
 
       // Show success alert
-      alert("Task successfully deleted!");
+      alert("Task successfully deleted!")
 
       // No need to alert here as we've already updated the UI
     } catch (error) {
-      console.error("Error deleting task:", error);
+      console.error("Error deleting task:", error)
 
       // If there was an error, fetch the tasks again to ensure UI is in sync
       if (selectedBatch) {
-        await fetchTasksForBatch(selectedBatch.batchId);
+        await fetchTasksForBatch(selectedBatch.batchId)
       }
 
       // Show failure alert
-      alert("Failed to delete task: " + error.message);
+      alert("Failed to delete task: " + error.message)
     }
-  };
+  }
 
   return {
     tasks,
@@ -393,5 +361,6 @@ export function useTaskManagement(
     handleDeleteTask,
     fetchTasksForBatch,
     getTaskId,
-  };
+  }
 }
+

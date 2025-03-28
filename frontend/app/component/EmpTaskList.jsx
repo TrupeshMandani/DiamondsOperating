@@ -178,6 +178,12 @@ const EmpTaskList = () => {
         return newState;
       });
 
+      // Emit a WebSocket event for the task update to notify other clients
+      socket.emit("taskUpdated", {
+        taskId,
+        status: newStatus,
+      });
+
       return updatedTask;
     } catch (err) {
       setError(err.message);
