@@ -1,5 +1,5 @@
 import Sidebar from "@/app/component/Sidebar"; // Import Sidebar component
-import TaskAssignment from "../../../component/TaskAssignment";
+import TaskAssignment from "../../../component/task-assignment/task-assignment";
 import Batch from "../../../component/Batch";
 
 function Manager() {

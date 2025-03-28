@@ -1,15 +1,24 @@
 import mongoose from "mongoose";
 
-const EarningsSchema = new mongoose.Schema({
+const earningsSchema = new mongoose.Schema({
   employeeId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "Employee",
     required: true,
   },
-  month: { type: Number, required: true },
-  year: { type: Number, required: true },
-  totalEarnings: { type: Number, default: 0 },
+  totalEarnings: {
+    type: Number,
+    required: true,
+  },
+  month: {
+    type: Number,
+    required: true, // Month number (1 for January, 2 for February, etc.)
+  },
+  year: {
+    type: Number,
+    required: true, // The year in YYYY format
+  },
 });
 
-const Earnings = mongoose.model("Earnings", EarningsSchema);
+const Earnings = mongoose.model("Earnings", earningsSchema);
 export default Earnings;

@@ -68,34 +68,57 @@ export const updateTaskStatus = async (req, res) => {
       task.endTime = new Date();
       if (task.startTime) {
         const durationMs = task.endTime.getTime() - task.startTime.getTime();
-        task.durationInMinutes = Math.round(durationMs / 60000); // convert ms to minutes
+        task.durationInMinutes = Math.round(durationMs / 60000);
       }
 
-      // Calculate earnings
       const Earning = task.diamondNumber * FIXED_CHARGE_PER_DIAMOND;
-      task.completedAt = new Date(); // Mark task as completed
+      task.completedAt = new Date();
 
       console.log("Task completed by employee:", task.employeeId);
       console.log("Diamonds completed:", task.diamondNumber);
       console.log("Calculated earnings:", Earning);
 
+      // Use task.endTime to determine the month and year
+      const endTime = task.endTime;
       console.log("Updating earnings for:", {
         employeeId: task.employeeId,
-        month: new Date().getMonth() + 1,
-        year: new Date().getFullYear(),
+        month: endTime.getMonth() + 1, // getMonth() returns 0-11
+        year: endTime.getFullYear(),
       });
 
-      // Save earnings to Earning model
-      const now = new Date();
-      await Earnings.findOneAndUpdate(
+      // Add logging before the update query to verify the data being sent to the database
+      console.log("Updating earnings in the database for:", {
+        employeeId: task.employeeId,
+        month: endTime.getMonth() + 1, // The month (1-12)
+        year: endTime.getFullYear(), // The year
+        earnings: Earning,
+      });
+
+      // Save earnings to Earning model using task's endTime
+      const earningsUpdate = await Earnings.findOneAndUpdate(
         {
           employeeId: task.employeeId,
-          month: now.getMonth() + 1,
-          year: now.getFullYear(),
+          month: endTime.getMonth() + 1,
+          year: endTime.getFullYear(),
         },
-        { $inc: { totalEarnings: Earning } },
-        { upsert: true, new: true }
+        {
+          $inc: { totalEarnings: Earning }, // Increment earnings by the calculated value
+          $set: { updatedAt: new Date() }, // Set updatedAt to the current time
+        },
+        { upsert: true, new: true } // Create new document if it doesn't exist, return the updated document
       );
+
+      console.log("Earnings updated:", earningsUpdate);
+
+      // 🔔 Emit taskCompletedNotification to manager
+      if (req.io) {
+        req.io.emit("taskCompletedNotification", {
+          message: `Task completed by employee: ${task.employeeId}`,
+          taskId: task._id,
+          employeeId: task.employeeId,
+          process: task.process,
+        });
+      }
     }
 
     task.status = status;
@@ -106,6 +129,7 @@ export const updateTaskStatus = async (req, res) => {
       task,
     });
   } catch (error) {
+    console.error("Error updating task status:", error);
     res.status(500).json({
       message: "Error updating task status",
       error: error.message,
@@ -121,9 +145,7 @@ export const deleteTask = async (req, res) => {
     console.log("Received taskId:", taskId);
 
     if (!taskId || !mongoose.Types.ObjectId.isValid(taskId)) {
-      return res
-        .status(400)
-        .json({ message: "Invalid task ID format", taskId });
+      return res.status(400).json({ message: "Invalid task ID format", taskId });
     }
 
     const task = await Task.findById(taskId);
@@ -140,8 +162,9 @@ export const deleteTask = async (req, res) => {
       return res.status(500).json({ message: "Task could not be deleted" });
     }
 
-    // 🔹 Emit WebSocket event to notify employees about task deletion
-    req.io.emit("taskDeleted", { taskId, employeeId: task.employeeId });
+    if (req.io) {
+      req.io.emit("taskDeleted", { taskId, employeeId: task.employeeId });
+    }
 
     res.status(200).json({
       message: "Task deleted successfully",
