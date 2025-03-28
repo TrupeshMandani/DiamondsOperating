@@ -49,30 +49,25 @@ export const createBatch = async (req, res) => {
     diamondWeight,
     diamondNumber,
     expectedDate,
-    currentProcess,
+    currentProcess, // This will now be an array
     assignedEmployee, // Optional
   } = req.body;
 
   try {
     let employee = null;
 
-    // Check if assignedEmployee is provided
     if (assignedEmployee) {
-      console.log("Received assignedEmployee ID:", assignedEmployee);
-
-      // Validate if assignedEmployee is a valid MongoDB ObjectId
       if (!mongoose.Types.ObjectId.isValid(assignedEmployee)) {
         return res.status(400).json({ message: "Invalid employee ID format" });
       }
 
-      // Find employee in the database
       employee = await Employee.findById(assignedEmployee);
       if (!employee) {
         return res.status(404).json({ message: "Assigned employee not found" });
       }
     }
 
-    // Create batch without assignedEmployee if not provided
+    // Create batch with multiple processes
     const newBatch = new Batch({
       batchId,
       materialType,
@@ -84,15 +79,14 @@ export const createBatch = async (req, res) => {
       diamondWeight,
       diamondNumber,
       expectedDate,
-      currentProcess,
+      currentProcess, // Store multiple selected processes
       processStartDate: new Date(),
       status: "Pending",
-      assignedEmployee: assignedEmployee || null, // Allow null initially
-      progress: {
-        Sarin: 0,
-        Stitching: 0,
-        "4P Cutting": 0,
-      },
+      assignedEmployee: assignedEmployee || null,
+      progress: currentProcess.reduce((acc, process) => {
+        acc[process] = 0;
+        return acc;
+      }, {}),
     });
 
     await newBatch.save();
