@@ -85,16 +85,6 @@ export function TaskAssignmentDialog({
           </DialogDescription>
         </DialogHeader>
 
-        {!isProcessAvailable && (
-          <div className="flex items-start space-x-2 rounded-md border border-red-300 bg-red-50 p-3 text-sm text-red-800 mb-4">
-            <AlertCircle className="h-4 w-4 mt-0.5 text-red-600" />
-            <div>
-              Process "{selectedProcess}" was not selected for this batch.
-              Available processes: {availableProcesses?.join(", ") || "None"}
-            </div>
-          </div>
-        )}
-
         {error && (
           <div className="flex items-start space-x-2 rounded-md border border-red-300 bg-red-50 p-3 text-sm text-red-800 mb-4">
             <AlertCircle className="h-4 w-4 mt-0.5 text-red-600" />

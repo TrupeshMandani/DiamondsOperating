@@ -13,7 +13,7 @@ const batchSchema = new mongoose.Schema({
   expectedDate: { type: Date, required: true },
   currentDate: { type: Date, default: Date.now },
   currentProcess: {
-    type: String,
+    type: [String],
     enum: ["Sarin", "Stitching", "4P Cutting"],
     required: true,
     index: true,
