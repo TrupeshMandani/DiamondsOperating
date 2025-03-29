@@ -155,12 +155,8 @@ export default function TaskAssignment({ selectedBatchId }) {
       );
 
       if (remainingTasks.length === 0) {
-        // Move batch back to "Unassigned"
-        setBatches((prevBatches) =>
-          prevBatches.map((batch) =>
-            batch._id === batchId ? { ...batch, status: "Unassigned" } : batch
-          )
-        );
+        // Use the function from useBatchManagement to update the batch status
+        fetchUpdatedBatch(batchId, { status: "Unassigned" }); // Assuming fetchUpdatedBatch is available for updating
 
         if (socket && socket.connected) {
           socket.emit("batchUpdated", { batchId, status: "Unassigned" });
@@ -208,7 +204,7 @@ export default function TaskAssignment({ selectedBatchId }) {
                     key={`batch-${batch.batchId}-${index}`}
                     value={batch.batchId}
                   >
-                    {batch.batchId} - {batch.status}
+                    {batch.batchId} - {tasks.status}
                   </SelectItem>
                 ))}
               </SelectContent>

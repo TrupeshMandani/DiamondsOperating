@@ -310,7 +310,7 @@ export const assignBatchToEmployee = async (req, res) => {
 
     // Find the batch
     const batch = await Batch.findOne({ batchId }).select(
-      "batchId currentProcess selectedProcesses"
+      "batchId currentProcess selectedProcesses status"
     );
     if (!batch) {
       return res.status(404).json({ message: "Batch not found" });
@@ -345,6 +345,10 @@ export const assignBatchToEmployee = async (req, res) => {
 
     // Update batch with the new process
     batch.currentProcess = process;
+
+    // Set the batch status to "Assigned" after it's successfully assigned
+    batch.status = "Assigned"; // Set the batch status to 'Assigned'
+
     await batch.save();
 
     // Assign the batch to the employee

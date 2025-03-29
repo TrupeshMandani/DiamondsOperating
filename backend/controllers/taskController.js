@@ -1,6 +1,7 @@
 import Task from "../models/taskModel.js";
 import Earnings from "../models/earnings.js";
 import mongoose from "mongoose";
+import Batch from "../models/batchModel.js";
 const FIXED_CHARGE_PER_DIAMOND = 0.25;
 
 // Get all tasks
@@ -124,6 +125,28 @@ export const updateTaskStatus = async (req, res) => {
     task.status = status;
     await task.save();
 
+    // Update batch status based on task status
+    const batch = await Batch.findById(task.batchId); // Assuming task has a batchId field
+    if (batch) {
+      if (status === "In Progress") {
+        // Set the batch status to In Progress if any task is in progress
+        batch.status = "In Progress";
+        await batch.save();
+      }
+
+      if (status === "Completed") {
+        // Check if all tasks in the batch are completed
+        const allTasksCompleted = await Task.find({
+          batchId: batch._id,
+          status: { $ne: "Completed" },
+        });
+        if (allTasksCompleted.length === 0) {
+          batch.status = "Completed"; // Set batch status to Completed if all tasks are completed
+          await batch.save();
+        }
+      }
+    }
+
     // Emit task updated event for real-time update
     if (req.io) {
       req.io.emit("taskUpdated", {
@@ -165,11 +188,33 @@ export const deleteTask = async (req, res) => {
 
     console.log("Task found:", task);
 
+    // Delete the task
     const deletedTask = await Task.findByIdAndDelete(taskId);
     console.log("Deleted Task:", deletedTask);
 
     if (!deletedTask) {
       return res.status(500).json({ message: "Task could not be deleted" });
+    }
+
+    // Find the related batch
+    const batch = await Batch.findById(task.batchId);
+    if (!batch) {
+      return res
+        .status(404)
+        .json({ message: "Batch not found", batchId: task.batchId });
+    }
+
+    // Set the batch status to "Pending"
+    batch.status = "Pending";
+    await batch.save();
+    console.log("Batch status updated to Pending");
+
+    // Emit batch status update for real-time update
+    if (req.io) {
+      req.io.emit("batchStatusUpdate", {
+        batchId: batch.batchId,
+        status: "Pending",
+      });
     }
 
     // Emit taskDeleted event for real-time update
@@ -178,7 +223,7 @@ export const deleteTask = async (req, res) => {
     }
 
     res.status(200).json({
-      message: "Task deleted successfully",
+      message: "Task deleted successfully and batch status updated",
       deletedTaskId: taskId,
     });
   } catch (error) {
