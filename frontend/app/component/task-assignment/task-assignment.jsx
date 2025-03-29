@@ -35,11 +35,13 @@ export default function TaskAssignment({ selectedBatchId }) {
   const [isAssigningTask, setIsAssigningTask] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [availableProcesses, setAvailableProcesses] = useState([]);
+  const [tasks, setTasks] = useState([]);
+  const [selectedBatch, setSelectedBatch] = useState(null);
 
   const {
     batches,
     employees,
-    selectedBatch,
+    selectedBatch: selectedBatchFromHook,
     loading,
     fetchBatches,
     fetchEmployees,
@@ -48,16 +50,16 @@ export default function TaskAssignment({ selectedBatchId }) {
   } = useBatchManagement(socket, selectedBatchId);
 
   const {
-    tasks,
+    tasks: tasksFromHook,
     newTask,
     setNewTask,
     handleAssignTask,
-    handleDeleteTask,
+    handleDeleteTask: handleDeleteTaskFromHook,
     fetchTasksForBatch,
     getTaskId,
   } = useTaskManagement(
     socket,
-    selectedBatch,
+    selectedBatchFromHook,
     selectedProcess,
     fetchUpdatedBatch
   );
@@ -69,13 +71,13 @@ export default function TaskAssignment({ selectedBatchId }) {
 
   useEffect(() => {
     // Update available processes when selected batch changes
-    if (selectedBatch) {
+    if (selectedBatchFromHook) {
       // Check if selectedProcesses exists (new format) or use currentProcess (old format)
       let processes =
-        selectedBatch.selectedProcesses ||
-        (Array.isArray(selectedBatch.currentProcess)
-          ? selectedBatch.currentProcess
-          : [selectedBatch.currentProcess]);
+        selectedBatchFromHook.selectedProcesses ||
+        (Array.isArray(selectedBatchFromHook.currentProcess)
+          ? selectedBatchFromHook.currentProcess
+          : [selectedBatchFromHook.currentProcess]);
 
       // Flatten the array if it's nested
       processes = Array.isArray(processes[0]) ? processes.flat() : processes;
@@ -87,7 +89,7 @@ export default function TaskAssignment({ selectedBatchId }) {
         setSelectedProcess(processes[0]);
       }
     }
-  }, [selectedBatch, selectedProcess]);
+  }, [selectedBatchFromHook, selectedProcess]);
 
   // If a selectedBatchId is provided, select that batch
   useEffect(() => {
@@ -104,7 +106,7 @@ export default function TaskAssignment({ selectedBatchId }) {
     }
   };
 
-  const filteredTasks = tasks.filter(
+  const filteredTasks = tasksFromHook.filter(
     (task) => task.currentProcess === selectedProcess
   );
   const paginatedTasks = filteredTasks.slice(
@@ -112,6 +114,65 @@ export default function TaskAssignment({ selectedBatchId }) {
     currentPage * ITEMS_PER_PAGE
   );
   const totalPages = Math.ceil(filteredTasks.length / ITEMS_PER_PAGE);
+
+  const handleDeleteTask = async (taskId) => {
+    try {
+      const taskToDelete = tasksFromHook.find((task) => task._id === taskId);
+      if (!taskToDelete) throw new Error("Task not found");
+
+      const isConfirmed = window.confirm(
+        "Are you sure you want to delete this task?"
+      );
+      if (!isConfirmed) return;
+
+      // Optimistically update UI
+      setTasks((prevTasks) => prevTasks.filter((task) => task._id !== taskId));
+
+      const token = localStorage.getItem("authToken");
+      if (!token) throw new Error("No authentication token found");
+
+      const response = await fetch(
+        `http://localhost:5023/api/tasks/${taskId}`,
+        {
+          method: "DELETE",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error("Failed to delete task");
+      }
+
+      console.log(`Task deleted: ${taskId}`);
+
+      // Find the batch that had this task
+      const batchId = taskToDelete.batchId; // Ensure tasks have a batchId field
+      const remainingTasks = tasksFromHook.filter(
+        (task) => task.batchId === batchId && task._id !== taskId
+      );
+
+      if (remainingTasks.length === 0) {
+        // Move batch back to "Unassigned"
+        setBatches((prevBatches) =>
+          prevBatches.map((batch) =>
+            batch._id === batchId ? { ...batch, status: "Unassigned" } : batch
+          )
+        );
+
+        if (socket && socket.connected) {
+          socket.emit("batchUpdated", { batchId, status: "Unassigned" });
+        }
+      }
+
+      alert("Task successfully deleted!");
+    } catch (error) {
+      console.error("Error deleting task:", error);
+      alert("Failed to delete task: " + error.message);
+    }
+  };
 
   if (loading) {
     return (
@@ -136,7 +197,7 @@ export default function TaskAssignment({ selectedBatchId }) {
             </h1>
             <Select
               onValueChange={handleBatchSelect}
-              value={selectedBatch?.batchId || ""}
+              value={selectedBatchFromHook?.batchId || ""}
             >
               <SelectTrigger className="text-black w-[200px]">
                 <SelectValue placeholder="Select Batch" />
@@ -155,15 +216,15 @@ export default function TaskAssignment({ selectedBatchId }) {
           </div>
         )}
 
-        {selectedBatch ? (
+        {selectedBatchFromHook ? (
           <Card className="bg-white shadow-md">
             <CardHeader className="bg-gray-50 border-b">
               <div className="flex justify-between items-center">
                 <div>
-                  <CardTitle>Batch: {selectedBatch.batchId}</CardTitle>
+                  <CardTitle>Batch: {selectedBatchFromHook.batchId}</CardTitle>
                   <CardDescription>
-                    Current Process: {selectedBatch.currentProcess} | Status:{" "}
-                    {selectedBatch.status}
+                    Current Process: {selectedBatchFromHook.currentProcess} |
+                    Status: {selectedBatchFromHook.status}
                   </CardDescription>
                   <div className="mt-1 text-sm text-gray-500">
                     Available Processes: {availableProcesses.join(", ")}
@@ -173,7 +234,7 @@ export default function TaskAssignment({ selectedBatchId }) {
                   isOpen={isAssigningTask}
                   setIsOpen={setIsAssigningTask}
                   selectedProcess={selectedProcess}
-                  selectedBatch={selectedBatch}
+                  selectedBatch={selectedBatchFromHook}
                   newTask={newTask}
                   setNewTask={setNewTask}
                   employees={employees}
