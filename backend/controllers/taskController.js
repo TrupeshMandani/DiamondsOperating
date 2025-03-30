@@ -2,7 +2,6 @@ import Task from "../models/taskModel.js";
 import Earnings from "../models/earnings.js";
 import mongoose from "mongoose";
 import Batch from "../models/batchModel.js";
-const FIXED_CHARGE_PER_DIAMOND = 0.25;
 
 // Get all tasks
 export const getAllTasks = async (req, res) => {
@@ -43,7 +42,7 @@ export const getTasksByBatchId = async (req, res) => {
   }
 };
 
-// Update task status and record start/end time, calculate earnings
+// Update task status and calculate earnings based on rate
 export const updateTaskStatus = async (req, res) => {
   try {
     const { taskId } = req.params;
@@ -64,7 +63,7 @@ export const updateTaskStatus = async (req, res) => {
       task.startTime = new Date();
     }
 
-    // End time + Duration
+    // End time + Duration + Earnings calculation
     if (status === "Completed" && !task.endTime) {
       task.endTime = new Date();
       if (task.startTime) {
@@ -72,30 +71,18 @@ export const updateTaskStatus = async (req, res) => {
         task.durationInMinutes = Math.round(durationMs / 60000);
       }
 
-      const Earning = task.diamondNumber * FIXED_CHARGE_PER_DIAMOND;
+      // Calculate earnings using rate from task
+      const Earning = task.diamondNumber * task.rate;
       task.completedAt = new Date();
 
       console.log("Task completed by employee:", task.employeeId);
       console.log("Diamonds completed:", task.diamondNumber);
+      console.log("Rate used:", task.rate);
       console.log("Calculated earnings:", Earning);
 
-      // Use task.endTime to determine the month and year
       const endTime = task.endTime;
-      console.log("Updating earnings for:", {
-        employeeId: task.employeeId,
-        month: endTime.getMonth() + 1, // getMonth() returns 0-11
-        year: endTime.getFullYear(),
-      });
 
-      // Add logging before the update query to verify the data being sent to the database
-      console.log("Updating earnings in the database for:", {
-        employeeId: task.employeeId,
-        month: endTime.getMonth() + 1, // The month (1-12)
-        year: endTime.getFullYear(), // The year
-        earnings: Earning,
-      });
-
-      // Save earnings to Earning model using task's endTime
+      // Update earnings
       const earningsUpdate = await Earnings.findOneAndUpdate(
         {
           employeeId: task.employeeId,
@@ -103,21 +90,22 @@ export const updateTaskStatus = async (req, res) => {
           year: endTime.getFullYear(),
         },
         {
-          $inc: { totalEarnings: Earning }, // Increment earnings by the calculated value
-          $set: { updatedAt: new Date() }, // Set updatedAt to the current time
+          $inc: { totalEarnings: Earning },
+          $set: { updatedAt: new Date() },
         },
-        { upsert: true, new: true } // Create new document if it doesn't exist, return the updated document
+        { upsert: true, new: true }
       );
 
       console.log("Earnings updated:", earningsUpdate);
 
-      // 🔔 Emit taskCompletedNotification to manager
+      // Notify manager
       if (req.io) {
         req.io.emit("taskCompletedNotification", {
           message: `Task completed by employee: ${task.employeeId}`,
           taskId: task._id,
           employeeId: task.employeeId,
           process: task.process,
+          earnings: Earning,
         });
       }
     }
@@ -125,29 +113,27 @@ export const updateTaskStatus = async (req, res) => {
     task.status = status;
     await task.save();
 
-    // Update batch status based on task status
-    const batch = await Batch.findById(task.batchId); // Assuming task has a batchId field
+    // Update batch status
+    const batch = await Batch.findById(task.batchId);
     if (batch) {
       if (status === "In Progress") {
-        // Set the batch status to In Progress if any task is in progress
         batch.status = "In Progress";
         await batch.save();
       }
 
       if (status === "Completed") {
-        // Check if all tasks in the batch are completed
         const allTasksCompleted = await Task.find({
           batchId: batch._id,
           status: { $ne: "Completed" },
         });
         if (allTasksCompleted.length === 0) {
-          batch.status = "Completed"; // Set batch status to Completed if all tasks are completed
+          batch.status = "Completed";
           await batch.save();
         }
       }
     }
 
-    // Emit task updated event for real-time update
+    // Real-time update
     if (req.io) {
       req.io.emit("taskUpdated", {
         message: `Task status updated to ${status} for task: ${taskId}`,

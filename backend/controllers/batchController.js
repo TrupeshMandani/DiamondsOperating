@@ -278,6 +278,7 @@ export const getTasksForBatch = async (req, res) => {
 };
 
 // Fix the assignBatchToEmployee function
+//this function is used to assign a taks not a batch.
 export const assignBatchToEmployee = async (req, res) => {
   try {
     const {
@@ -292,23 +293,26 @@ export const assignBatchToEmployee = async (req, res) => {
       diamondNumber,
     } = req.body;
 
-    console.log("Received Task Data:", req.body);
+    // Validate required fields
+    const requiredFields = [
+      "batchId",
+      "employeeId",
+      "description",
+      "dueDate",
+      "priority",
+      "process",
+      "rate",
+      "diamondNumber",
+    ];
 
-    // Ensure all required fields are provided
-    if (
-      !batchId ||
-      !employeeId ||
-      !description ||
-      !dueDate ||
-      !priority ||
-      !process ||
-      rate === undefined ||
-      diamondNumber === undefined
-    ) {
-      return res.status(400).json({ message: "Missing required fields" });
+    const missingFields = requiredFields.filter((field) => !req.body[field]);
+    if (missingFields.length > 0) {
+      return res.status(400).json({
+        message: `Missing required fields: ${missingFields.join(", ")}`,
+      });
     }
 
-    // Find the batch
+    // Find batch
     const batch = await Batch.findOne({ batchId }).select(
       "batchId currentProcess selectedProcesses status"
     );
@@ -316,26 +320,25 @@ export const assignBatchToEmployee = async (req, res) => {
       return res.status(404).json({ message: "Batch not found" });
     }
 
-    // Ensure currentProcess is treated as an array, even if it's a single string
+    // Validate processes
     let availableProcesses =
       batch.selectedProcesses ||
       (Array.isArray(batch.currentProcess)
         ? batch.currentProcess
         : [batch.currentProcess]);
 
-    // Flatten available processes if necessary (in case it's a nested array)
-    if (Array.isArray(availableProcesses[0])) {
-      availableProcesses = availableProcesses.flat();
-    }
+    availableProcesses = Array.isArray(availableProcesses[0])
+      ? availableProcesses.flat()
+      : availableProcesses;
 
-    // Check if the process is available for this batch
     if (!availableProcesses.includes(process)) {
       return res.status(400).json({
-        message: `Process "${process}" is not available for this batch`,
-        availableProcesses: availableProcesses,
+        message: `Process "${process}" not available for this batch`,
+        availableProcesses,
       });
     }
 
+    // Validate employee
     const employee = await Employee.findById(employeeId).select(
       "firstName lastName"
     );
@@ -343,23 +346,28 @@ export const assignBatchToEmployee = async (req, res) => {
       return res.status(404).json({ message: "Employee not found" });
     }
 
-    // Update batch with the new process
+    // Update batch status
     batch.currentProcess = process;
-
-    // Set the batch status to "Assigned" after it's successfully assigned
-    batch.status = "Assigned"; // Set the batch status to 'Assigned'
-
-    await batch.save();
-
-    // Assign the batch to the employee
+    batch.status = "Assigned";
     batch.assignedEmployee = employeeId;
     await batch.save();
 
-    // Convert values
+    // Convert and validate numerical values
     const numericRate = Number(rate);
     const numericDiamondNumber = Number(diamondNumber);
 
-    // Create and save the task
+    if (isNaN(numericRate) || numericRate < 0) {
+      return res.status(400).json({ message: "Invalid rate value" });
+    }
+
+    if (isNaN(numericDiamondNumber) || numericDiamondNumber < 1) {
+      return res.status(400).json({ message: "Invalid diamond number" });
+    }
+
+    // Calculate earnings
+    const earnings = numericDiamondNumber * numericRate;
+
+    // Create and save task
     const task = new Task({
       batchId: batch._id,
       batchTitle: batch.batchId,
@@ -370,29 +378,35 @@ export const assignBatchToEmployee = async (req, res) => {
       dueDate,
       priority,
       diamondNumber: numericDiamondNumber,
+      rate: numericRate,
+      earnings,
       status: status || "Pending",
       assignedDate: new Date(),
-      rate: numericRate,
     });
 
     const savedTask = await task.save();
-    console.log("Saved task:", savedTask);
 
-    // Emit WebSocket event when a new task is assigned
+    // WebSocket notification
     req.io.emit("taskAssigned", {
-      message: "A new task has been assigned!",
+      message: "New task assigned!",
       task: savedTask,
     });
 
     res.status(200).json({
-      message: "Batch assigned & task created successfully",
-      task: savedTask,
+      message: "Task created successfully",
+      task: {
+        ...savedTask.toObject(),
+        earnings: savedTask.earnings,
+        rate: savedTask.rate,
+        diamondNumber: savedTask.diamondNumber,
+      },
     });
   } catch (error) {
-    console.error("Error assigning batch:", error.message);
-    res
-      .status(500)
-      .json({ message: "Error assigning batch", error: error.message });
+    console.error("Error assigning task:", error.message);
+    res.status(500).json({
+      message: "Error creating task",
+      error: error.message,
+    });
   }
 };
 
