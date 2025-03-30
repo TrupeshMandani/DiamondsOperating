@@ -204,7 +204,7 @@ export default function TaskAssignment({ selectedBatchId }) {
                     key={`batch-${batch.batchId}-${index}`}
                     value={batch.batchId}
                   >
-                    {batch.batchId} - {tasks.status}
+                    {batch.batchId} - {batch.status}
                   </SelectItem>
                 ))}
               </SelectContent>
