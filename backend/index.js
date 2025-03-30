@@ -45,16 +45,25 @@ app.get("/", (req, res) =>
 io.on("connection", (socket) => {
   console.log("A user connected:", socket.id);
 
+  // Listen for task assignment
   socket.on("taskAssigned", (task) => {
     console.log("Broadcasting new task:", task);
-    io.emit("taskAssigned", task);
+    io.emit("taskAssigned", task); // Broadcast task assignment to all clients
   });
 
+  // Listen for task deletion
   socket.on("taskDeleted", ({ taskId }) => {
     console.log(`Broadcasting task deletion: ${taskId}`);
-    io.emit("taskDeleted", { taskId });
+    io.emit("taskDeleted", { taskId }); // Broadcast task deletion to all clients
   });
 
+  // Listen for task update (status change or completion)
+  socket.on("taskUpdated", (task) => {
+    console.log(`Broadcasting task update: ${task._id}`);
+    io.emit("taskUpdated", task); // Broadcast task update to all clients
+  });
+
+  // Disconnect event
   socket.on("disconnect", () => {
     console.log("A user disconnected:", socket.id);
   });

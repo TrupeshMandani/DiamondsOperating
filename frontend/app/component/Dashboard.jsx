@@ -1,13 +1,21 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import Sidebar from "./Sidebar";
 import BatchModal from "./BatchModal";
 import InfoModal from "./InfoModal";
 import { motion } from "framer-motion";
-import { Bell, CheckCircle, ClipboardList, Loader2, Users } from "lucide-react";
+import {
+  Bell,
+  CheckCircle,
+  ClipboardList,
+  Loader2,
+  Users,
+  ChevronLeft,
+  ChevronRight,
+} from "lucide-react";
 import StatsCard from "./StatsCard";
 import io from "socket.io-client";
 
-const socket = io("http://localhost:5023");
+const ITEMS_PER_PAGE = 8; // Number of batches per page
 
 const Dashboard = () => {
   const [mounted, setMounted] = useState(false);
@@ -26,65 +34,92 @@ const Dashboard = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  const fetchBatches = async () => {
-    try {
-      const response = await fetch("http://localhost:5023/api/batches");
-      if (!response.ok) throw new Error("Failed to fetch batches");
-      const data = await response.json();
-      setBatches(data);
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+
+  // Memoized batch pagination
+  const paginatedBatches = useMemo(() => {
+    const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+    return batches.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+  }, [batches, currentPage]);
+
+  // Calculate total pages
+  const totalPages = useMemo(() => {
+    return Math.ceil(batches.length / ITEMS_PER_PAGE);
+  }, [batches]);
+
+  // Pagination handlers
+  const handleNextPage = () => {
+    setCurrentPage((prevPage) => Math.min(prevPage + 1, totalPages));
   };
 
-  const fetchEmployees = async () => {
-    try {
-      const response = await fetch("http://localhost:5023/api/employees");
-      if (!response.ok) throw new Error("Failed to fetch employees");
-      const data = await response.json();
-      setEmployees(data);
-    } catch (err) {
-      setError(err.message);
-    }
+  const handlePrevPage = () => {
+    setCurrentPage((prevPage) => Math.max(prevPage - 1, 1));
   };
 
-  const fetchTasks = async () => {
-    try {
-      const response = await fetch("http://localhost:5023/api/tasks");
-      if (!response.ok) throw new Error("Failed to fetch tasks");
-      const data = await response.json();
-      const completed = data.filter((task) => task.status === "Completed");
-      const pending = data.filter(
-        (task) => task.status === "Pending" || task.status === "In Progress"
-      );
-      setCompletedTasks(completed);
-      setPendingTasks(pending);
-    } catch (err) {
-      console.error("Task fetch error:", err.message);
-    }
-  };
-
+  // Optimized data fetching with AbortController
   useEffect(() => {
+    const controller = new AbortController();
+    const signal = controller.signal;
+
     setMounted(true);
-    fetchEmployees();
-    fetchBatches();
-    fetchTasks();
+    setLoading(true);
 
-    socket.on("taskCompletedNotification", (data) => {
-      setNotifications((prev) => [
-        `${data.message} (Task ID: ${data.taskId})`,
-        ...prev,
-      ]);
-      fetchTasks();
-    });
+    const fetchData = async () => {
+      try {
+        // Parallel fetching with timeout and error handling
+        const fetchWithTimeout = async (url, options = {}, timeout = 5000) => {
+          const controller = new AbortController();
+          const id = setTimeout(() => controller.abort(), timeout);
+          try {
+            const response = await fetch(url, {
+              ...options,
+              signal: controller.signal,
+            });
+            clearTimeout(id);
+            if (!response.ok)
+              throw new Error(`HTTP error! status: ${response.status}`);
+            return await response.json();
+          } catch (error) {
+            clearTimeout(id);
+            if (error.name === "AbortError") {
+              throw new Error("Request timed out");
+            }
+            throw error;
+          }
+        };
 
+        const [batches, employees, tasks] = await Promise.all([
+          fetchWithTimeout("http://localhost:5023/api/batches"),
+          fetchWithTimeout("http://localhost:5023/api/employees"),
+          fetchWithTimeout("http://localhost:5023/api/tasks"),
+        ]);
+
+        setBatches(batches);
+        setEmployees(employees);
+
+        const completed = tasks.filter((task) => task.status === "Completed");
+        const pending = tasks.filter(
+          (task) => task.status === "Pending" || task.status === "In Progress"
+        );
+        setCompletedTasks(completed);
+        setPendingTasks(pending);
+      } catch (err) {
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+
+    // Cleanup function
     return () => {
-      socket.off("taskCompletedNotification");
+      controller.abort();
     };
   }, []);
 
+  // Render loading state
   if (!mounted || loading) {
     return (
       <div className="min-h-screen flex flex-col justify-center items-center bg-[#121828] text-white">
@@ -96,18 +131,13 @@ const Dashboard = () => {
     );
   }
 
+  // Render error state
   if (error) {
     return (
       <div className="flex justify-center items-center h-screen bg-gray-50">
         <div className="bg-white p-8 rounded-lg shadow-lg border border-red-200">
           <h2 className="text-2xl font-bold text-red-600 mb-2">Error</h2>
           <p className="text-gray-700">{error}</p>
-          <button
-            onClick={() => fetchBatches()}
-            className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
-          >
-            Try Again
-          </button>
         </div>
       </div>
     );
@@ -156,40 +186,20 @@ const Dashboard = () => {
         transition={{ duration: 0.5 }}
         className="flex-1 ml-72 p-8 text-gray-800 bg-gradient-to-br from-gray-50 to-blue-50 overflow-y-auto"
       >
-        <motion.div
-          initial={{ y: 20, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          transition={{ duration: 0.5, delay: 0.5 }}
-          className="mt-12"
-        >
+        {/* Summary Section */}
+        <div className="mt-12">
           <div className="flex justify-between items-center mb-8">
-            <motion.h1
-              initial={{ x: -20 }}
-              animate={{ x: 0 }}
-              transition={{ duration: 0.5, delay: 0.2 }}
-              className="text-3xl font-bold text-[#121828] border-l-4 border-blue-500 pl-4"
-            >
+            <h1 className="text-3xl font-bold text-[#121828] border-l-4 border-blue-500 pl-4">
               Dashboard
-            </motion.h1>
-
-            <motion.div
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              transition={{ duration: 0.3, delay: 0.4 }}
-              className="flex space-x-2"
-            >
+            </h1>
+            <div className="flex space-x-2">
               <span className="px-4 py-2 bg-blue-100 text-blue-800 rounded-md font-medium">
                 {new Date().toLocaleDateString()}
               </span>
-            </motion.div>
+            </div>
           </div>
 
-          <motion.div
-            initial={{ y: 20, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            transition={{ duration: 0.5, delay: 0.3 }}
-            className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mt-6"
-          >
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mt-6">
             <StatsCard
               title="Employees"
               value={employees.length}
@@ -222,70 +232,60 @@ const Dashboard = () => {
               onClick={() => openModal("Notifications", notifications)}
               color="from-purple-500 to-purple-600"
             />
-          </motion.div>
-
-          <h2 className="text-2xl font-bold text-[#121828] mb-6 border-b-2 border-blue-200 pb-2">
-            Batches
-          </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {batches.map((batch, index) => (
-              <motion.div
-                key={batch.batchId}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.3, delay: 0.1 * index }}
-                className="bg-white p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow border border-gray-100"
-              >
-                <h3 className="text-xl font-bold text-[#121828] mb-2">
-                  {batch.batchId}
-                </h3>
-                <div className="space-y-2 mb-4">
-                  <div className="flex items-center text-gray-600">
-                    <span className="font-medium mr-2">Status:</span>
-                    <span
-                      className={`px-2 py-1 rounded text-xs font-medium ${
-                        batch.status === "Active"
-                          ? "bg-green-100 text-green-800"
-                          : batch.status === "Pending"
-                          ? "bg-yellow-100 text-yellow-800"
-                          : "bg-blue-100 text-blue-800"
-                      }`}
-                    >
-                      {batch.status}
-                    </span>
-                  </div>
-                  <p className="text-gray-600">
-                    <span className="font-medium">Process:</span>{" "}
-                    {batch.currentProcess}
-                  </p>
-                </div>
-                <button
-                  className="w-full bg-[#121828] text-white px-4 py-2 rounded-md hover:bg-[#1c2540] transition-colors duration-200 flex items-center justify-center"
-                  onClick={() => openBatchModal(batch)}
-                >
-                  View Details
-                </button>
-              </motion.div>
-            ))}
           </div>
+        </div>
+
+        {/* Batches Section */}
+        <h2 className="text-2xl font-bold text-[#121828] mb-6 border-b-2 pt-5 border-blue-200 pb-2">
+          Batches (Page {currentPage} of {totalPages})
+        </h2>
+
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6"
+        >
+          {paginatedBatches.map((batch, index) => (
+            <motion.div
+              key={batch.batchId}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3, delay: 0.1 * index }}
+              className="bg-white p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow border border-gray-100"
+            >
+              <h3 className="text-xl font-bold text-[#121828] mb-2">
+                {batch.batchId}
+              </h3>
+              <div className="space-y-2 mb-4">
+                <div className="flex items-center text-gray-600">
+                  <span className="font-medium mr-2">Status:</span>
+                  <span
+                    className={`px-2 py-1 rounded text-xs font-medium ${
+                      batch.status === "Active"
+                        ? "bg-green-100 text-green-800"
+                        : batch.status === "Pending"
+                        ? "bg-yellow-100 text-yellow-800"
+                        : "bg-blue-100 text-blue-800"
+                    }`}
+                  >
+                    {batch.status}
+                  </span>
+                </div>
+                <p className="text-gray-600">
+                  <span className="font-medium">Process:</span>{" "}
+                  {batch.currentProcess}
+                </p>
+              </div>
+              <button
+                className="w-full bg-[#121828] text-white px-4 py-2 rounded-md hover:bg-[#1c2540] transition-colors duration-200 flex items-center justify-center"
+                onClick={() => openBatchModal(batch)}
+              >
+                View Details
+              </button>
+            </motion.div>
+          ))}
         </motion.div>
-
-        {modalOpen && (
-          <BatchModal
-            isOpen={modalOpen}
-            onClose={closeBatchModal}
-            batch={selectedBatch}
-          />
-        )}
-
-        {infoModalOpen && (
-          <InfoModal
-            isOpen={infoModalOpen}
-            onClose={() => setInfoModalOpen(false)}
-            title={infoModalTitle}
-            items={infoModalItems}
-          />
-        )}
       </motion.div>
     </div>
   );

@@ -1,7 +1,6 @@
-// pages/EmployeeDashboard.jsx
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Plus, Search, UserPlus } from "lucide-react";
 import { toast } from "sonner";
@@ -9,10 +8,31 @@ import { Button } from "../../../component/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogTrigger } from "@/components/ui/dialog";
 import { EmployeeCard } from "../../../component/EmployeeCard";
-import { EmployeeDetailsModal } from "../../../component/EmployeeDetailsModal";
-import { GrantAccessModal } from "../../../component/GrantAccessModal";
-import { AddEmployeeDialog } from "../../../component/AddEmployeeDialog";
-import Sidebar from "../../../component/Sidebar";
+import dynamic from "next/dynamic";
+import Sidebar from "@/app/component/Sidebar";
+
+// Dynamically import modals to reduce initial load time and use default exports correctly
+const EmployeeDetailsModalDynamic = dynamic(
+  () =>
+    import("../../../component/EmployeeDetailsModal").then(
+      (mod) => mod.EmployeeDetailsModal
+    ),
+  { ssr: false }
+);
+const GrantAccessModalDynamic = dynamic(
+  () =>
+    import("../../../component/GrantAccessModal").then(
+      (mod) => mod.GrantAccessModal
+    ),
+  { ssr: false }
+);
+const AddEmployeeDialogDynamic = dynamic(
+  () =>
+    import("../../../component/AddEmployeeDialog").then(
+      (mod) => mod.AddEmployeeDialog
+    ),
+  { ssr: false }
+);
 
 export default function EmployeeDashboard() {
   const [employees, setEmployees] = useState([]);
@@ -49,41 +69,43 @@ export default function EmployeeDashboard() {
     setEmployees((prevEmployees) => [...prevEmployees, newEmployee]);
   };
 
-
   const handleDeleteEmployee = async (id) => {
-    const isConfirmed = window.confirm("Are you sure you want to delete this employee?");
+    const isConfirmed = window.confirm(
+      "Are you sure you want to delete this employee?"
+    );
+    if (!isConfirmed) return;
 
-    if (!isConfirmed) {
-      return; // If the user clicks "No", do nothing
-    }
-  
     try {
-      const response = await fetch(`http://localhost:5023/api/employees/${id}`, {
-        method: "DELETE",
-      });
+      const response = await fetch(
+        `http://localhost:5023/api/employees/${id}`,
+        {
+          method: "DELETE",
+        }
+      );
 
       if (!response.ok) {
         throw new Error("Failed to delete employee");
       }
-      
-      alert("Employee deleted successfully!");
-    
 
-      setEmployees(employees.filter((employee) => employee._id !== id));
+      setEmployees((prevEmployees) =>
+        prevEmployees.filter((employee) => employee._id !== id)
+      );
       toast.success("Employee deleted successfully");
     } catch (error) {
       toast.error(`Error: ${error.message}`);
     }
   };
 
-  const filteredEmployees = employees.filter(
-    (employee) =>
-      employee.firstName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      employee.lastName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      employee.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      employee.phoneNumber?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-  
+  // Memoize filtered employees to avoid recalculating on every render
+  const filteredEmployees = useMemo(() => {
+    return employees.filter(
+      (employee) =>
+        employee.firstName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        employee.lastName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        employee.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        employee.phoneNumber?.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  }, [employees, searchTerm]);
 
   return (
     <div className="flex min-h-screen bg-[#f0f7]">
@@ -113,7 +135,7 @@ export default function EmployeeDashboard() {
                       Add Employee
                     </Button>
                   </DialogTrigger>
-                  <AddEmployeeDialog
+                  <AddEmployeeDialogDynamic
                     isOpen={isAddDialogOpen}
                     onClose={() => setIsAddDialogOpen(false)}
                     onAddEmployee={handleAddEmployee}
@@ -152,7 +174,7 @@ export default function EmployeeDashboard() {
       </main>
 
       {selectedEmployee && (
-        <EmployeeDetailsModal
+        <EmployeeDetailsModalDynamic
           employee={selectedEmployee}
           onClose={() => setSelectedEmployee(null)}
           onGrantAccess={setAccessEmployee}
@@ -160,7 +182,7 @@ export default function EmployeeDashboard() {
       )}
 
       {accessEmployee && (
-        <GrantAccessModal
+        <GrantAccessModalDynamic
           employee={accessEmployee}
           onClose={() => setAccessEmployee(null)}
           onGrantAccess={(employee, password) => {

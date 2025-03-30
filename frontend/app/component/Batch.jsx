@@ -1,17 +1,21 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import BatchModal from "./BatchModal"; // Updated to use the new BatchModal
+import BatchModal from "./BatchModal";
 import { motion } from "framer-motion";
+
+const ITEMS_PER_PAGE = 6; // Set the number of batches per page
 
 const Dashboard = () => {
   const [mounted, setMounted] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
-  const [selectedBatch, setSelectedBatch] = useState(null); // Store selected batch details
-
+  const [selectedBatch, setSelectedBatch] = useState(null);
   const [batches, setBatches] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
 
   // Fetch batch data
   const fetchBatches = async () => {
@@ -60,6 +64,15 @@ const Dashboard = () => {
     );
   }
 
+  // Calculate total pages
+  const totalPages = Math.ceil(batches.length / ITEMS_PER_PAGE);
+
+  // Get current page's batch data
+  const paginatedBatches = batches.slice(
+    (currentPage - 1) * ITEMS_PER_PAGE,
+    currentPage * ITEMS_PER_PAGE
+  );
+
   const openModal = (batch) => {
     setSelectedBatch(batch);
     setModalOpen(true);
@@ -86,8 +99,8 @@ const Dashboard = () => {
         <h2 className="text-2xl font-bold text-[#121828] mb-6 border-b-2 border-blue-200 pb-2">
           Batches
         </h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {batches.map((batch, index) => (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {paginatedBatches.map((batch, index) => (
             <motion.div
               key={batch.batchId}
               initial={{ opacity: 0, y: 20 }}
@@ -126,6 +139,39 @@ const Dashboard = () => {
               </button>
             </motion.div>
           ))}
+        </div>
+
+        {/* Pagination Controls */}
+        <div className="flex justify-center items-center mt-8 space-x-2">
+          <button
+            onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+            disabled={currentPage === 1}
+            className={`px-4 py-2 rounded-md ${
+              currentPage === 1
+                ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+                : "bg-blue-600 text-white hover:bg-blue-700"
+            } transition-colors`}
+          >
+            Previous
+          </button>
+
+          <span className="text-lg font-medium">
+            Page {currentPage} of {totalPages}
+          </span>
+
+          <button
+            onClick={() =>
+              setCurrentPage((prev) => Math.min(prev + 1, totalPages))
+            }
+            disabled={currentPage === totalPages}
+            className={`px-4 py-2 rounded-md ${
+              currentPage === totalPages
+                ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+                : "bg-blue-600 text-white hover:bg-blue-700"
+            } transition-colors`}
+          >
+            Next
+          </button>
         </div>
       </motion.div>
 

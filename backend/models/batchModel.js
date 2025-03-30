@@ -13,7 +13,7 @@ const batchSchema = new mongoose.Schema({
   expectedDate: { type: Date, required: true },
   currentDate: { type: Date, default: Date.now },
   currentProcess: {
-    type: String,
+    type: [String],
     enum: ["Sarin", "Stitching", "4P Cutting"],
     required: true,
     index: true,
@@ -21,7 +21,7 @@ const batchSchema = new mongoose.Schema({
   processStartDate: { type: Date, default: Date.now },
   status: {
     type: String,
-    enum: ["Pending", "In Progress", "Completed"],
+    enum: ["Pending", "In Progress", "Completed", "Assigned"],
     default: "Pending",
     index: true,
   },
