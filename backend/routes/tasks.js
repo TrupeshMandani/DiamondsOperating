@@ -3,6 +3,7 @@ import {
   deleteTask,
   getAllTasks,
   getTasksByBatchId,
+  getTasksByBatchTitle,
   updateTaskStatus,
 } from "../controllers/taskController.js";
 
@@ -19,4 +20,7 @@ router.put("/:taskId/update-status", updateTaskStatus);
 
 // Route to delete task by Task ID
 router.delete("/:taskId", deleteTask);
+
+router.get("/title/:batchTitle", getTasksByBatchTitle); // Use the controller function here
+
 export default router;
