@@ -235,3 +235,39 @@ export const deleteTask = async (req, res) => {
     });
   }
 };
+
+export const getTasksByBatchTitle = async (req, res) => {
+  try {
+    const { batchTitle } = req.params; // Get the batchTitle from request parameters
+
+    if (!batchTitle) {
+      return res.status(400).json({ message: "Batch Title is required" });
+    }
+
+    // Find the batch using the batchTitle
+    const batch = await Task.findOne({ batchTitle });
+
+    if (!batch) {
+      return res
+        .status(404)
+        .json({ message: "No batch found with this title" });
+    }
+
+    // Fetch tasks that belong to the batch
+    const tasks = await Task.find({ batchTitle })
+      .populate("employeeId", "firstName lastName") // Populate employee details
+      .populate("batchId", "batchId currentProcess"); // Populate batch details
+
+    if (!tasks.length) {
+      return res.status(404).json({ message: "No tasks found for this batch" });
+    }
+
+    res.status(200).json(tasks); // Return the tasks
+  } catch (error) {
+    console.error("Error fetching tasks:", error);
+    res.status(500).json({
+      message: "Error fetching tasks",
+      error: error.message,
+    });
+  }
+};
