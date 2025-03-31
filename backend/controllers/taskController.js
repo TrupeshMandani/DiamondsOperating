@@ -124,18 +124,18 @@ export const updateTaskStatus = async (req, res) => {
         (task) => task.status === "In Progress"
       );
 
-      // Check if all tasks are assigned
-      const allTasksAssigned =
-        allTasks.length > 0 &&
-        allTasks.every((task) => task.status !== "Pending");
+      // Check if any task is pending
+      const anyTaskPending = allTasks.some((task) => task.status === "Pending");
 
       if (allTasksCompleted) {
         batch.status = "Completed";
       } else if (anyTaskInProgress) {
         batch.status = "In Progress";
-      } else if (allTasksAssigned) {
+      } else if (anyTaskPending) {
+        // If there are pending tasks, keep the batch in Assigned status
         batch.status = "Assigned";
       } else {
+        // Only set to Pending if there are no tasks at all
         batch.status = "Pending";
       }
 
