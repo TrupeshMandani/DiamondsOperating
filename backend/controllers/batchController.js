@@ -330,10 +330,6 @@ export const assignBatchToEmployee = async (req, res) => {
     // Maintain all processes, update progress only for assigned process
     batch.assignedEmployees.push({ employeeId, process });
 
-    batch.status = "In Progress";
-
-    await batch.save();
-
     // Create the task
     const numericRate = Number(rate);
     const numericDiamondNumber = Number(diamondNumber);
@@ -355,6 +351,23 @@ export const assignBatchToEmployee = async (req, res) => {
 
     const savedTask = await task.save();
     console.log("Saved task:", savedTask);
+
+    // Get all tasks for this batch
+    const allTasks = await Task.find({ batchId: batch._id });
+
+    // Check if all processes have assigned tasks
+    const allProcessesAssigned = batch.currentProcess.every((process) =>
+      allTasks.some((task) => task.currentProcess === process)
+    );
+
+    // Update batch status based on task assignments
+    if (allProcessesAssigned) {
+      batch.status = "Assigned";
+    } else {
+      batch.status = "Pending";
+    }
+
+    await batch.save();
 
     // Emit WebSocket event
     req.io.emit("taskAssigned", {
