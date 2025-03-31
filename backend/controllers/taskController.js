@@ -2,6 +2,8 @@ import Task from "../models/taskModel.js";
 import Earnings from "../models/earnings.js";
 import mongoose from "mongoose";
 import Batch from "../models/batchModel.js";
+import sendEmail from "../configurations/sendEmail.js";
+import Employee from "../models/Employee.js"; // To fetch employee info
 const FIXED_CHARGE_PER_DIAMOND = 0.25;
 
 // Get all tasks
@@ -58,16 +60,42 @@ export const updateTaskStatus = async (req, res) => {
       return res.status(404).json({ message: "Task not found" });
     }
 
+    const employee = await Employee.findById(task.employeeId);
+    const batch = await Batch.findById(task.batchId);
+
     // Update task status and related fields
     if (status === "In Progress" && task.status !== "In Progress") {
       task.startTime = new Date();
       task.status = status;
+
+      // 📧 Email manager when task starts
+      try {
+        await sendEmail({
+          to: process.env.EMAIL_USER,
+          subject: `Task Started by ${employee.firstName} ${employee.lastName}`,
+          text: `Hello Manager,
+
+The following task has been marked as *In Progress*:
+
+• Employee: ${employee.firstName} ${employee.lastName}
+• Task ID: ${task._id}
+• Process: ${task.currentProcess}
+• Batch ID: ${batch.batchId}
+• Start Time: ${task.startTime.toLocaleString()}
+
+– Diamond Management System`,
+        });
+        console.log("✅ Email sent to manager for 'In Progress'");
+      } catch (err) {
+        console.error("❌ Failed to send email to manager:", err.message);
+      }
+
     } else if (status === "Completed" && task.status !== "Completed") {
       task.endTime = new Date();
       task.status = status;
       task.completedAt = new Date();
 
-      // Calculate duration in minutes
+      // Calculate duration
       if (task.startTime) {
         task.durationInMinutes = Math.round(
           (task.endTime - task.startTime) / (1000 * 60)
@@ -77,8 +105,7 @@ export const updateTaskStatus = async (req, res) => {
       // Calculate earnings
       const Earning = task.diamondNumber * FIXED_CHARGE_PER_DIAMOND;
 
-      // Save earnings to Earning model using task's endTime
-      const earningsUpdate = await Earnings.findOneAndUpdate(
+      await Earnings.findOneAndUpdate(
         {
           employeeId: task.employeeId,
           month: task.endTime.getMonth() + 1,
@@ -91,9 +118,29 @@ export const updateTaskStatus = async (req, res) => {
         { upsert: true, new: true }
       );
 
-      console.log("Earnings updated:", earningsUpdate);
+      // 📧 Email manager when task is completed
+      try {
+        await sendEmail({
+          to: process.env.EMAIL_USER,
+          subject: `Task Completed by ${employee.firstName} ${employee.lastName}`,
+          text: `Hello Manager,
 
-      // Emit taskCompletedNotification to manager
+The following task has been *Completed*:
+
+• Employee: ${employee.firstName} ${employee.lastName}
+• Task ID: ${task._id}
+• Process: ${task.currentProcess}
+• Batch ID: ${batch.batchId}
+• Completed At: ${task.completedAt.toLocaleString()}
+
+– Diamond Management System`,
+        });
+        console.log("✅ Email sent to manager for 'Completed'");
+      } catch (err) {
+        console.error("❌ Failed to send email to manager:", err.message);
+      }
+
+      // Emit real-time notification
       if (req.io) {
         req.io.emit("taskCompletedNotification", {
           message: `Task completed by employee: ${task.employeeId}`,
@@ -108,41 +155,27 @@ export const updateTaskStatus = async (req, res) => {
 
     await task.save();
 
-    // Update batch status based on all tasks' statuses
-    const batch = await Batch.findById(task.batchId);
+    // Update batch status
     if (batch) {
-      // Get all tasks for this batch
       const allTasks = await Task.find({ batchId: batch._id });
 
-      // Check if all tasks are completed
-      const allTasksCompleted = allTasks.every(
-        (task) => task.status === "Completed"
-      );
-
-      // Check if any task is in progress
-      const anyTaskInProgress = allTasks.some(
-        (task) => task.status === "In Progress"
-      );
-
-      // Check if any task is pending
-      const anyTaskPending = allTasks.some((task) => task.status === "Pending");
+      const allTasksCompleted = allTasks.every((t) => t.status === "Completed");
+      const anyTaskInProgress = allTasks.some((t) => t.status === "In Progress");
+      const anyTaskPending = allTasks.some((t) => t.status === "Pending");
 
       if (allTasksCompleted) {
         batch.status = "Completed";
       } else if (anyTaskInProgress) {
         batch.status = "In Progress";
       } else if (anyTaskPending) {
-        // If there are pending tasks, keep the batch in Assigned status
         batch.status = "Assigned";
       } else {
-        // Only set to Pending if there are no tasks at all
         batch.status = "Pending";
       }
 
       await batch.save();
     }
 
-    // Emit task updated event for real-time update
     if (req.io) {
       req.io.emit("taskUpdated", {
         message: `Task status updated to ${status} for task: ${taskId}`,

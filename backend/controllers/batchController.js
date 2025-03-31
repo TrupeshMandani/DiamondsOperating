@@ -2,6 +2,7 @@ import QRCode from "qrcode";
 import Batch from "../models/batchModel.js";
 import Task from "../models/taskModel.js";
 import Employee from "../models/Employee.js";
+import sendEmail from "../configurations/sendEmail.js"; 
 import mongoose from "mongoose";
 
 // Generate QR code for batch details
@@ -277,7 +278,8 @@ export const getTasksForBatch = async (req, res) => {
   }
 };
 
-// Fix the assignBatchToEmployee function
+
+
 export const assignBatchToEmployee = async (req, res) => {
   try {
     const {
@@ -361,13 +363,27 @@ export const assignBatchToEmployee = async (req, res) => {
     );
 
     // Update batch status based on task assignments
-    if (allProcessesAssigned) {
-      batch.status = "Assigned";
-    } else {
-      batch.status = "Pending";
-    }
+    batch.status = allProcessesAssigned ? "Assigned" : "Pending";
 
     await batch.save();
+
+    // 🔔 Send Email Notification to Employee
+    await sendEmail({
+      to: employee.email,
+      subject: "New Task Assigned",
+      text: `Hello ${employee.firstName},
+
+You have been assigned a new task for batch ${batch.batchId}.
+
+Process: ${process}
+Description: ${description}
+Due Date: ${new Date(dueDate).toLocaleDateString()}
+
+Please log in to the system to view and start your task.
+
+Thanks,
+Diamond Management System`,
+    });
 
     // Emit WebSocket event
     req.io.emit("taskAssigned", {
@@ -386,6 +402,7 @@ export const assignBatchToEmployee = async (req, res) => {
       .json({ message: "Error assigning batch", error: error.message });
   }
 };
+
 
 export const getTasksForEmployee = async (req, res) => {
   try {
