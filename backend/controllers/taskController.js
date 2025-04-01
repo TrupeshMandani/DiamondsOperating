@@ -50,8 +50,9 @@ export const updateTaskStatus = async (req, res) => {
     const { taskId } = req.params;
     const { status } = req.body;
 
-    if (!taskId || !mongoose.Types.ObjectId.isValid(taskId)) {
-      return res.status(400).json({ message: "Invalid task ID" });
+    const validStatuses = ["Pending", "In Progress", "Completed"];
+    if (!validStatuses.includes(status)) {
+      return res.status(400).json({ message: "Invalid status value" });
     }
 
     const task = await Task.findById(taskId);
@@ -59,99 +60,63 @@ export const updateTaskStatus = async (req, res) => {
       return res.status(404).json({ message: "Task not found" });
     }
 
-    const employee = await Employee.findById(task.employeeId);
-    const batch = await Batch.findById(task.batchId);
-
-    // Update task status and related fields
-    if (status === "In Progress" && task.status !== "In Progress") {
+    // Start time
+    if (status === "In Progress" && !task.startTime) {
       task.startTime = new Date();
-      task.status = status;
-
-      // Email manager when task starts
-      await sendEmail({
-        to: process.env.EMAIL_USER,
-        subject: `Task Started by ${employee.firstName} ${employee.lastName}`,
-        text: `Hello Manager,
-The following task has been marked as *In Progress*:
-• Employee: ${employee.firstName} ${employee.lastName}
-• Task ID: ${task._id}
-• Process: ${task.currentProcess}
-• Batch ID: ${batch.batchId}
-• Start Time: ${task.startTime.toLocaleString()}
-– Diamond Management System`,
-      });
-
-    } else if (status === "Completed" && task.status !== "Completed") {
-      task.endTime = new Date();
-      task.status = status;
-      task.completedAt = new Date();
-
-      // Calculate duration
-      if (task.startTime) {
-        task.durationInMinutes = Math.round(
-          (task.endTime - task.startTime) / (1000 * 60)
-        );
-      }
-
-      // Calculate earnings using task-specific rate
-      const earningAmount = task.diamondNumber * task.rate;
-
-      // Update/create earning record
-      await Earning.findOneAndUpdate(
-        {
-          employeeId: task.employeeId,
-          month: task.endTime.getMonth() + 1,
-          year: task.endTime.getFullYear(),
-        },
-        {
-          $inc: { totalEarnings: earningAmount },
-          $set: { 
-            updatedAt: new Date(),
-            rate: task.rate,
-            diamondNumber: task.diamondNumber
-          },
-        },
-        { upsert: true, new: true }
-      );
-
-      // Email manager when task is completed
-      await sendEmail({
-        to: process.env.EMAIL_USER,
-        subject: `Task Completed by ${employee.firstName} ${employee.lastName}`,
-        text: `Hello Manager,
-The following task has been *Completed*:
-• Employee: ${employee.firstName} ${employee.lastName}
-• Task ID: ${task._id}
-• Process: ${task.currentProcess}
-• Batch ID: ${batch.batchId}
-• Completed At: ${task.completedAt.toLocaleString()}
-– Diamond Management System`,
-      });
-
-      // Real-time notification
-      if (req.io) {
-        req.io.emit("taskCompletedNotification", {
-          message: `Task completed by employee: ${task.employeeId}`,
-          taskId: task._id,
-          employeeId: task.employeeId,
-          process: task.process,
-        });
-      }
     }
 
+    // End time + Duration
+    if (status === "Completed" && !task.endTime) {
+      task.endTime = new Date();
+      if (task.startTime) {
+        const durationMs = task.endTime.getTime() - task.startTime.getTime();
+        task.durationInMinutes = Math.round(durationMs / 60000);
+      }
+      task.completedAt = new Date();
+    }
+
+    // Recalculate earnings based on diamondNumber and rate
+    if (status === "Completed") {
+      task.earnings = task.diamondNumber * task.rate; // Recalculate earnings
+    }
+
+    task.status = status;
     await task.save();
 
-    // Update batch status
-    if (batch) {
-      const allTasks = await Task.find({ batchId: batch._id });
-      const allTasksCompleted = allTasks.every((t) => t.status === "Completed");
-      const anyTaskInProgress = allTasks.some((t) => t.status === "In Progress");
-      const anyTaskPending = allTasks.some((t) => t.status === "Pending");
+    // Create earning using the earnings calculated from diamondNumber * rate
+    if (status === "Completed") {
+      const earning = new Earning({
+        employeeId: task.employeeId,
+        taskId: task._id,
+        totalEarnings: task.earnings, // Use task's earnings directly
+        date: task.completedAt,
+        month: task.completedAt.getUTCMonth() + 1,
+        year: task.completedAt.getUTCFullYear(),
+        periodStart: task.startTime, // Set periodStart to task start time
+        periodEnd: task.endTime, // Set periodEnd to task end time
+      });
 
-      batch.status = allTasksCompleted ? "Completed" :
-                    anyTaskInProgress ? "In Progress" :
-                    anyTaskPending ? "Assigned" : "Pending";
-      await batch.save();
+      await earning.save();
+    }
+
+    // Update batch status
+    const batch = await Batch.findById(task.batchId);
+    if (batch) {
+      if (status === "In Progress") {
+        batch.status = "In Progress";
+        await batch.save();
+      }
+
+      if (status === "Completed") {
+        const allTasksCompleted = await Task.find({
+          batchId: batch._id,
+          status: { $ne: "Completed" },
+        });
+        if (allTasksCompleted.length === 0) {
+          batch.status = "Completed";
+          await batch.save();
+        }
+      }
     }
 
     // Real-time update
@@ -229,7 +194,7 @@ export const getTaskSummaryForEmployee = async (req, res) => {
 
     const counts = await Task.aggregate([
       { $match: { employeeId: new mongoose.Types.ObjectId(employeeId) } },
-      { $group: { _id: "$status", count: { $sum: 1 } } }
+      { $group: { _id: "$status", count: { $sum: 1 } } },
     ]);
 
     const summary = counts.reduce((acc, curr) => {
