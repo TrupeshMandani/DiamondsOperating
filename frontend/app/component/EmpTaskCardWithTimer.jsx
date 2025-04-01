@@ -192,7 +192,6 @@ const EmpTaskCardWithTimer = ({
 
         <Button
           className="w-full bg-gray-700 hover:bg-gray-900 text-white"
-          onClick={fetchBatchDetails}
           disabled={loading}
         >
           {loading ? "Fetching..." : "View Details"}
