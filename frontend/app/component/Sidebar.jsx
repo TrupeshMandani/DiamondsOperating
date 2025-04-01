@@ -22,6 +22,7 @@ const Sidebar = () => {
     const storedName = localStorage.getItem("name");
     if (storedName) setName(storedName);
   }, []);
+
   // Check if the current path matches the link
   const isActive = (path) => {
     return pathname === path
@@ -29,7 +30,7 @@ const Sidebar = () => {
 
   const handleLogout = () => {
     localStorage.clear();
-    router.push("/login"); // Change this path if your login route is different
+    router.push("/Pages/login"); // Change this path if your login route is different
   };
 
   return (
