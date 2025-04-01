@@ -13,7 +13,20 @@ const taskSchema = new mongoose.Schema({
     required: true,
   },
   employeeName: { type: String, required: true },
-  diamondNumber: { type: Number, required: true },
+  diamondNumber: {
+    type: Number,
+    required: true,
+    min: [1, "At least 1 diamond required"],
+  },
+  rate: {
+    type: Number,
+    required: true,
+    min: [0, "Rate cannot be negative"],
+  },
+  earnings: {
+    type: Number,
+    required: false,
+  },
   currentProcess: { type: String, required: true },
   description: { type: String, required: true },
   dueDate: { type: Date, required: true },
@@ -31,7 +44,7 @@ const taskSchema = new mongoose.Schema({
   startTime: { type: Date, default: null },
   endTime: { type: Date, default: null },
   durationInMinutes: { type: Number, default: null },
-  completedAt: { type: Date }, // Date when the task is completed
+  completedAt: { type: Date },
 });
 
 export default mongoose.model("Task", taskSchema);

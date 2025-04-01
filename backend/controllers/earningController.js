@@ -1,147 +1,84 @@
-import Earnings from "../models/earnings.js";
+import Earning from "../models/earningModel.js";
+import Task from "../models/taskModel.js"; // We will use Task model to get earnings
 import mongoose from "mongoose";
 
-// Get employee's monthly earnings
-export const getMonthlyEarnings = async (req, res) => {
+// Get earnings grouped by month/year for an employee
+export const getEmployeeEarnings = async (req, res) => {
   try {
     const { employeeId } = req.params;
 
+    // Validate Employee ID
     if (!mongoose.Types.ObjectId.isValid(employeeId)) {
-      return res.status(400).json({ message: "Invalid employee ID format" });
+      return res.status(400).json({ message: "Invalid employee ID" });
     }
 
-    const now = new Date();
-    const earningsRecord = await Earnings.findOne({
-      employeeId: new mongoose.Types.ObjectId(employeeId),
-      month: now.getMonth() + 1, // JavaScript months are 0-indexed, so add 1
-      year: now.getFullYear(),
-    });
-
-    if (!earningsRecord) {
-      return res.status(404).json({
-        message: "No earnings found for current month",
-        month: now.getMonth() + 1,
-        year: now.getFullYear(),
-      });
-    }
-
-    res.status(200).json({
-      totalEarnings: earningsRecord.totalEarnings,
-    });
-  } catch (error) {
-    res.status(500).json({
-      message: "Error fetching monthly earnings",
-      error: error.message,
-    });
-  }
-};
-
-// Get employee's total yearly earnings
-export const getYearlyEarnings = async (req, res) => {
-  try {
-    const { employeeId } = req.params;
-
-    if (!mongoose.Types.ObjectId.isValid(employeeId)) {
-      return res.status(400).json({ message: "Invalid employee ID format" });
-    }
-
-    const now = new Date();
-    const result = await Earnings.aggregate([
+    // Aggregation query to fetch monthly earnings from completed tasks
+    const earnings = await Earning.aggregate([
       {
         $match: {
           employeeId: new mongoose.Types.ObjectId(employeeId),
-          year: now.getFullYear(),
         },
       },
       {
         $group: {
-          _id: null,
-          totalEarnings: { $sum: "$totalEarnings" },
+          _id: {
+            year: "$year", // Use year and month from earnings
+            month: "$month",
+          },
+          totalEarnings: { $sum: "$totalEarnings" }, // Sum of earnings for that month
         },
       },
+      {
+        $project: {
+          _id: 0,
+          year: "$_id.year",
+          month: "$_id.month",
+          totalEarnings: 1,
+        },
+      },
+      { $sort: { year: 1, month: 1 } }, // Sort by year & month
     ]);
 
-    const yearlyEarnings = result.length > 0 ? result[0].totalEarnings : 0;
+    // Check if earnings were found
+    if (!earnings.length) {
+      return res
+        .status(404)
+        .json({ message: "No earnings found for this employee" });
+    }
 
-    res.status(200).json({ yearlyEarnings });
+    res.status(200).json({ success: true, data: earnings });
   } catch (error) {
+    console.error("Error fetching earnings:", error);
     res.status(500).json({
-      message: "Error fetching yearly earnings",
+      message: "Error fetching earnings",
       error: error.message,
     });
   }
 };
 
-// Get employee's earnings for a specific month and year
-export const getSpecificMonthEarnings = async (req, res) => {
+// Create a new earning entry when task is completed
+export const createEarningsForCompletedTask = async (taskId) => {
   try {
-    const { employeeId, month, year } = req.params;
-
-    if (!mongoose.Types.ObjectId.isValid(employeeId)) {
-      return res.status(400).json({ message: "Invalid employee ID format" });
+    const task = await Task.findById(taskId).populate("employeeId");
+    if (!task || task.status !== "Completed") {
+      throw new Error("Task is not completed or not found");
     }
 
-    const earningsRecord = await Earnings.findOne({
-      employeeId: new mongoose.Types.ObjectId(employeeId),
-      month: parseInt(month),
-      year: parseInt(year),
+    // Create a new earning entry based on the completed task
+    const earning = new Earning({
+      employeeId: task.employeeId._id,
+      taskId: task._id,
+      totalEarnings: task.earnings,
+      date: task.completedAt,
+      month: task.completedAt.getUTCMonth() + 1, // Adjusted for 1-based month
+      year: task.completedAt.getUTCFullYear(),
+      periodStart: task.startTime,
+      periodEnd: task.endTime,
     });
 
-    if (!earningsRecord) {
-      return res.status(200).json({
-        totalEarnings: 0, // Set totalEarnings to 0 if no record found
-        message: `You have no record for ${months[month - 1]} ${year}.`, // Send message with month and year
-      });
-    }
-
-    res.status(200).json({
-      totalEarnings: earningsRecord.totalEarnings,
-    });
+    await earning.save();
+    console.log("Earning saved for task:", taskId);
   } catch (error) {
-    res.status(500).json({
-      message: "Error fetching specific month earnings",
-      error: error.message,
-    });
-  }
-};
-
-// Post earnings for an employee (monthly earnings record)
-export const postMonthlyEarnings = async (req, res) => {
-  try {
-    const { employeeId, totalEarnings, month, year } = req.body;
-
-    if (!mongoose.Types.ObjectId.isValid(employeeId)) {
-      return res.status(400).json({ message: "Invalid employee ID format" });
-    }
-
-    const earningsRecord = await Earnings.findOne({
-      employeeId: new mongoose.Types.ObjectId(employeeId),
-      month: parseInt(month),
-      year: parseInt(year),
-    });
-
-    if (earningsRecord) {
-      return res.status(400).json({
-        message: `Earnings for ${month}/${year} already recorded`,
-      });
-    }
-
-    const newEarnings = new Earnings({
-      employeeId: new mongoose.Types.ObjectId(employeeId),
-      totalEarnings,
-      month: parseInt(month),
-      year: parseInt(year),
-    });
-
-    await newEarnings.save();
-    res.status(201).json({
-      message: `Earnings for ${month}/${year} saved successfully`,
-      earnings: newEarnings,
-    });
-  } catch (error) {
-    res.status(500).json({
-      message: "Error saving monthly earnings",
-      error: error.message,
-    });
+    console.error("Error creating earning for completed task:", error);
   }
 };

@@ -1,22 +1,31 @@
 "use client"
 
-import { useState, useMemo } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { motion } from "framer-motion"
 
-import DashboardHeader from "./dashboard-component/dashboard-header"
-import DashboardKPIs from "./dashboard-component/dashboard-kpis"
-import DashboardCharts from "./dashboard-component/dashboard-charts"
-import DashboardTabs from "./dashboard-component/dashboard-tabs"
+import DashboardHeader from "./dashboard-components/dashboard-header"
+import DashboardKPIs from "./dashboard-components/dashboard-kpis"
+import DashboardCharts from "./dashboard-components/dashboard-charts"
+import DashboardTabs from "./dashboard-components/dashboard-tabs"
 import Sidebar from "../Sidebar"
 import BatchModal from "./batch-modal"
 import InfoModal from "./info-modal"
 
-// Mock data
-import { batches, employees, tasks, notifications, revenueData } from "./mock-data"
+// API services
+import { fetchEmployees, fetchBatches, fetchTasks } from "./services/api"
+
+// Mock data for notifications and revenue (these don't have API endpoints yet)
+import { notifications, revenueData } from "./mock-data"
 
 const ITEMS_PER_PAGE = 8 // Number of batches per page
 
 const Dashboard = () => {
+  // State for data
+  const [employees, setEmployees] = useState([])
+  const [batches, setBatches] = useState([])
+  const [tasks, setTasks] = useState([])
+
+  // UI state
   const [mounted, setMounted] = useState(true)
   const [modalOpen, setModalOpen] = useState(false)
   const [selectedBatch, setSelectedBatch] = useState(null)
@@ -24,11 +33,117 @@ const Dashboard = () => {
   const [infoModalOpen, setInfoModalOpen] = useState(false)
   const [infoModalTitle, setInfoModalTitle] = useState("")
   const [infoModalItems, setInfoModalItems] = useState([])
-  const [loading, setLoading] = useState(false)
+
+  // Loading and error states
+  const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1)
+
+  // Fetch data from API
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setLoading(true)
+
+        // Fetch all data in parallel
+        const [employeeData, batchData, taskData] = await Promise.all([fetchEmployees(), fetchBatches(), fetchTasks()])
+
+        // Transform employee data
+        const transformedEmployees = employeeData.map((emp, index) => ({
+          id: emp._id || `E00${index + 1}`,
+          name: `${emp.firstName} ${emp.lastName}`,
+          email: emp.email,
+          position: emp.skills[0] || "Staff", // Using first skill as position
+          department: emp.skills[1] || "General", // Using second skill as department
+          status: "Active", // Default status
+          assignedTasks: Math.floor(Math.random() * 5), // Will be updated with actual task count
+          completedTasks: Math.floor(Math.random() * 30), // Will be updated with actual completed tasks
+          performance: Math.floor(Math.random() * 30) + 70, // Random performance between 70-100
+          avatar: "/placeholder.svg?height=40&width=40",
+        }))
+
+        // Transform batch data
+        const transformedBatches = batchData.map((batch) => ({
+          batchId: batch.batchId,
+          status: batch.status,
+          currentProcess: Array.isArray(batch.currentProcess) ? batch.currentProcess[0] : batch.currentProcess,
+          totalDiamonds: batch.diamondNumber,
+          totalCarats: batch.diamondWeight,
+          assignedTo: `${batch.firstName} ${batch.lastName}`,
+          source: batch.materialType,
+          createdDate: new Date(batch.currentDate).toISOString().split("T")[0],
+          notes: `Customer: ${batch.firstName} ${batch.lastName}, Expected completion: ${new Date(batch.expectedDate).toLocaleDateString()}`,
+          // Additional fields for the modal
+          email: batch.email,
+          phone: batch.phone,
+          address: batch.address,
+          expectedDate: new Date(batch.expectedDate).toLocaleDateString(),
+          completedProcesses: batch.completedProcesses || [],
+          progress: batch.progress || {},
+        }))
+
+        // Transform task data
+        const transformedTasks = taskData.map((task) => ({
+          id: task._id,
+          title: task.batchTitle,
+          description: task.description,
+          assignedTo: task.employeeId, // This is the ID, we'll use it to find the employee name
+          batchId: task._id ? task._id.toString() : "N/A", // Convert ObjectId to string
+          batchIdRaw: task.batchId, // Keep the original for reference if needed
+          status: task.status,
+          priority: task.priority,
+          dueDate: new Date(task.dueDate).toLocaleDateString(),
+          assignedDate: new Date(task.assignedDate).toLocaleDateString(),
+          employeeName: task.employeeName,
+          diamondNumber: task.diamondNumber,
+          currentProcess: task.currentProcess,
+        }))
+
+        // Update task counts for employees
+        const employeeTaskCounts = {}
+        const employeeCompletedTasks = {}
+
+        transformedTasks.forEach((task) => {
+          const employeeId = task.assignedTo
+
+          // Count assigned tasks
+          if (!employeeTaskCounts[employeeId]) {
+            employeeTaskCounts[employeeId] = 0
+          }
+          employeeTaskCounts[employeeId]++
+
+          // Count completed tasks
+          if (task.status === "Completed") {
+            if (!employeeCompletedTasks[employeeId]) {
+              employeeCompletedTasks[employeeId] = 0
+            }
+            employeeCompletedTasks[employeeId]++
+          }
+        })
+
+        // Update employee data with actual task counts
+        const updatedEmployees = transformedEmployees.map((emp) => ({
+          ...emp,
+          assignedTasks: employeeTaskCounts[emp.id] || 0,
+          completedTasks: employeeCompletedTasks[emp.id] || 0,
+        }))
+
+        // Set state with transformed data
+        setEmployees(updatedEmployees)
+        setBatches(transformedBatches)
+        setTasks(transformedTasks)
+        setLoading(false)
+      } catch (err) {
+        console.error("Error fetching data:", err)
+        setError("Failed to load dashboard data. Please try again later.")
+        setLoading(false)
+      }
+    }
+
+    fetchData()
+  }, [])
 
   // Filter completed and pending tasks
   const completedTasks = tasks.filter((task) => task.status === "Completed")
@@ -38,12 +153,12 @@ const Dashboard = () => {
   const paginatedBatches = useMemo(() => {
     const startIndex = (currentPage - 1) * ITEMS_PER_PAGE
     return batches.slice(startIndex, startIndex + ITEMS_PER_PAGE)
-  }, [currentPage])
+  }, [currentPage, batches])
 
   // Calculate total pages
   const totalPages = useMemo(() => {
     return Math.ceil(batches.length / ITEMS_PER_PAGE)
-  }, [])
+  }, [batches])
 
   // Pagination handlers
   const handleNextPage = () => {
@@ -72,10 +187,12 @@ const Dashboard = () => {
 
   // Calculate KPIs
   const totalBatches = batches.length
-  const activeBatches = batches.filter((batch) => batch.status === "Active").length
-  const completionRate = Math.round((completedTasks.length / tasks.length) * 100) || 0
+  const activeBatches = batches.filter((batch) => batch.status === "In Progress" || batch.status === "Assigned").length
+  const completionRate = tasks.length > 0 ? Math.round((completedTasks.length / tasks.length) * 100) : 0
   const employeeUtilization =
-    Math.round((employees.filter((e) => e.assignedTasks > 0).length / employees.length) * 100) || 0
+    employees.length > 0
+      ? Math.round((employees.filter((e) => e.assignedTasks > 0).length / employees.length) * 100)
+      : 0
 
   // Prepare dashboard data object to pass to child components
   const dashboardData = {
