@@ -6,7 +6,13 @@ import { CalendarClock } from "lucide-react"
 const TasksTable = ({ tasks, employees }) => {
   // Helper function to find employee by ID
   const findEmployee = (employeeId) => {
-    return employees.find((emp) => emp.id === employeeId) || { name: "Unassigned", avatar: null }
+    const employee = employees.find((emp) => emp.id === employeeId)
+    return (
+      employee || {
+        name: tasks.find((task) => task.assignedTo === employeeId)?.employeeName || "Unassigned",
+        avatar: null,
+      }
+    )
   }
 
   // Get status badge variant
@@ -51,46 +57,61 @@ const TasksTable = ({ tasks, employees }) => {
           </TableRow>
         </TableHeader>
         <TableBody>
-          {tasks.map((task) => {
-            const employee = findEmployee(task.assignedTo)
-            return (
-              <TableRow key={task.id}>
-                <TableCell>
-                  <div>
-                    <p className="font-medium">{task.title}</p>
-                    <p className="text-xs text-muted-foreground">{task.description}</p>
-                  </div>
-                </TableCell>
-                <TableCell>
-                  <div className="flex items-center gap-2">
-                    <Avatar className="h-8 w-8">
-                      <AvatarImage src={employee.avatar || "/placeholder.svg?height=32&width=32"} />
-                      <AvatarFallback>
-                        {employee.name
-                          .split(" ")
-                          .map((n) => n[0])
-                          .join("")}
-                      </AvatarFallback>
-                    </Avatar>
-                    <span>{employee.name}</span>
-                  </div>
-                </TableCell>
-                <TableCell>{task.batchId || "N/A"}</TableCell>
-                <TableCell>
-                  <Badge variant={getPriorityVariant(task.priority)}>{task.priority}</Badge>
-                </TableCell>
-                <TableCell>
-                  <Badge variant={getStatusVariant(task.status)}>{task.status}</Badge>
-                </TableCell>
-                <TableCell>
-                  <div className="flex items-center gap-2">
-                    <CalendarClock className="h-4 w-4 text-muted-foreground" />
-                    <span>{task.dueDate}</span>
-                  </div>
-                </TableCell>
-              </TableRow>
-            )
-          })}
+          {tasks.length > 0 ? (
+            tasks.map((task) => {
+              const employee = findEmployee(task.assignedTo)
+              return (
+                <TableRow key={task.id}>
+                  <TableCell>
+                    <div>
+                      <p className="font-medium">{task.title}</p>
+                      <p className="text-xs text-muted-foreground">{task.description}</p>
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-2">
+                      <Avatar className="h-8 w-8">
+                        <AvatarImage
+                          src={employee.avatar || "/placeholder.svg?height=32&width=32"}
+                          alt={employee.name}
+                        />
+                        <AvatarFallback>
+                          {employee.name
+                            .split(" ")
+                            .map((n) => n[0])
+                            .join("")}
+                        </AvatarFallback>
+                      </Avatar>
+                      <span>{employee.name}</span>
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    {typeof task.batchId === "object"
+                      ? "Batch #" + (task.batchId._id || "").toString().substring(0, 6)
+                      : task.batchId || "N/A"}
+                  </TableCell>
+                  <TableCell>
+                    <Badge variant={getPriorityVariant(task.priority)}>{task.priority}</Badge>
+                  </TableCell>
+                  <TableCell>
+                    <Badge variant={getStatusVariant(task.status)}>{task.status}</Badge>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-2">
+                      <CalendarClock className="h-4 w-4 text-muted-foreground" />
+                      <span>{task.dueDate}</span>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              )
+            })
+          ) : (
+            <TableRow>
+              <TableCell colSpan={6} className="text-center py-8 text-gray-500">
+                No tasks found
+              </TableCell>
+            </TableRow>
+          )}
         </TableBody>
       </Table>
     </div>
