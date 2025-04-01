@@ -1,5 +1,4 @@
 import Task from "../models/taskModel.js";
-import Earnings from "../models/earnings.js";
 import mongoose from "mongoose";
 import Batch from "../models/batchModel.js";
 
@@ -42,7 +41,7 @@ export const getTasksByBatchId = async (req, res) => {
   }
 };
 
-// Update task status and calculate earnings based on rate
+// Update task status
 export const updateTaskStatus = async (req, res) => {
   try {
     const { taskId } = req.params;
@@ -63,51 +62,14 @@ export const updateTaskStatus = async (req, res) => {
       task.startTime = new Date();
     }
 
-    // End time + Duration + Earnings calculation
+    // End time + Duration
     if (status === "Completed" && !task.endTime) {
       task.endTime = new Date();
       if (task.startTime) {
         const durationMs = task.endTime.getTime() - task.startTime.getTime();
         task.durationInMinutes = Math.round(durationMs / 60000);
       }
-
-      // Calculate earnings using rate from task
-      const Earning = task.diamondNumber * task.rate;
       task.completedAt = new Date();
-
-      console.log("Task completed by employee:", task.employeeId);
-      console.log("Diamonds completed:", task.diamondNumber);
-      console.log("Rate used:", task.rate);
-      console.log("Calculated earnings:", Earning);
-
-      const endTime = task.endTime;
-
-      // Update earnings
-      const earningsUpdate = await Earnings.findOneAndUpdate(
-        {
-          employeeId: task.employeeId,
-          month: endTime.getMonth() + 1,
-          year: endTime.getFullYear(),
-        },
-        {
-          $inc: { totalEarnings: Earning },
-          $set: { updatedAt: new Date() },
-        },
-        { upsert: true, new: true }
-      );
-
-      console.log("Earnings updated:", earningsUpdate);
-
-      // Notify manager
-      if (req.io) {
-        req.io.emit("taskCompletedNotification", {
-          message: `Task completed by employee: ${task.employeeId}`,
-          taskId: task._id,
-          employeeId: task.employeeId,
-          process: task.process,
-          earnings: Earning,
-        });
-      }
     }
 
     task.status = status;
@@ -218,6 +180,43 @@ export const deleteTask = async (req, res) => {
       message: "Failed to delete task",
       error: error.message,
       taskId,
+    });
+  }
+};
+// Get task count summary for an employee
+export const getTaskSummaryForEmployee = async (req, res) => {
+  try {
+    const { employeeId } = req.params;
+
+    if (!employeeId) {
+      return res.status(400).json({ message: "Employee ID is required" });
+    }
+
+    const assignedCount = await Task.countDocuments({
+      employeeId,
+      status: "Pending",
+    });
+    const inProgressCount = await Task.countDocuments({
+      employeeId,
+      status: "In Progress",
+    });
+    const completedCount = await Task.countDocuments({
+      employeeId,
+      status: "Completed",
+    });
+
+    res.status(200).json({
+      success: true,
+      data: {
+        assigned: assignedCount,
+        inProgress: inProgressCount,
+        completed: completedCount,
+      },
+    });
+  } catch (error) {
+    res.status(500).json({
+      message: "Error fetching task summary",
+      error: error.message,
     });
   }
 };
