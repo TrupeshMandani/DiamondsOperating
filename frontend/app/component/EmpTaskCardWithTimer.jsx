@@ -13,10 +13,11 @@ const EmpTaskCardWithTimer = ({
   getPriorityColor,
 }) => {
   const [elapsedTime, setElapsedTime] = useState(null);
+  const [batchDetails, setBatchDetails] = useState(null);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     let interval;
-
     if (task.status === "In Progress" && task.startTime && !task.endTime) {
       const start = new Date(task.startTime).getTime();
       interval = setInterval(() => {
@@ -33,6 +34,77 @@ const EmpTaskCardWithTimer = ({
 
     return () => clearInterval(interval);
   }, [task.status, task.startTime, task.endTime]);
+
+  const fetchBatchDetails = async () => {
+    if (!task.batchTitle) {
+      console.error("Batch Title is missing!");
+      return;
+    }
+
+    console.log("Fetching batch details for Batch Title:", task.batchTitle);
+    setLoading(true);
+
+    try {
+      const response = await fetch(
+        `http://localhost:5023/api/tasks/title/${encodeURIComponent(
+          task.batchTitle
+        )}`
+      );
+
+      if (!response.ok) {
+        throw new Error("Failed to fetch batch details");
+      }
+
+      const data = await response.json();
+      console.log("Fetched Batch Details:", data);
+
+      // If the task being started is "Stitching", check if Sarin is completed
+      if (task.currentProcess === "Stitching") {
+        const sarinTask = data.find(
+          (task) =>
+            task.currentProcess === "Sarin" && task.status === "Completed"
+        );
+
+        if (!sarinTask) {
+          alert(
+            "Please wait until 'Sarin' task is completed before starting 'Stitching' task."
+          );
+          return;
+        }
+      }
+
+      // If the task being started is "4P Cutting", check if both "Sarin" and "Stitching" are completed
+      if (task.currentProcess === "4P Cutting") {
+        const sarinTask = data.find(
+          (task) =>
+            task.currentProcess === "Sarin" && task.status === "Completed"
+        );
+        const stitchingTask = data.find(
+          (task) =>
+            task.currentProcess === "Stitching" && task.status === "Completed"
+        );
+
+        if (!sarinTask || !stitchingTask) {
+          alert(
+            "Please wait until both 'Sarin' and 'Stitching' tasks to be completed before starting the '4P Cutting' task."
+          );
+          return;
+        }
+      }
+
+      // If all checks pass, allow the task to start
+      startTask();
+    } catch (error) {
+      console.error("Error fetching batch details:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const startTask = () => {
+    // This function will handle starting the task
+    updateTaskStatus(task._id, "In Progress");
+  };
 
   const formatDuration = (ms) => {
     const totalSec = Math.floor(ms / 1000);
@@ -87,7 +159,6 @@ const EmpTaskCardWithTimer = ({
         </span>
       </div>
 
-      {/* Timer Display */}
       {durationDisplay && (
         <div className="text-sm text-blue-600 mt-1">
           ⏱ Time: {durationDisplay}
@@ -102,7 +173,7 @@ const EmpTaskCardWithTimer = ({
         {section === "assigned" && (
           <Button
             className="w-full"
-            onClick={() => updateTaskStatus(task._id, "In Progress")}
+            onClick={fetchBatchDetails}
             disabled={updatingTasks.has(task._id)}
           >
             {updatingTasks.has(task._id) ? "Updating..." : "Start Task"}
@@ -121,17 +192,10 @@ const EmpTaskCardWithTimer = ({
 
         <Button
           className="w-full bg-gray-700 hover:bg-gray-900 text-white"
-          onClick={() =>
-            alert(
-              `Task ID: ${task._id}\nStart: ${
-                task.startTime ? new Date(task.startTime).toLocaleString() : "—"
-              }\nEnd: ${
-                task.endTime ? new Date(task.endTime).toLocaleString() : "—"
-              }\nTime Spent: ${durationDisplay || "—"}`
-            )
-          }
+          onClick={fetchBatchDetails}
+          disabled={loading}
         >
-          View Details
+          {loading ? "Fetching..." : "View Details"}
         </Button>
       </div>
     </motion.div>

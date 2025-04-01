@@ -2,6 +2,7 @@ import QRCode from "qrcode";
 import Batch from "../models/batchModel.js";
 import Task from "../models/taskModel.js";
 import Employee from "../models/Employee.js";
+import sendEmail from "../configurations/sendEmail.js"; 
 import mongoose from "mongoose";
 
 // Generate QR code for batch details
@@ -277,7 +278,8 @@ export const getTasksForBatch = async (req, res) => {
   }
 };
 
-// Fix the assignBatchToEmployee function
+
+
 export const assignBatchToEmployee = async (req, res) => {
   try {
     const {
@@ -294,7 +296,6 @@ export const assignBatchToEmployee = async (req, res) => {
 
     console.log("Received Task Data:", req.body);
 
-    // Ensure all required fields are provided
     if (
       !batchId ||
       !employeeId ||
@@ -309,57 +310,32 @@ export const assignBatchToEmployee = async (req, res) => {
     }
 
     // Find the batch
-    const batch = await Batch.findOne({ batchId }).select(
-      "batchId currentProcess selectedProcesses status"
-    );
+    const batch = await Batch.findOne({ batchId });
     if (!batch) {
       return res.status(404).json({ message: "Batch not found" });
     }
 
-    // Ensure currentProcess is treated as an array, even if it's a single string
-    let availableProcesses =
-      batch.selectedProcesses ||
-      (Array.isArray(batch.currentProcess)
-        ? batch.currentProcess
-        : [batch.currentProcess]);
-
-    // Flatten available processes if necessary (in case it's a nested array)
-    if (Array.isArray(availableProcesses[0])) {
-      availableProcesses = availableProcesses.flat();
-    }
-
-    // Check if the process is available for this batch
-    if (!availableProcesses.includes(process)) {
+    // Check if the process is valid for the batch
+    if (!batch.currentProcess.includes(process)) {
       return res.status(400).json({
         message: `Process "${process}" is not available for this batch`,
-        availableProcesses: availableProcesses,
+        availableProcesses: batch.currentProcess,
       });
     }
 
-    const employee = await Employee.findById(employeeId).select(
-      "firstName lastName"
-    );
+    // Find the employee
+    const employee = await Employee.findById(employeeId);
     if (!employee) {
       return res.status(404).json({ message: "Employee not found" });
     }
 
-    // Update batch with the new process
-    batch.currentProcess = process;
+    // Maintain all processes, update progress only for assigned process
+    batch.assignedEmployees.push({ employeeId, process });
 
-    // Set the batch status to "Assigned" after it's successfully assigned
-    batch.status = "Assigned"; // Set the batch status to 'Assigned'
-
-    await batch.save();
-
-    // Assign the batch to the employee
-    batch.assignedEmployee = employeeId;
-    await batch.save();
-
-    // Convert values
+    // Create the task
     const numericRate = Number(rate);
     const numericDiamondNumber = Number(diamondNumber);
 
-    // Create and save the task
     const task = new Task({
       batchId: batch._id,
       batchTitle: batch.batchId,
@@ -378,7 +354,38 @@ export const assignBatchToEmployee = async (req, res) => {
     const savedTask = await task.save();
     console.log("Saved task:", savedTask);
 
-    // Emit WebSocket event when a new task is assigned
+    // Get all tasks for this batch
+    const allTasks = await Task.find({ batchId: batch._id });
+
+    // Check if all processes have assigned tasks
+    const allProcessesAssigned = batch.currentProcess.every((process) =>
+      allTasks.some((task) => task.currentProcess === process)
+    );
+
+    // Update batch status based on task assignments
+    batch.status = allProcessesAssigned ? "Assigned" : "Pending";
+
+    await batch.save();
+
+    // 🔔 Send Email Notification to Employee
+    await sendEmail({
+      to: employee.email,
+      subject: "New Task Assigned",
+      text: `Hello ${employee.firstName},
+
+You have been assigned a new task for batch ${batch.batchId}.
+
+Process: ${process}
+Description: ${description}
+Due Date: ${new Date(dueDate).toLocaleDateString()}
+
+Please log in to the system to view and start your task.
+
+Thanks,
+Diamond Management System`,
+    });
+
+    // Emit WebSocket event
     req.io.emit("taskAssigned", {
       message: "A new task has been assigned!",
       task: savedTask,
@@ -395,6 +402,7 @@ export const assignBatchToEmployee = async (req, res) => {
       .json({ message: "Error assigning batch", error: error.message });
   }
 };
+
 
 export const getTasksForEmployee = async (req, res) => {
   try {
