@@ -18,54 +18,61 @@ const BatchesChart = ({ batches }) => {
 
   // Colors for different statuses
   const COLORS = {
-    Active: "hsl(var(--chart-1))",
-    Pending: "hsl(var(--chart-2))",
-    Completed: "hsl(var(--chart-3))",
-    "On Hold": "hsl(var(--chart-4))",
+    "In Progress": "#3b82f6", // blue
+    Assigned: "#10b981", // green
+    Pending: "#f59e0b", // amber
+    Completed: "#6b7280", // gray
   }
 
   return (
     <ChartContainer
       config={{
-        active: {
-          label: "Active",
-          color: "hsl(var(--chart-1))",
+        inProgress: {
+          label: "In Progress",
+          color: "#3b82f6",
+        },
+        assigned: {
+          label: "Assigned",
+          color: "#10b981",
         },
         pending: {
           label: "Pending",
-          color: "hsl(var(--chart-2))",
+          color: "#f59e0b",
         },
         completed: {
           label: "Completed",
-          color: "hsl(var(--chart-3))",
-        },
-        onHold: {
-          label: "On Hold",
-          color: "hsl(var(--chart-4))",
+          color: "#6b7280",
         },
       }}
     >
-      <ResponsiveContainer width="100%" height="100%">
-        <PieChart>
-          <Pie
-            data={data}
-            cx="50%"
-            cy="50%"
-            labelLine={false}
-            outerRadius={80}
-            fill="#8884d8"
-            dataKey="value"
-            nameKey="name"
-            label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
-          >
-            {data.map((entry, index) => (
-              <Cell key={`cell-${index}`} fill={COLORS[entry.name] || `hsl(var(--chart-${index + 1}))`} />
-            ))}
-          </Pie>
-          <Tooltip content={<ChartTooltipContent />} />
-          <Legend />
-        </PieChart>
-      </ResponsiveContainer>
+      {data.length > 0 ? (
+        <ResponsiveContainer width="100%" height="100%">
+          <PieChart>
+            <Pie
+              data={data}
+              cx="50%"
+              cy="50%"
+              labelLine={false}
+              outerRadius={80}
+              fill="#8884d8"
+              dataKey="value"
+              nameKey="name"
+              label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+            >
+              {data.map((entry, index) => (
+                <Cell
+                  key={`cell-${index}`}
+                  fill={COLORS[entry.name] || `#${Math.floor(Math.random() * 16777215).toString(16)}`}
+                />
+              ))}
+            </Pie>
+            <Tooltip content={<ChartTooltipContent />} />
+            <Legend />
+          </PieChart>
+        </ResponsiveContainer>
+      ) : (
+        <div className="flex items-center justify-center h-full text-gray-500">No batch data available</div>
+      )}
     </ChartContainer>
   )
 }

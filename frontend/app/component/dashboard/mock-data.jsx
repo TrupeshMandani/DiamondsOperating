@@ -7,7 +7,7 @@ export const batches = [
       status: "Active",
       currentProcess: "Cutting",
       totalDiamonds: 120,
-      totalCarats: 85.5,
+      totalCarats: 85.5,  
       assignedTo: "John Smith",
       source: "Sierra Leone",
       createdDate: "2023-01-15",

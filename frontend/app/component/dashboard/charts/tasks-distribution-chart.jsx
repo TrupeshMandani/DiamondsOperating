@@ -16,43 +16,57 @@ const TasksDistributionChart = ({ tasks }) => {
     value,
   }))
 
+  // Colors for different statuses
+  const COLORS = {
+    Completed: "#10b981", // green
+    "In Progress": "#3b82f6", // blue
+    Pending: "#f59e0b", // amber
+  }
+
   return (
     <ChartContainer
       config={{
         completed: {
           label: "Completed",
-          color: "hsl(var(--chart-1))",
+          color: "#10b981",
         },
         inProgress: {
           label: "In Progress",
-          color: "hsl(var(--chart-2))",
+          color: "#3b82f6",
         },
         pending: {
           label: "Pending",
-          color: "hsl(var(--chart-3))",
+          color: "#f59e0b",
         },
       }}
     >
-      <ResponsiveContainer width="100%" height="100%">
-        <PieChart>
-          <Pie
-            data={data}
-            cx="50%"
-            cy="50%"
-            innerRadius={60}
-            outerRadius={80}
-            fill="#8884d8"
-            paddingAngle={5}
-            dataKey="value"
-          >
-            {data.map((entry, index) => (
-              <Cell key={`cell-${index}`} fill={`var(--color-${entry.name.toLowerCase().replace(" ", "")})`} />
-            ))}
-          </Pie>
-          <Tooltip content={<ChartTooltipContent />} />
-          <Legend />
-        </PieChart>
-      </ResponsiveContainer>
+      {data.length > 0 ? (
+        <ResponsiveContainer width="100%" height="100%">
+          <PieChart>
+            <Pie
+              data={data}
+              cx="50%"
+              cy="50%"
+              innerRadius={60}
+              outerRadius={80}
+              fill="#8884d8"
+              paddingAngle={5}
+              dataKey="value"
+            >
+              {data.map((entry, index) => (
+                <Cell
+                  key={`cell-${index}`}
+                  fill={COLORS[entry.name] || `#${Math.floor(Math.random() * 16777215).toString(16)}`}
+                />
+              ))}
+            </Pie>
+            <Tooltip content={<ChartTooltipContent />} />
+            <Legend />
+          </PieChart>
+        </ResponsiveContainer>
+      ) : (
+        <div className="flex items-center justify-center h-full text-gray-500">No task data available</div>
+      )}
     </ChartContainer>
   )
 }
