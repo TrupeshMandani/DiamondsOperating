@@ -2,7 +2,7 @@ import QRCode from "qrcode";
 import Batch from "../models/batchModel.js";
 import Task from "../models/taskModel.js";
 import Employee from "../models/Employee.js";
-import sendEmail from "../configurations/sendEmail.js"; 
+import sendEmail from "../configurations/sendEmail.js";
 import mongoose from "mongoose";
 
 // Generate QR code for batch details
@@ -278,8 +278,6 @@ export const getTasksForBatch = async (req, res) => {
   }
 };
 
-
-
 export const assignBatchToEmployee = async (req, res) => {
   try {
     const {
@@ -402,7 +400,6 @@ Diamond Management System`,
       .json({ message: "Error assigning batch", error: error.message });
   }
 };
-
 
 export const getTasksForEmployee = async (req, res) => {
   try {
