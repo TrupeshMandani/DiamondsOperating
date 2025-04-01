@@ -85,7 +85,7 @@ function LoginForm() {
       localStorage.setItem("authTokenExpiration", expirationTime);
       localStorage.setItem("employeeId", result._id);
       localStorage.setItem("role", decoded.role); // Store role
-      localStorage.setItem("name", result.firstName); // Store name
+      localStorage.setItem("name", result.name); // Store name
   
       const userRole = decoded.role;
   
