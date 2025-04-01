@@ -13,10 +13,11 @@ const EmpTaskCardWithTimer = ({
   getPriorityColor,
 }) => {
   const [elapsedTime, setElapsedTime] = useState(null);
+  const [batchDetails, setBatchDetails] = useState(null);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     let interval;
-
     if (task.status === "In Progress" && task.startTime && !task.endTime) {
       const start = new Date(task.startTime).getTime();
       interval = setInterval(() => {
@@ -33,6 +34,73 @@ const EmpTaskCardWithTimer = ({
 
     return () => clearInterval(interval);
   }, [task.status, task.startTime, task.endTime]);
+
+  const fetchBatchDetails = async () => {
+    if (!task.batchTitle) {
+      console.error("Batch Title is missing!");
+      return;
+    }
+
+    console.log("Fetching batch details for Batch Title:", task.batchTitle);
+    setLoading(true);
+
+    try {
+      const response = await fetch(
+        `http://localhost:5023/api/tasks/title/${encodeURIComponent(
+          task.batchTitle
+        )}`
+      );
+
+      if (!response.ok) {
+        throw new Error("Failed to fetch batch details");
+      }
+
+      const data = await response.json();
+      console.log("Fetched Batch Details:", data);
+
+      if (task.currentProcess === "Stitching") {
+        const sarinTask = data.find(
+          (task) =>
+            task.currentProcess === "Sarin" && task.status === "Completed"
+        );
+
+        if (!sarinTask) {
+          alert(
+            "Please wait until 'Sarin' task is completed before starting 'Stitching' task."
+          );
+          return;
+        }
+      }
+
+      if (task.currentProcess === "4P Cutting") {
+        const sarinTask = data.find(
+          (task) =>
+            task.currentProcess === "Sarin" && task.status === "Completed"
+        );
+        const stitchingTask = data.find(
+          (task) =>
+            task.currentProcess === "Stitching" && task.status === "Completed"
+        );
+
+        if (!sarinTask || !stitchingTask) {
+          alert(
+            "Please wait until both 'Sarin' and 'Stitching' tasks to be completed before starting the '4P Cutting' task."
+          );
+          return;
+        }
+      }
+
+      startTask();
+    } catch (error) {
+      console.error("Error fetching batch details:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const startTask = () => {
+    updateTaskStatus(task._id, "In Progress");
+  };
 
   const formatDuration = (ms) => {
     const totalSec = Math.floor(ms / 1000);
@@ -57,7 +125,6 @@ const EmpTaskCardWithTimer = ({
       transition={{ duration: 0.2 }}
       className="bg-white p-4 rounded-lg border border-gray-100 shadow-sm hover:shadow-md transition-all"
     >
-      {/* Header Section */}
       <div className="flex justify-between items-start mb-3">
         <div>
           <h3 className="text-base font-semibold text-gray-900">
@@ -72,12 +139,9 @@ const EmpTaskCardWithTimer = ({
         </Badge>
       </div>
 
-      {/* Divider */}
       <hr className="border-gray-100 my-3" />
 
-      {/* Details Grid */}
       <div className="grid grid-cols-2 gap-3">
-        {/* Left Column */}
         <div className="space-y-2">
           <div className="flex items-center gap-2 text-sm">
             <Calendar className="h-4 w-4 text-gray-400" />
@@ -99,7 +163,6 @@ const EmpTaskCardWithTimer = ({
           </div>
         </div>
 
-        {/* Right Column */}
         <div className="space-y-2">
           <div className="flex flex-col gap-1">
             <span className="text-xs text-gray-500">Diamonds</span>
@@ -119,7 +182,6 @@ const EmpTaskCardWithTimer = ({
         </div>
       </div>
 
-      {/* Earnings Highlight */}
       <div className="mt-3 p-2 bg-green-50 rounded-md border border-green-100">
         <div className="flex justify-between items-center">
           <span className="text-sm text-green-800">Total Earnings</span>
@@ -129,7 +191,6 @@ const EmpTaskCardWithTimer = ({
         </div>
       </div>
 
-      {/* Timer Section */}
       {durationDisplay && (
         <div className="mt-3 bg-blue-50 p-2 rounded-md">
           <div className="flex items-center gap-2 text-sm">
@@ -139,20 +200,17 @@ const EmpTaskCardWithTimer = ({
         </div>
       )}
 
-      {/* Description */}
       {task.description && (
         <p className="mt-3 text-sm text-gray-600 italic">
           "{task.description}"
         </p>
       )}
 
-      {/* Action Buttons */}
       <div className="mt-4 space-y-2">
         {section === "assigned" && (
           <Button
             className="w-full"
-            variant="default"
-            onClick={() => updateTaskStatus(task._id, "In Progress")}
+            onClick={fetchBatchDetails}
             disabled={updatingTasks.has(task._id)}
           >
             {updatingTasks.has(task._id) ? "Processing..." : "Start Task →"}

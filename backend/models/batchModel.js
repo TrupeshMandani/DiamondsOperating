@@ -12,12 +12,19 @@ const batchSchema = new mongoose.Schema({
   diamondNumber: { type: Number, required: true },
   expectedDate: { type: Date, required: true },
   currentDate: { type: Date, default: Date.now },
+
   currentProcess: {
     type: [String],
     enum: ["Sarin", "Stitching", "4P Cutting"],
     required: true,
     index: true,
   },
+
+  completedProcesses: {
+    type: [String], // Tracks completed processes
+    default: [],
+  },
+
   processStartDate: { type: Date, default: Date.now },
   status: {
     type: String,
@@ -25,16 +32,19 @@ const batchSchema = new mongoose.Schema({
     default: "Pending",
     index: true,
   },
+
   progress: {
     Sarin: { type: Number, default: 0 },
     Stitching: { type: Number, default: 0 },
     "4P Cutting": { type: Number, default: 0 },
   },
-  assignedEmployee: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: "Employee",
-    default: null,
-  }, // New Field
+
+  assignedEmployees: [
+    {
+      employeeId: { type: mongoose.Schema.Types.ObjectId, ref: "Employee" },
+      process: { type: String },
+    },
+  ],
 });
 
 export default mongoose.model("Batch", batchSchema);

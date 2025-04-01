@@ -1,6 +1,5 @@
 "use client";
-import axios from "axios"; // Add this import statement
-
+import axios from "axios";
 import { useState, useEffect } from "react";
 import { toast } from "react-hot-toast";
 import { Button } from "../../../component/ui/button";
@@ -15,7 +14,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import Sidebar from "../../../component/Sidebar";
-import { useRouter } from "next/navigation"; // Correct usage of useRouter
+import { useRouter } from "next/navigation";
 
 const generateBatchId = () => "BATCH-" + Math.floor(Math.random() * 1000000);
 
@@ -28,15 +27,14 @@ export default function BatchCreationForm() {
     email: "",
     phone: "",
     address: "",
-    currentProcess: "",
     diamondWeight: "",
     numOfDiamonds: "",
     expectedDate: "",
     currentDate: new Date().toISOString().split("T")[0],
   });
 
-  const router = useRouter(); // Correctly using useRouter directly inside the component
   const [selectedProcesses, setSelectedProcesses] = useState([]);
+  const router = useRouter();
 
   const handleChangeProcess = (e) => {
     const { value, checked } = e.target;
@@ -46,7 +44,6 @@ export default function BatchCreationForm() {
   };
 
   useEffect(() => {
-    // Regenerate a new Batch ID on mount
     setFormData((prev) => ({ ...prev, batchId: generateBatchId() }));
   }, []);
 
@@ -69,7 +66,7 @@ export default function BatchCreationForm() {
       diamondNumber: formData.numOfDiamonds,
       expectedDate: formData.expectedDate,
       currentDate: formData.currentDate,
-      currentProcess: selectedProcesses, // Updated to include multiple processes
+      currentProcess: selectedProcesses,
       processStartDate: new Date().toISOString(),
       status: "Pending",
       progress: selectedProcesses.reduce((acc, process) => {
@@ -79,10 +76,7 @@ export default function BatchCreationForm() {
     };
 
     try {
-      const response = await axios.post(
-        "http://localhost:5023/api/batches/create",
-        payload
-      );
+      await axios.post("http://localhost:5023/api/batches/create", payload);
       toast.success("Batch Created Successfully!");
       alert("Batch Created successfully");
     } catch (error) {
@@ -91,19 +85,22 @@ export default function BatchCreationForm() {
     }
   };
 
+  const processOptions = ["Sarin", "Stitching", "4P Cutting"];
+
   return (
-    <div className="flex h-screen">
-      <Sidebar />
-      <div className="flex-1 bg-gray-100 p-8 text-black">
-        <Card className="w-full max-w-3xl mx-auto shadow-lg rounded-xl border border-gray-200 bg-white">
+    <div className="flex h-screen overflow-hidden">
+      <div className="w-[250px] h-full overflow-y-auto">
+        <Sidebar />
+      </div>
+      <div className="flex-1 overflow-y-auto bg-gray-100 p-8 text-black">
+        <Card className="w-full max-w-4xl mx-auto shadow-lg rounded-xl border border-gray-200 bg-white">
           <CardHeader>
             <CardTitle className="text-2xl font-semibold text-gray-800">
               Create New Batch
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              {/* Form Fields */}
+            <form onSubmit={handleSubmit} className="space-y-6">
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor="batchId">Batch ID</Label>
@@ -128,26 +125,16 @@ export default function BatchCreationForm() {
                       <SelectValue placeholder="Select Material Type" />
                     </SelectTrigger>
                     <SelectContent className="z-50 text-black bg-white">
-                      <SelectItem value="Rough Diamond">
-                        Rough Diamond
-                      </SelectItem>
-                      <SelectItem value="Graphite Powder">
-                        Graphite Powder
-                      </SelectItem>
-                      <SelectItem value="Diamond Paste">
-                        Diamond Paste
-                      </SelectItem>
-                      <SelectItem value="Diamond Blades">
-                        Diamond Blades
-                      </SelectItem>
-                      <SelectItem value="Cutting Fluids">
-                        Cutting Fluids
-                      </SelectItem>
+                      <SelectItem value="Rough Diamond">Rough Diamond</SelectItem>
+                      <SelectItem value="Graphite Powder">Graphite Powder</SelectItem>
+                      <SelectItem value="Diamond Paste">Diamond Paste</SelectItem>
+                      <SelectItem value="Diamond Blades">Diamond Blades</SelectItem>
+                      <SelectItem value="Cutting Fluids">Cutting Fluids</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
               </div>
-              {/* First Name & Last Name */}
+
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor="firstName">First Name</Label>
@@ -173,7 +160,6 @@ export default function BatchCreationForm() {
                 </div>
               </div>
 
-              {/* Email, Phone, Address */}
               <div className="grid grid-cols-3 gap-4">
                 <div>
                   <Label htmlFor="email">Email</Label>
@@ -212,65 +198,29 @@ export default function BatchCreationForm() {
                 </div>
               </div>
 
-              {/* Current Process */}
               <div>
-                <Label
-                  htmlFor="processes"
-                  className="text-lg font-semibold text-gray-700"
-                >
+                <Label className="text-lg font-semibold text-gray-700">
                   Processes to be Done
                 </Label>
-                <div className="flex items-center space-x-8 mt-4">
-                  {/* Sarin Process */}
-                  <div className="flex items-center space-x-2">
-                    <input
-                      type="checkbox"
-                      id="Sarin"
-                      name="processes"
-                      value="Sarin"
-                      onChange={handleChangeProcess}
-                      className="h-5 w-5 text-blue-600 border-gray-300 rounded"
-                    />
-                    <Label htmlFor="Sarin" className="text-gray-600">
-                      Sarin
-                    </Label>
-                  </div>
-                  {/* Connector Line */}
-                  <div className="h-1 w-16 bg-gray-300"></div>
-                  {/* Stitching Process */}
-                  <div className="flex items-center space-x-2">
-                    <input
-                      type="checkbox"
-                      id="Stitching"
-                      name="processes"
-                      value="Stitching"
-                      onChange={handleChangeProcess}
-                      className="h-5 w-5 text-blue-600 border-gray-300 rounded"
-                    />
-                    <Label htmlFor="Stitching" className="text-gray-600">
-                      Stitching
-                    </Label>
-                  </div>
-                  {/* Connector Line */}
-                  <div className="h-1 w-16 bg-gray-300"></div>
-                  {/* 4P Cutting Process */}
-                  <div className="flex items-center space-x-2">
-                    <input
-                      type="checkbox"
-                      id="4P Cutting"
-                      name="processes"
-                      value="4P Cutting"
-                      onChange={handleChangeProcess}
-                      className="h-5 w-5 text-blue-600 border-gray-300 rounded"
-                    />
-                    <Label htmlFor="4P Cutting" className="text-gray-600">
-                      4P Cutting
-                    </Label>
-                  </div>
+                <div className="flex items-center flex-wrap gap-6 mt-4">
+                  {processOptions.map((process) => (
+                    <div key={process} className="flex items-center space-x-2">
+                      <input
+                        type="checkbox"
+                        id={process}
+                        name="processes"
+                        value={process}
+                        onChange={handleChangeProcess}
+                        className="h-5 w-5 text-blue-600 border-gray-300 rounded"
+                      />
+                      <Label htmlFor={process} className="text-gray-600">
+                        {process}
+                      </Label>
+                    </div>
+                  ))}
                 </div>
               </div>
 
-              {/* Diamond Weight & Number of Diamonds */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor="diamondWeight">Diamond Weight (Carat)</Label>
@@ -298,7 +248,6 @@ export default function BatchCreationForm() {
                 </div>
               </div>
 
-              {/* Expected Date & Current Date */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor="expectedDate">Expected Date</Label>
@@ -323,7 +272,7 @@ export default function BatchCreationForm() {
                   />
                 </div>
               </div>
-              {/* Submit Button */}
+
               <div className="flex justify-end">
                 <Button
                   type="submit"

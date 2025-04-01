@@ -1,7 +1,9 @@
 import Task from "../models/taskModel.js";
 import mongoose from "mongoose";
 import Batch from "../models/batchModel.js";
-import Earning from "../models/earningModel.js"; // Ensure Earning model is imported
+import Earning from "../models/earningModel.js";
+import sendEmail from "../configurations/sendEmail.js";
+import Employee from "../models/Employee.js";
 
 // Get all tasks
 export const getAllTasks = async (req, res) => {
@@ -48,9 +50,8 @@ export const updateTaskStatus = async (req, res) => {
     const { taskId } = req.params;
     const { status } = req.body;
 
-    const validStatuses = ["Pending", "In Progress", "Completed"];
-    if (!validStatuses.includes(status)) {
-      return res.status(400).json({ message: "Invalid status value" });
+    if (!taskId || !mongoose.Types.ObjectId.isValid(taskId)) {
+      return res.status(400).json({ message: "Invalid task ID" });
     }
 
     const task = await Task.findById(taskId);
@@ -58,63 +59,99 @@ export const updateTaskStatus = async (req, res) => {
       return res.status(404).json({ message: "Task not found" });
     }
 
-    // Start time
-    if (status === "In Progress" && !task.startTime) {
+    const employee = await Employee.findById(task.employeeId);
+    const batch = await Batch.findById(task.batchId);
+
+    // Update task status and related fields
+    if (status === "In Progress" && task.status !== "In Progress") {
       task.startTime = new Date();
-    }
+      task.status = status;
 
-    // End time + Duration
-    if (status === "Completed" && !task.endTime) {
-      task.endTime = new Date();
-      if (task.startTime) {
-        const durationMs = task.endTime.getTime() - task.startTime.getTime();
-        task.durationInMinutes = Math.round(durationMs / 60000);
-      }
-      task.completedAt = new Date();
-    }
-
-    // Recalculate earnings based on diamondNumber and rate
-    if (status === "Completed") {
-      task.earnings = task.diamondNumber * task.rate; // Recalculate earnings
-    }
-
-    task.status = status;
-    await task.save();
-
-    // Create earning using the earnings calculated from diamondNumber * rate
-    if (status === "Completed") {
-      const earning = new Earning({
-        employeeId: task.employeeId,
-        taskId: task._id,
-        totalEarnings: task.earnings, // Use task's earnings directly
-        date: task.completedAt,
-        month: task.completedAt.getUTCMonth() + 1,
-        year: task.completedAt.getUTCFullYear(),
-        periodStart: task.startTime, // Set periodStart to task start time
-        periodEnd: task.endTime, // Set periodEnd to task end time
+      // Email manager when task starts
+      await sendEmail({
+        to: process.env.EMAIL_USER,
+        subject: `Task Started by ${employee.firstName} ${employee.lastName}`,
+        text: `Hello Manager,
+The following task has been marked as *In Progress*:
+• Employee: ${employee.firstName} ${employee.lastName}
+• Task ID: ${task._id}
+• Process: ${task.currentProcess}
+• Batch ID: ${batch.batchId}
+• Start Time: ${task.startTime.toLocaleString()}
+– Diamond Management System`,
       });
 
-      await earning.save();
+    } else if (status === "Completed" && task.status !== "Completed") {
+      task.endTime = new Date();
+      task.status = status;
+      task.completedAt = new Date();
+
+      // Calculate duration
+      if (task.startTime) {
+        task.durationInMinutes = Math.round(
+          (task.endTime - task.startTime) / (1000 * 60)
+        );
+      }
+
+      // Calculate earnings using task-specific rate
+      const earningAmount = task.diamondNumber * task.rate;
+
+      // Update/create earning record
+      await Earning.findOneAndUpdate(
+        {
+          employeeId: task.employeeId,
+          month: task.endTime.getMonth() + 1,
+          year: task.endTime.getFullYear(),
+        },
+        {
+          $inc: { totalEarnings: earningAmount },
+          $set: { 
+            updatedAt: new Date(),
+            rate: task.rate,
+            diamondNumber: task.diamondNumber
+          },
+        },
+        { upsert: true, new: true }
+      );
+
+      // Email manager when task is completed
+      await sendEmail({
+        to: process.env.EMAIL_USER,
+        subject: `Task Completed by ${employee.firstName} ${employee.lastName}`,
+        text: `Hello Manager,
+The following task has been *Completed*:
+• Employee: ${employee.firstName} ${employee.lastName}
+• Task ID: ${task._id}
+• Process: ${task.currentProcess}
+• Batch ID: ${batch.batchId}
+• Completed At: ${task.completedAt.toLocaleString()}
+– Diamond Management System`,
+      });
+
+      // Real-time notification
+      if (req.io) {
+        req.io.emit("taskCompletedNotification", {
+          message: `Task completed by employee: ${task.employeeId}`,
+          taskId: task._id,
+          employeeId: task.employeeId,
+          process: task.process,
+        });
+      }
     }
 
-    // Update batch status
-    const batch = await Batch.findById(task.batchId);
-    if (batch) {
-      if (status === "In Progress") {
-        batch.status = "In Progress";
-        await batch.save();
-      }
+    await task.save();
 
-      if (status === "Completed") {
-        const allTasksCompleted = await Task.find({
-          batchId: batch._id,
-          status: { $ne: "Completed" },
-        });
-        if (allTasksCompleted.length === 0) {
-          batch.status = "Completed";
-          await batch.save();
-        }
-      }
+    // Update batch status
+    if (batch) {
+      const allTasks = await Task.find({ batchId: batch._id });
+      const allTasksCompleted = allTasks.every((t) => t.status === "Completed");
+      const anyTaskInProgress = allTasks.some((t) => t.status === "In Progress");
+      const anyTaskPending = allTasks.some((t) => t.status === "Pending");
+
+      batch.status = allTasksCompleted ? "Completed" :
+                    anyTaskInProgress ? "In Progress" :
+                    anyTaskPending ? "Assigned" : "Pending";
+      await batch.save();
     }
 
     // Real-time update
@@ -143,55 +180,32 @@ export const deleteTask = async (req, res) => {
   try {
     const { taskId } = req.params;
 
-    console.log("Received taskId:", taskId);
-
     if (!taskId || !mongoose.Types.ObjectId.isValid(taskId)) {
-      return res
-        .status(400)
-        .json({ message: "Invalid task ID format", taskId });
+      return res.status(400).json({ message: "Invalid task ID" });
     }
 
     const task = await Task.findById(taskId);
     if (!task) {
-      return res.status(404).json({ message: "Task not found", taskId });
+      return res.status(404).json({ message: "Task not found" });
     }
 
-    console.log("Task found:", task);
-
-    // Delete the task
+    // Delete task and related earnings
     const deletedTask = await Task.findByIdAndDelete(taskId);
-    console.log("Deleted Task:", deletedTask);
+    await Earning.deleteMany({ taskId });
 
-    if (!deletedTask) {
-      return res.status(500).json({ message: "Task could not be deleted" });
-    }
-
-    // Delete related earnings
-    await Earning.deleteMany({ taskId: taskId });
-
-    // Find the related batch
+    // Update batch status
     const batch = await Batch.findById(task.batchId);
-    if (!batch) {
-      return res
-        .status(404)
-        .json({ message: "Batch not found", batchId: task.batchId });
+    if (batch) {
+      batch.status = "Pending";
+      await batch.save();
     }
 
-    // Set the batch status to "Pending"
-    batch.status = "Pending";
-    await batch.save();
-    console.log("Batch status updated to Pending");
-
-    // Emit batch status update for real-time update
+    // Real-time updates
     if (req.io) {
       req.io.emit("batchStatusUpdate", {
-        batchId: batch.batchId,
+        batchId: batch?.batchId,
         status: "Pending",
       });
-    }
-
-    // Emit taskDeleted event for real-time update
-    if (req.io) {
       req.io.emit("taskDeleted", { taskId, employeeId: task.employeeId });
     }
 
@@ -204,44 +218,55 @@ export const deleteTask = async (req, res) => {
     res.status(500).json({
       message: "Failed to delete task",
       error: error.message,
-      taskId,
     });
   }
 };
 
-// Get task count summary for an employee
+// Get task summary for employee
 export const getTaskSummaryForEmployee = async (req, res) => {
   try {
     const { employeeId } = req.params;
 
-    if (!employeeId) {
-      return res.status(400).json({ message: "Employee ID is required" });
-    }
+    const counts = await Task.aggregate([
+      { $match: { employeeId: new mongoose.Types.ObjectId(employeeId) } },
+      { $group: { _id: "$status", count: { $sum: 1 } } }
+    ]);
 
-    const assignedCount = await Task.countDocuments({
-      employeeId,
-      status: "Pending",
-    });
-    const inProgressCount = await Task.countDocuments({
-      employeeId,
-      status: "In Progress",
-    });
-    const completedCount = await Task.countDocuments({
-      employeeId,
-      status: "Completed",
-    });
+    const summary = counts.reduce((acc, curr) => {
+      acc[curr._id] = curr.count;
+      return acc;
+    }, {});
 
     res.status(200).json({
-      success: true,
-      data: {
-        assigned: assignedCount,
-        inProgress: inProgressCount,
-        completed: completedCount,
-      },
+      assigned: summary.Pending || 0,
+      inProgress: summary["In Progress"] || 0,
+      completed: summary.Completed || 0,
     });
   } catch (error) {
     res.status(500).json({
       message: "Error fetching task summary",
+      error: error.message,
+    });
+  }
+};
+
+// Get tasks by batch title
+export const getTasksByBatchTitle = async (req, res) => {
+  try {
+    const { batchTitle } = req.params;
+
+    const tasks = await Task.find({ batchTitle })
+      .populate("employeeId", "firstName lastName")
+      .populate("batchId", "batchId currentProcess");
+
+    if (!tasks.length) {
+      return res.status(404).json({ message: "No tasks found for this batch" });
+    }
+
+    res.status(200).json(tasks);
+  } catch (error) {
+    res.status(500).json({
+      message: "Error fetching tasks",
       error: error.message,
     });
   }

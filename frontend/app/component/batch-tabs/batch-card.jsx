@@ -11,10 +11,49 @@ import {
 import { Button } from "@/components/ui/button";
 import { CheckCircle, AlertCircle, Clock } from "lucide-react";
 import { getAssignmentProgress } from "./utils";
+import { useState, useEffect } from "react";
 
 export default function BatchCard({ batch, onSelect, category }) {
   const { assignmentStatus, completedProcesses, totalProcesses } =
     getAssignmentProgress(batch);
+  const [inProgressTasks, setInProgressTasks] = useState([]);
+  const [completedTasks, setCompletedTasks] = useState([]);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    const fetchTasks = async () => {
+      if (
+        (category === "inProgress" || category === "assigned") &&
+        batch.batchId
+      ) {
+        setLoading(true);
+        try {
+          const response = await fetch(
+            `http://localhost:5023/api/tasks/title/${encodeURIComponent(
+              batch.batchId
+            )}`
+          );
+          if (!response.ok) {
+            throw new Error("Failed to fetch tasks");
+          }
+          const tasks = await response.json();
+          // Filter tasks by status
+          const inProgress = tasks.filter(
+            (task) => task.status === "In Progress"
+          );
+          const completed = tasks.filter((task) => task.status === "Completed");
+          setInProgressTasks(inProgress);
+          setCompletedTasks(completed);
+        } catch (error) {
+          console.error("Error fetching tasks:", error);
+        } finally {
+          setLoading(false);
+        }
+      }
+    };
+
+    fetchTasks();
+  }, [category, batch.batchId]);
 
   // Determine card styling based on category
   const getCardStyle = () => {
@@ -90,21 +129,18 @@ export default function BatchCard({ batch, onSelect, category }) {
             <span className="text-gray-600">Material:</span>
             <span className="font-medium">{batch.materialType}</span>
           </div>
-
           <div className="flex justify-between items-center text-sm">
             <span className="text-gray-600">Diamonds:</span>
             <span className="font-medium">
               {batch.diamondNumber} ({batch.diamondWeight} carats)
             </span>
           </div>
-
           <div className="flex justify-between items-center text-sm">
             <span className="text-gray-600">Expected Date:</span>
             <span className="font-medium">
               {new Date(batch.expectedDate).toLocaleDateString()}
             </span>
           </div>
-
           <div className="mt-4">
             <div className="flex justify-between items-center mb-1">
               <span className="text-sm font-medium">Process Assignment</span>
@@ -129,7 +165,6 @@ export default function BatchCard({ batch, onSelect, category }) {
               ></div>
             </div>
           </div>
-
           <div className="flex flex-wrap gap-2 mt-2">
             {batch.selectedProcesses &&
               (Array.isArray(batch.selectedProcesses[0])
@@ -146,6 +181,12 @@ export default function BatchCard({ batch, onSelect, category }) {
                 const isCompleted =
                   batch.progress && batch.progress[process] === 100;
 
+                // Determine if this process is in progress
+                const isInProgress =
+                  batch.progress &&
+                  batch.progress[process] > 0 &&
+                  batch.progress[process] < 100;
+
                 return (
                   <Badge
                     key={process}
@@ -153,6 +194,8 @@ export default function BatchCard({ batch, onSelect, category }) {
                     ${
                       isCompleted
                         ? "bg-green-100 text-green-800"
+                        : isInProgress
+                        ? "bg-yellow-100 text-yellow-800"
                         : isAssigned
                         ? "bg-blue-100 text-blue-800"
                         : "bg-gray-100 text-gray-800"
@@ -161,10 +204,88 @@ export default function BatchCard({ batch, onSelect, category }) {
                   >
                     {process}
                     {isCompleted && <CheckCircle className="w-3 h-3 ml-1" />}
+                    {isInProgress && <Clock className="w-3 h-3 ml-1" />}
                   </Badge>
                 );
               })}
           </div>
+          {/* In Progress Tasks Section */}
+          {category === "inProgress" && (
+            <div className="mt-3">
+              <div className="text-sm font-medium text-gray-600 mb-2">
+                Tasks In Progress:
+              </div>
+              {loading ? (
+                <div className="text-sm text-gray-500">Loading tasks...</div>
+              ) : inProgressTasks.length > 0 ? (
+                <div className="flex flex-col gap-2">
+                  {inProgressTasks.map((task) => (
+                    <div
+                      key={task._id}
+                      className="flex items-center justify-between bg-yellow-50 px-3 py-2 rounded-lg"
+                    >
+                      <div className="flex items-center gap-2">
+                        <Clock className="w-4 h-4 text-yellow-600" />
+                        <div>
+                          <span className="text-sm font-medium text-yellow-800">
+                            {task.description}
+                          </span>
+                          <div className="text-xs text-yellow-600">
+                            Process: {task.currentProcess}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="text-xs text-yellow-600">
+                        Assigned to: {task.employeeName}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-sm text-gray-500">
+                  No tasks in progress
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Completed Tasks Section - Show in both Assigned and In Progress tabs */}
+          {(category === "assigned" || category === "inProgress") && (
+            <div className="mt-3">
+              <div className="text-sm font-medium text-gray-600 mb-2">
+                Completed Tasks:
+              </div>
+              {loading ? (
+                <div className="text-sm text-gray-500">Loading tasks...</div>
+              ) : completedTasks.length > 0 ? (
+                <div className="flex flex-col gap-2">
+                  {completedTasks.map((task) => (
+                    <div
+                      key={task._id}
+                      className="flex items-center justify-between bg-green-50 px-3 py-2 rounded-lg"
+                    >
+                      <div className="flex items-center gap-2">
+                        <CheckCircle className="w-4 h-4 text-green-600" />
+                        <div>
+                          <span className="text-sm font-medium text-green-800">
+                            {task.description}
+                          </span>
+                          <div className="text-xs text-green-600">
+                            Process: {task.currentProcess}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="text-xs text-green-600">
+                        Completed by: {task.employeeName}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-sm text-gray-500">No completed tasks</div>
+              )}
+            </div>
+          )}
         </div>
       </CardContent>
 

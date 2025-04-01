@@ -53,9 +53,15 @@ export function TaskAssignmentDialog({
     }
   }, [selectedBatch, isOpen]);
 
+  // Update the process availability check
   const isProcessAvailable =
-    !selectedProcess ||
-    (availableProcesses && availableProcesses.includes(selectedProcess));
+    selectedProcess &&
+    selectedBatch &&
+    ((selectedBatch.selectedProcesses &&
+      selectedBatch.selectedProcesses.includes(selectedProcess)) ||
+      (Array.isArray(selectedBatch.currentProcess) &&
+        selectedBatch.currentProcess.includes(selectedProcess)) ||
+      selectedBatch.currentProcess === selectedProcess);
 
   const handleSubmit = () => {
     if (!isProcessAvailable) {
