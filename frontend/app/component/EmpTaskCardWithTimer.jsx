@@ -58,7 +58,6 @@ const EmpTaskCardWithTimer = ({
       const data = await response.json();
       console.log("Fetched Batch Details:", data);
 
-      // If the task being started is "Stitching", check if Sarin is completed
       if (task.currentProcess === "Stitching") {
         const sarinTask = data.find(
           (task) =>
@@ -73,7 +72,6 @@ const EmpTaskCardWithTimer = ({
         }
       }
 
-      // If the task being started is "4P Cutting", check if both "Sarin" and "Stitching" are completed
       if (task.currentProcess === "4P Cutting") {
         const sarinTask = data.find(
           (task) =>
@@ -92,7 +90,6 @@ const EmpTaskCardWithTimer = ({
         }
       }
 
-      // If all checks pass, allow the task to start
       startTask();
     } catch (error) {
       console.error("Error fetching batch details:", error);
@@ -102,7 +99,6 @@ const EmpTaskCardWithTimer = ({
   };
 
   const startTask = () => {
-    // This function will handle starting the task
     updateTaskStatus(task._id, "In Progress");
   };
 
@@ -124,77 +120,128 @@ const EmpTaskCardWithTimer = ({
   return (
     <motion.div
       key={task._id}
-      initial={{ opacity: 0, scale: 0.9 }}
+      initial={{ opacity: 0, scale: 0.95 }}
       animate={{ opacity: 1, scale: 1 }}
-      transition={{ duration: 0.3 }}
-      className="bg-white p-4 shadow-md rounded-lg border border-gray-200 hover:shadow-lg transition-shadow"
+      transition={{ duration: 0.2 }}
+      className="bg-white p-4 rounded-lg border border-gray-100 shadow-sm hover:shadow-md transition-all"
     >
-      <h3 className="text-lg font-semibold">
-        Batch ID: {task.batchTitle || "Unknown"}
-      </h3>
-      <p className="text-gray-600 text-sm">
-        Process: {task.currentProcess || "N/A"}
-      </p>
-      <p className="text-gray-600 text-sm">
-        Description: {task.description || "No details"}
-      </p>
-
-      <div className="flex items-center gap-2 mt-2">
-        <Calendar className="h-4 w-4 text-gray-600" />
-        <span className="text-sm">
-          Due: {new Date(task.dueDate).toLocaleDateString()}
-        </span>
+      <div className="flex justify-between items-start mb-3">
+        <div>
+          <h3 className="text-base font-semibold text-gray-900">
+            {task.batchTitle || "Unknown Batch"}
+          </h3>
+          <p className="text-sm text-gray-500 mt-1">
+            {task.currentProcess || "N/A"}
+          </p>
+        </div>
+        <Badge className={`${getPriorityColor(task.priority)} text-xs`}>
+          {task.priority}
+        </Badge>
       </div>
 
-      <div className="flex items-center gap-2 mt-2">
-        <span className="text-sm font-medium">
-          Number of Diamonds: {task.diamondNumber}
-        </span>
+      <hr className="border-gray-100 my-3" />
+
+      <div className="grid grid-cols-2 gap-3">
+        <div className="space-y-2">
+          <div className="flex items-center gap-2 text-sm">
+            <Calendar className="h-4 w-4 text-gray-400" />
+            <div>
+              <p className="text-xs text-gray-500">Due Date</p>
+              <p className="text-gray-700">
+                {new Date(task.dueDate).toLocaleDateString()}
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 text-sm">
+            <Clock className="h-4 w-4 text-gray-400" />
+            <div>
+              <p className="text-xs text-gray-500">Assigned</p>
+              <p className="text-gray-700">
+                {new Date(task.assignedDate).toLocaleDateString()}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div className="space-y-2">
+          <div className="flex flex-col gap-1">
+            <span className="text-xs text-gray-500">Diamonds</span>
+            <div className="flex items-center gap-2">
+              <Badge variant="outline" className="font-medium">
+                {task.diamondNumber}
+              </Badge>
+              <span className="text-xs text-gray-500">pieces</span>
+            </div>
+          </div>
+          <div className="flex flex-col gap-1">
+            <span className="text-xs text-gray-500">Rate</span>
+            <Badge variant="outline" className="font-medium text-green-600">
+              ₹{task.rate?.toLocaleString()}/pc
+            </Badge>
+          </div>
+        </div>
       </div>
 
-      <div className="flex items-center gap-2 mt-2">
-        <Clock className="h-4 w-4 text-gray-600" />
-        <span className="text-sm">
-          Assigned: {new Date(task.assignedDate).toLocaleDateString()}
-        </span>
+      <div className="mt-3 p-2 bg-green-50 rounded-md border border-green-100">
+        <div className="flex justify-between items-center">
+          <span className="text-sm text-green-800">Total Earnings</span>
+          <span className="font-medium text-green-700">
+            ₹{task.earnings?.toLocaleString()}
+          </span>
+        </div>
       </div>
 
       {durationDisplay && (
-        <div className="text-sm text-blue-600 mt-1">
-          ⏱ Time: {durationDisplay}
+        <div className="mt-3 bg-blue-50 p-2 rounded-md">
+          <div className="flex items-center gap-2 text-sm">
+            <span className="text-blue-600">⏱ Time Spent:</span>
+            <span className="font-medium text-blue-700">{durationDisplay}</span>
+          </div>
         </div>
       )}
 
-      <Badge className={`mt-2 ${getPriorityColor(task.priority)}`}>
-        {task.priority}
-      </Badge>
+      {task.description && (
+        <p className="mt-3 text-sm text-gray-600 italic">
+          "{task.description}"
+        </p>
+      )}
 
-      <div className="flex flex-col gap-2 mt-3">
+      <div className="mt-4 space-y-2">
         {section === "assigned" && (
           <Button
             className="w-full"
             onClick={fetchBatchDetails}
             disabled={updatingTasks.has(task._id)}
           >
-            {updatingTasks.has(task._id) ? "Updating..." : "Start Task"}
+            {updatingTasks.has(task._id) ? "Processing..." : "Start Task →"}
           </Button>
         )}
 
         {section === "inProgress" && (
           <Button
             className="w-full"
+            variant="success"
             onClick={() => updateTaskStatus(task._id, "Completed")}
             disabled={updatingTasks.has(task._id)}
           >
-            {updatingTasks.has(task._id) ? "Updating..." : "Complete Task"}
+            {updatingTasks.has(task._id) ? "Completing..." : "Mark Complete ✓"}
           </Button>
         )}
 
         <Button
-          className="w-full bg-gray-700 hover:bg-gray-900 text-white"
-          disabled={loading}
+          variant="ghost"
+          className="w-full text-gray-600 hover:bg-gray-50"
+          onClick={() =>
+            alert(
+              `Task ID: ${task._id}\nStart: ${
+                task.startTime ? new Date(task.startTime).toLocaleString() : "—"
+              }\nEnd: ${
+                task.endTime ? new Date(task.endTime).toLocaleString() : "—"
+              }\nTime Spent: ${durationDisplay || "—"}`
+            )
+          }
         >
-          {loading ? "Fetching..." : "View Details"}
+          View Full Details
         </Button>
       </div>
     </motion.div>

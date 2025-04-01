@@ -146,6 +146,18 @@ export function TaskAssignmentDialog({
             />
           </div>
           <div className="flex flex-col space-y-2">
+            <label className="text-sm font-medium">Rate</label>
+            <input
+              type="number"
+              min="0"
+              step="0.01"
+              className="p-2 border rounded w-full"
+              placeholder="Enter rate"
+              value={newTask.rate ?? ""}
+              onChange={(e) => setNewTask({ ...newTask, rate: e.target.value })}
+            />
+          </div>
+          <div className="flex flex-col space-y-2">
             <label className="text-sm font-medium">Priority</label>
             <Select
               onValueChange={(value) =>

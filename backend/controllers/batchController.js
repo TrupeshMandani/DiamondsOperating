@@ -1,436 +1,276 @@
-import QRCode from "qrcode";
-import Batch from "../models/batchModel.js";
 import Task from "../models/taskModel.js";
-import Employee from "../models/Employee.js";
-import sendEmail from "../configurations/sendEmail.js"; 
 import mongoose from "mongoose";
+import Batch from "../models/batchModel.js";
+import Earning from "../models/earningModel.js";
+import sendEmail from "../configurations/sendEmail.js";
+import Employee from "../models/Employee.js";
 
-// Generate QR code for batch details
-export const generateQRCode = async (req, res) => {
+const FIXED_CHARGE_PER_DIAMOND = 0.25;
+
+// Get all tasks
+export const getAllTasks = async (req, res) => {
   try {
-    // Fetch the batch by ID from MongoDB
-    const batch = await Batch.findOne({ batchId: req.params.id });
+    const tasks = await Task.find()
+      .populate("batchId", "batchId currentProcess")
+      .populate("employeeId", "firstName lastName");
 
-    if (!batch) {
-      return res.status(404).json({ message: "Batch not found1" });
-    }
-
-    // Prepare the data you want to encode into the QR code (for example, the batch information)
-    const batchData = {
-      batchNumber: batch.batchId,
-      customer: batch.firstName,
-      currentProcess: batch.currentProcess,
-      selectedProcesses: batch.selectedProcesses || [batch.currentProcess],
-    };
-
-    // Convert the batch data to a string and generate the QR code
-    QRCode.toDataURL(JSON.stringify(batchData), (err, url) => {
-      if (err) {
-        return res.status(500).json({ message: "Error generating QR code" });
-      }
-
-      // Send the generated QR code as a response
-      res.json({ qrCode: url });
-    });
+    res.status(200).json(tasks);
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: "Server error while generating QR code" });
-  }
-};
-
-// Create a new batch
-export const createBatch = async (req, res) => {
-  const {
-    batchId,
-    materialType,
-    firstName,
-    lastName,
-    email,
-    phone,
-    address,
-    diamondWeight,
-    diamondNumber,
-    expectedDate,
-    currentProcess, // This will now be an array
-    assignedEmployee, // Optional
-  } = req.body;
-
-  try {
-    let employee = null;
-
-    if (assignedEmployee) {
-      if (!mongoose.Types.ObjectId.isValid(assignedEmployee)) {
-        return res.status(400).json({ message: "Invalid employee ID format" });
-      }
-
-      employee = await Employee.findById(assignedEmployee);
-      if (!employee) {
-        return res.status(404).json({ message: "Assigned employee not found" });
-      }
-    }
-
-    // Create batch with multiple processes
-    const newBatch = new Batch({
-      batchId,
-      materialType,
-      firstName,
-      lastName,
-      email,
-      phone,
-      address,
-      diamondWeight,
-      diamondNumber,
-      expectedDate,
-      currentProcess, // Store multiple selected processes
-      processStartDate: new Date(),
-      status: "Pending",
-      assignedEmployee: assignedEmployee || null,
-      progress: currentProcess.reduce((acc, process) => {
-        acc[process] = 0;
-        return acc;
-      }, {}),
-    });
-
-    await newBatch.save();
-    res.status(201).json({
-      message: "Batch created successfully",
-      batch: newBatch,
-    });
-  } catch (error) {
-    console.error("Error creating batch:", error.message);
-    res
-      .status(500)
-      .json({ message: "Failed to create batch", error: error.message });
-  }
-};
-
-// Get all batches
-export const getBatches = async (req, res) => {
-  try {
-    const batches = await Batch.find();
-    res.json(batches);
-  } catch (error) {
-    res
-      .status(500)
-      .json({ message: "Error fetching batches", error: error.message });
-  }
-};
-
-// Get Batch By Id
-export const getBatchByID = async (req, res) => {
-  try {
-    const { id } = req.params;
-
-    // Fetch batch details by batchId
-    const batch = await Batch.findOne({ batchId: id });
-
-    if (!batch) {
-      return res.status(404).json({ message: "Batch not found" });
-    }
-
-    res.json({
-      batchId: batch.batchId,
-      materialType: batch.materialType,
-      customer: `${batch.firstName} ${batch.lastName}`,
-      email: batch.email,
-      phone: batch.phone,
-      address: batch.address,
-      diamondWeight: batch.diamondWeight,
-      diamondNumber: batch.diamondNumber,
-      expectedDate: batch.expectedDate,
-      currentDate: batch.currentDate,
-      currentProcess: batch.currentProcess,
-      selectedProcesses: batch.selectedProcesses || [batch.currentProcess], // Include selected processes
-      status: batch.status,
-      progress: batch.progress,
-    });
-  } catch (error) {
-    res
-      .status(500)
-      .json({ message: "Error fetching batch", error: error.message });
-  }
-};
-
-// Get batch progress dynamically
-export const getBatchProgress = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const batch = await Batch.findOne({ batchId: id });
-
-    if (!batch) {
-      return res.status(404).json({ message: "Batch not found 3" });
-    }
-
-    // Fetch tasks related to the batch
-    const tasks = await Task.find({ batch_id: batch._id });
-
-    // Count completed tasks
-    const completedTasks = tasks.filter(
-      (task) => task.status === "Completed"
-    ).length;
-    const totalTasks = tasks.length;
-
-    // Calculate progress percentage
-    const progress =
-      totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
-
-    res.json({
-      batchId: batch.batchId,
-      materialType: batch.materialType,
-      currentProcess: batch.currentProcess,
-      selectedProcesses: batch.selectedProcesses || [batch.currentProcess],
-      status: batch.status,
-      totalTasks,
-      completedTasks,
-      progress: `${progress}%`,
-    });
-  } catch (error) {
-    res
-      .status(500)
-      .json({ message: "Error fetching batch progress", error: error.message });
-  }
-};
-
-// Update batch details
-export const updateBatch = async (req, res) => {
-  try {
-    const { id } = req.params; // Batch ID from URL
-    const { stage, progress } = req.body; // Stage and progress value from body
-
-    // Fetch the batch by batchId
-    const batch = await Batch.findOne({ batchId: id });
-    if (!batch) {
-      return res.status(404).json({ message: "Batch not found 11" });
-    }
-
-    const validStages = batch.selectedProcesses || [
-      "Sarin",
-      "Stitching",
-      "4P Cutting",
-    ];
-
-    // Validate if the stage is valid for this batch
-    if (!validStages.includes(stage)) {
-      return res.status(400).json({
-        message: "Invalid stage for this batch",
-        validStages: validStages,
-      });
-    }
-
-    // Update the batch progress for the specific stage
-    batch.progress[stage] = progress;
-
-    // If progress for the current stage is 100%, move to the next stage
-    if (progress === 100) {
-      // Determine the next stage
-      const currentIndex = validStages.indexOf(stage);
-      if (currentIndex < validStages.length - 1) {
-        batch.currentProcess = validStages[currentIndex + 1]; // Set the next process
-      } else {
-        batch.status = "Completed"; // Mark the batch as completed if all stages are finished
-      }
-    }
-
-    // Save the batch with updated progress and status
-    await batch.save();
-
-    // Send response with the updated batch
-    res.json({
-      message: `Batch progress updated for stage ${stage}`,
-      batch,
-    });
-  } catch (error) {
-    console.error(error);
     res.status(500).json({
-      message: "Error updating the batch progress",
+      message: "Error fetching tasks",
       error: error.message,
     });
   }
 };
 
-//get batch for employee
-export const getTasksForBatch = async (req, res) => {
+// Get tasks by batchId
+export const getTasksByBatchId = async (req, res) => {
   try {
-    const { id } = req.params;
+    const { batchId } = req.params;
+    const tasks = await Task.find({
+      batchId: new mongoose.Types.ObjectId(batchId),
+    })
+      .populate("employeeId", "firstName lastName")
+      .populate("batchId", "batchId currentProcess");
 
-    console.log(`Fetching tasks for batch: ${id}`); // Debugging
-
-    // Find the batch using its batchId (which is a string)
-    const batch = await Batch.findOne({ batchId: id });
-
-    if (!batch) {
-      return res.status(404).json({ message: "Batch not found" });
-    }
-
-    // Fetch tasks using the found batch's ObjectId
-    const tasks = await Task.find({ batchId: batch._id });
-
-    if (!tasks || tasks.length === 0) {
+    if (!tasks.length) {
       return res.status(404).json({ message: "No tasks found for this batch" });
     }
 
     res.status(200).json(tasks);
   } catch (error) {
-    console.error("Error fetching tasks:", error.message);
-    res
-      .status(500)
-      .json({ message: "Error fetching tasks", error: error.message });
+    res.status(500).json({
+      message: "Error fetching tasks",
+      error: error.message,
+    });
   }
 };
 
-
-
-export const assignBatchToEmployee = async (req, res) => {
+// Update task status
+export const updateTaskStatus = async (req, res) => {
   try {
-    const {
-      batchId,
-      employeeId,
-      description,
-      dueDate,
-      priority,
-      status,
-      process,
-      rate,
-      diamondNumber,
-    } = req.body;
+    const { taskId } = req.params;
+    const { status } = req.body;
 
-    console.log("Received Task Data:", req.body);
-
-    if (
-      !batchId ||
-      !employeeId ||
-      !description ||
-      !dueDate ||
-      !priority ||
-      !process ||
-      rate === undefined ||
-      diamondNumber === undefined
-    ) {
-      return res.status(400).json({ message: "Missing required fields" });
+    if (!taskId || !mongoose.Types.ObjectId.isValid(taskId)) {
+      return res.status(400).json({ message: "Invalid task ID" });
     }
 
-    // Find the batch
-    const batch = await Batch.findOne({ batchId });
-    if (!batch) {
-      return res.status(404).json({ message: "Batch not found" });
+    const task = await Task.findById(taskId);
+    if (!task) {
+      return res.status(404).json({ message: "Task not found" });
     }
 
-    // Check if the process is valid for the batch
-    if (!batch.currentProcess.includes(process)) {
-      return res.status(400).json({
-        message: `Process "${process}" is not available for this batch`,
-        availableProcesses: batch.currentProcess,
+    const employee = await Employee.findById(task.employeeId);
+    const batch = await Batch.findById(task.batchId);
+
+    // Update task status and related fields
+    if (status === "In Progress" && task.status !== "In Progress") {
+      task.startTime = new Date();
+      task.status = status;
+
+      // Email manager when task starts
+      await sendEmail({
+        to: process.env.EMAIL_USER,
+        subject: `Task Started by ${employee.firstName} ${employee.lastName}`,
+        text: `Hello Manager,
+The following task has been marked as *In Progress*:
+• Employee: ${employee.firstName} ${employee.lastName}
+• Task ID: ${task._id}
+• Process: ${task.currentProcess}
+• Batch ID: ${batch.batchId}
+• Start Time: ${task.startTime.toLocaleString()}
+– Diamond Management System`,
+      });
+
+    } else if (status === "Completed" && task.status !== "Completed") {
+      task.endTime = new Date();
+      task.status = status;
+      task.completedAt = new Date();
+
+      // Calculate duration
+      if (task.startTime) {
+        task.durationInMinutes = Math.round(
+          (task.endTime - task.startTime) / (1000 * 60)
+        );
+      }
+
+      // Calculate and update earnings
+      const earningAmount = task.diamondNumber * FIXED_CHARGE_PER_DIAMOND;
+      
+      await Earning.findOneAndUpdate(
+        {
+          employeeId: task.employeeId,
+          month: task.endTime.getMonth() + 1,
+          year: task.endTime.getFullYear(),
+        },
+        {
+          $inc: { totalEarnings: earningAmount },
+          $set: { updatedAt: new Date() },
+        },
+        { upsert: true, new: true }
+      );
+
+      // Email manager when task is completed
+      await sendEmail({
+        to: process.env.EMAIL_USER,
+        subject: `Task Completed by ${employee.firstName} ${employee.lastName}`,
+        text: `Hello Manager,
+The following task has been *Completed*:
+• Employee: ${employee.firstName} ${employee.lastName}
+• Task ID: ${task._id}
+• Process: ${task.currentProcess}
+• Batch ID: ${batch.batchId}
+• Completed At: ${task.completedAt.toLocaleString()}
+– Diamond Management System`,
+      });
+
+      // Emit real-time notification
+      if (req.io) {
+        req.io.emit("taskCompletedNotification", {
+          message: `Task completed by employee: ${task.employeeId}`,
+          taskId: task._id,
+          employeeId: task.employeeId,
+          process: task.process,
+        });
+      }
+    }
+
+    await task.save();
+
+    // Update batch status
+    if (batch) {
+      const allTasks = await Task.find({ batchId: batch._id });
+      const allTasksCompleted = allTasks.every((t) => t.status === "Completed");
+      const anyTaskInProgress = allTasks.some((t) => t.status === "In Progress");
+      const anyTaskPending = allTasks.some((t) => t.status === "Pending");
+
+      if (allTasksCompleted) {
+        batch.status = "Completed";
+      } else if (anyTaskInProgress) {
+        batch.status = "In Progress";
+      } else if (anyTaskPending) {
+        batch.status = "Assigned";
+      } else {
+        batch.status = "Pending";
+      }
+      await batch.save();
+    }
+
+    // Real-time update
+    if (req.io) {
+      req.io.emit("taskUpdated", {
+        message: `Task status updated to ${status} for task: ${taskId}`,
+        task,
       });
     }
 
-    // Find the employee
-    const employee = await Employee.findById(employeeId);
-    if (!employee) {
-      return res.status(404).json({ message: "Employee not found" });
-    }
-
-    // Maintain all processes, update progress only for assigned process
-    batch.assignedEmployees.push({ employeeId, process });
-
-    // Create the task
-    const numericRate = Number(rate);
-    const numericDiamondNumber = Number(diamondNumber);
-
-    const task = new Task({
-      batchId: batch._id,
-      batchTitle: batch.batchId,
-      employeeId: employee._id,
-      employeeName: `${employee.firstName} ${employee.lastName}`,
-      currentProcess: process,
-      description,
-      dueDate,
-      priority,
-      diamondNumber: numericDiamondNumber,
-      status: status || "Pending",
-      assignedDate: new Date(),
-      rate: numericRate,
-    });
-
-    const savedTask = await task.save();
-    console.log("Saved task:", savedTask);
-
-    // Get all tasks for this batch
-    const allTasks = await Task.find({ batchId: batch._id });
-
-    // Check if all processes have assigned tasks
-    const allProcessesAssigned = batch.currentProcess.every((process) =>
-      allTasks.some((task) => task.currentProcess === process)
-    );
-
-    // Update batch status based on task assignments
-    batch.status = allProcessesAssigned ? "Assigned" : "Pending";
-
-    await batch.save();
-
-    // 🔔 Send Email Notification to Employee
-    await sendEmail({
-      to: employee.email,
-      subject: "New Task Assigned",
-      text: `Hello ${employee.firstName},
-
-You have been assigned a new task for batch ${batch.batchId}.
-
-Process: ${process}
-Description: ${description}
-Due Date: ${new Date(dueDate).toLocaleDateString()}
-
-Please log in to the system to view and start your task.
-
-Thanks,
-Diamond Management System`,
-    });
-
-    // Emit WebSocket event
-    req.io.emit("taskAssigned", {
-      message: "A new task has been assigned!",
-      task: savedTask,
-    });
-
     res.status(200).json({
-      message: "Batch assigned & task created successfully",
-      task: savedTask,
+      message: "Task status updated successfully",
+      task,
     });
   } catch (error) {
-    console.error("Error assigning batch:", error.message);
-    res
-      .status(500)
-      .json({ message: "Error assigning batch", error: error.message });
+    console.error("Error updating task status:", error);
+    res.status(500).json({
+      message: "Error updating task status",
+      error: error.message,
+    });
   }
 };
 
-
-export const getTasksForEmployee = async (req, res) => {
+// Delete task
+export const deleteTask = async (req, res) => {
   try {
-    const { employeeId } = req.params;
-    console.log(`Fetching tasks for employee: ${employeeId}`);
+    const { taskId } = req.params;
 
-    const tasks = await Task.find({ employeeId }).populate(
-      "batchId",
-      "batchTitle currentProcess selectedProcesses"
-    );
-
-    if (!tasks || tasks.length === 0) {
-      return res
-        .status(404)
-        .json({ message: "No tasks found for this employee" });
+    if (!taskId || !mongoose.Types.ObjectId.isValid(taskId)) {
+      return res.status(400).json({ message: "Invalid task ID" });
     }
 
-    // Emit WebSocket event to notify that tasks have been fetched
-    req.io.emit(`tasksFetched-${employeeId}`, {
-      message: "Your tasks have been updated!",
-      tasks,
+    const task = await Task.findById(taskId);
+    if (!task) {
+      return res.status(404).json({ message: "Task not found" });
+    }
+
+    // Delete the task and related earnings
+    const deletedTask = await Task.findByIdAndDelete(taskId);
+    await Earning.deleteMany({ taskId });
+
+    // Update batch status
+    const batch = await Batch.findById(task.batchId);
+    if (batch) {
+      batch.status = "Pending";
+      await batch.save();
+    }
+
+    // Real-time updates
+    if (req.io) {
+      req.io.emit("batchStatusUpdate", {
+        batchId: batch?.batchId,
+        status: "Pending",
+      });
+      req.io.emit("taskDeleted", { taskId, employeeId: task.employeeId });
+    }
+
+    res.status(200).json({
+      message: "Task deleted successfully and batch status updated",
+      deletedTaskId: taskId,
     });
+  } catch (error) {
+    console.error("Error deleting task:", error);
+    res.status(500).json({
+      message: "Failed to delete task",
+      error: error.message,
+    });
+  }
+};
+
+// Get task count summary for an employee
+export const getTaskSummaryForEmployee = async (req, res) => {
+  try {
+    const { employeeId } = req.params;
+
+    const counts = await Task.aggregate([
+      { $match: { employeeId: new mongoose.Types.ObjectId(employeeId) } },
+      { $group: { _id: "$status", count: { $sum: 1 } } }
+    ]);
+
+    const summary = counts.reduce((acc, curr) => {
+      acc[curr._id] = curr.count;
+      return acc;
+    }, {});
+
+    res.status(200).json({
+      assigned: summary.Pending || 0,
+      inProgress: summary["In Progress"] || 0,
+      completed: summary.Completed || 0,
+    });
+  } catch (error) {
+    res.status(500).json({
+      message: "Error fetching task summary",
+      error: error.message,
+    });
+  }
+};
+
+// Get tasks by batch title
+export const getTasksByBatchTitle = async (req, res) => {
+  try {
+    const { batchTitle } = req.params;
+
+    const tasks = await Task.find({ batchTitle })
+      .populate("employeeId", "firstName lastName")
+      .populate("batchId", "batchId currentProcess");
+
+    if (!tasks.length) {
+      return res.status(404).json({ message: "No tasks found for this batch" });
+    }
 
     res.status(200).json(tasks);
   } catch (error) {
-    console.error("Error fetching employee tasks:", error.message);
-    res
-      .status(500)
-      .json({ message: "Error fetching employee tasks", error: error.message });
+    res.status(500).json({
+      message: "Error fetching tasks",
+      error: error.message,
+    });
   }
 };
