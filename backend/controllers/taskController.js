@@ -1,6 +1,7 @@
 import Task from "../models/taskModel.js";
 import mongoose from "mongoose";
 import Batch from "../models/batchModel.js";
+import Earning from "../models/earningModel.js"; // Ensure Earning model is imported
 
 // Get all tasks
 export const getAllTasks = async (req, res) => {
@@ -72,8 +73,29 @@ export const updateTaskStatus = async (req, res) => {
       task.completedAt = new Date();
     }
 
+    // Recalculate earnings based on diamondNumber and rate
+    if (status === "Completed") {
+      task.earnings = task.diamondNumber * task.rate; // Recalculate earnings
+    }
+
     task.status = status;
     await task.save();
+
+    // Create earning using the earnings calculated from diamondNumber * rate
+    if (status === "Completed") {
+      const earning = new Earning({
+        employeeId: task.employeeId,
+        taskId: task._id,
+        totalEarnings: task.earnings, // Use task's earnings directly
+        date: task.completedAt,
+        month: task.completedAt.getUTCMonth() + 1,
+        year: task.completedAt.getUTCFullYear(),
+        periodStart: task.startTime, // Set periodStart to task start time
+        periodEnd: task.endTime, // Set periodEnd to task end time
+      });
+
+      await earning.save();
+    }
 
     // Update batch status
     const batch = await Batch.findById(task.batchId);
@@ -144,6 +166,9 @@ export const deleteTask = async (req, res) => {
       return res.status(500).json({ message: "Task could not be deleted" });
     }
 
+    // Delete related earnings
+    await Earning.deleteMany({ taskId: taskId });
+
     // Find the related batch
     const batch = await Batch.findById(task.batchId);
     if (!batch) {
@@ -183,6 +208,7 @@ export const deleteTask = async (req, res) => {
     });
   }
 };
+
 // Get task count summary for an employee
 export const getTaskSummaryForEmployee = async (req, res) => {
   try {

@@ -25,10 +25,7 @@ const taskSchema = new mongoose.Schema({
   },
   earnings: {
     type: Number,
-    required: true,
-    default: function () {
-      return this.diamondNumber * this.rate;
-    },
+    required: false,
   },
   currentProcess: { type: String, required: true },
   description: { type: String, required: true },
