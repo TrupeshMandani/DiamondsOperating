@@ -1,26 +1,28 @@
 import User from "../models/user.js";
 
 export const updateManagerProfile = async (req, res) => {
-  const { email, name } = req.body;
-
-  if (!email || !name) {
-    return res.status(400).json({ message: "Email and name are required" });
-  }
-
   try {
-    const user = await User.findOneAndUpdate(
-      { email },
-      { name },
-      { new: true }
-    );
+    const { name, email } = req.body;
+    const oldEmail = req.headers["x-user-email"]; // ✅ Fetch old email from header
 
-    if (!user) {
-      return res.status(404).json({ message: "User not found" });
+    if (!oldEmail || !name || !email) {
+      return res.status(400).json({ message: "Missing required fields." });
     }
 
-    res.status(200).json({ message: "Profile updated successfully", updatedUser: user });
+    const user = await User.findOne({ email: oldEmail });
+
+    if (!user) {
+      return res.status(404).json({ message: "Manager not found." });
+    }
+
+    user.name = name;
+    user.email = email;
+
+    await user.save();
+
+    res.status(200).json({ message: "Profile updated successfully", user });
   } catch (error) {
-    console.error("Error updating manager profile:", error.message);
+    console.error("Error updating profile:", error.message);
     res.status(500).json({ message: "Server error", error: error.message });
   }
 };
