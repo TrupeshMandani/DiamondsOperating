@@ -81,7 +81,7 @@ export default function LoginPage() {
           />
           <button className="w-full bg-blue-500 text-white p-2 rounded">
             Login
-         </button>
+          </button>
         </form>
       ) : (
         <form className="w-80 space-y-4" onSubmit={handleSignup}>

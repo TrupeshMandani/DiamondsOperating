@@ -83,39 +83,76 @@ export const updateTaskStatus = async (req, res) => {
     task.status = status;
     await task.save();
 
-    // Create earning using the earnings calculated from diamondNumber * rate
+    // Handle earnings for completed tasks
     if (status === "Completed") {
-      const earning = new Earning({
+      const month = task.completedAt.getUTCMonth() + 1;
+      const year = task.completedAt.getUTCFullYear();
+
+      // Check if an earning entry already exists for this employee, month, and year
+      const existingEarning = await Earning.findOne({
         employeeId: task.employeeId,
-        taskId: task._id,
-        totalEarnings: task.earnings, // Use task's earnings directly
-        date: task.completedAt,
-        month: task.completedAt.getUTCMonth() + 1,
-        year: task.completedAt.getUTCFullYear(),
-        periodStart: task.startTime, // Set periodStart to task start time
-        periodEnd: task.endTime, // Set periodEnd to task end time
+        month,
+        year,
       });
 
-      await earning.save();
+      if (existingEarning) {
+        // Update existing earning
+        existingEarning.totalEarnings += task.earnings;
+        existingEarning.periodEnd = task.endTime;
+        await existingEarning.save();
+      } else {
+        // Create new earning
+        const earning = new Earning({
+          employeeId: task.employeeId,
+          taskId: task._id,
+          totalEarnings: task.earnings,
+          date: task.completedAt,
+          month,
+          year,
+          periodStart: task.startTime,
+          periodEnd: task.endTime,
+        });
+        await earning.save();
+      }
     }
 
     // Update batch status
     const batch = await Batch.findById(task.batchId);
     if (batch) {
-      if (status === "In Progress") {
+      // Get all tasks for this batch
+      const allTasks = await Task.find({ batchId: batch._id });
+
+      // Check if all tasks are completed
+      const allTasksCompleted = allTasks.every(
+        (task) => task.status === "Completed"
+      );
+
+      // Check if any task is in progress
+      const hasInProgressTask = allTasks.some(
+        (task) => task.status === "In Progress"
+      );
+
+      // Update batch status based on task statuses
+      if (allTasksCompleted) {
+        batch.status = "Completed";
+      } else if (hasInProgressTask) {
         batch.status = "In Progress";
-        await batch.save();
+      } else {
+        // If no tasks are in progress and not all are completed, check if all are assigned
+        const allTasksAssigned = allTasks.every(
+          (task) => task.status === "Pending" || task.status === "Completed"
+        );
+        batch.status = allTasksAssigned ? "Assigned" : "Pending";
       }
 
-      if (status === "Completed") {
-        const allTasksCompleted = await Task.find({
-          batchId: batch._id,
-          status: { $ne: "Completed" },
+      await batch.save();
+
+      // Emit batch status update
+      if (req.io) {
+        req.io.emit("batchStatusUpdate", {
+          batchId: batch.batchId,
+          status: batch.status,
         });
-        if (allTasksCompleted.length === 0) {
-          batch.status = "Completed";
-          await batch.save();
-        }
       }
     }
 

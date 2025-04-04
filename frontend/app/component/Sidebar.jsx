@@ -31,8 +31,11 @@ const Sidebar = () => {
   };
 
   const handleLogout = () => {
-    localStorage.clear();
-    router.push("/Pages/login"); // Change this path if your login route is different
+    const confirmLogout = window.confirm("Are you sure you want to logout?");
+    if (confirmLogout) {
+      localStorage.clear();
+      router.push("/Pages/login"); // Update this path if needed
+    }
   };
 
   return (

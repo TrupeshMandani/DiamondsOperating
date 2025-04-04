@@ -1,7 +1,7 @@
 "use client";
 import axios from "axios";
 import { useState, useEffect } from "react";
-import { toast } from "react-hot-toast";
+
 import { Button } from "../../../component/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -77,11 +77,11 @@ export default function BatchCreationForm() {
 
     try {
       await axios.post("http://localhost:5023/api/batches/create", payload);
-      toast.success("Batch Created Successfully!");
+      alert.success("Batch Created Successfully!");
       alert("Batch Created successfully");
     } catch (error) {
       console.error("Error Details:", error.response?.data || error.message);
-      toast.error("Error Creating Batch!");
+      alert.error("Error Creating Batch!");
     }
   };
 
