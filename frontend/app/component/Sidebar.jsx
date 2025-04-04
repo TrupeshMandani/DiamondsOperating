@@ -1,20 +1,22 @@
-"use client"
+"use client";
 
-import { useEffect,useState } from "react"
-import Link from "next/link"
-import { usePathname,useRouter  } from "next/navigation"
-import { RiDashboardLine } from "react-icons/ri"
-import { FaTasks } from "react-icons/fa"
-import { MdBatchPrediction } from "react-icons/md"
-import { BsPersonVcardFill } from "react-icons/bs"
-import { GrDocumentPerformance } from "react-icons/gr"
-import { FaPlus } from "react-icons/fa"
-import { FiLogOut } from "react-icons/fi"
-import { Diamond, ChevronDown, User } from "lucide-react"
+import { useEffect, useState } from "react";
+import Link from "next/link";
+import { usePathname, useRouter } from "next/navigation";
+import { RiDashboardLine } from "react-icons/ri";
+import { FaTasks } from "react-icons/fa";
+import { MdBatchPrediction } from "react-icons/md";
+import { BsPersonVcardFill } from "react-icons/bs";
+import { GrDocumentPerformance } from "react-icons/gr";
+import { FaPlus } from "react-icons/fa";
+import { FiLogOut } from "react-icons/fi";
+import { HiOutlineDocumentReport } from "react-icons/hi";
+
+import { Diamond, ChevronDown, User } from "lucide-react";
 
 const Sidebar = () => {
-  const pathname = usePathname()
-  const [batchesOpen, setBatchesOpen] = useState(false)
+  const pathname = usePathname();
+  const [batchesOpen, setBatchesOpen] = useState(false);
   const router = useRouter();
   const [name, setName] = useState("");
 
@@ -25,8 +27,8 @@ const Sidebar = () => {
 
   // Check if the current path matches the link
   const isActive = (path) => {
-    return pathname === path
-  }
+    return pathname === path;
+  };
 
   const handleLogout = () => {
     localStorage.clear();
@@ -59,7 +61,13 @@ const Sidebar = () => {
                   : "text-gray-300 hover:bg-blue-800/30 hover:text-white"
               }`}
             >
-              <div className={`p-2 rounded-md ${isActive("/Pages/Manager/Dashboard") ? "bg-white/20" : "bg-gray-800"}`}>
+              <div
+                className={`p-2 rounded-md ${
+                  isActive("/Pages/Manager/Dashboard")
+                    ? "bg-white/20"
+                    : "bg-gray-800"
+                }`}
+              >
                 <RiDashboardLine className="w-4 h-4" />
               </div>
               <span>Dashboard</span>
@@ -75,7 +83,13 @@ const Sidebar = () => {
                   : "text-gray-300 hover:bg-blue-800/30 hover:text-white"
               }`}
             >
-              <div className={`p-2 rounded-md ${isActive("/Pages/Manager/Tasks") ? "bg-white/20" : "bg-gray-800"}`}>
+              <div
+                className={`p-2 rounded-md ${
+                  isActive("/Pages/Manager/Tasks")
+                    ? "bg-white/20"
+                    : "bg-gray-800"
+                }`}
+              >
                 <FaTasks className="w-4 h-4" />
               </div>
               <span>Tasks</span>
@@ -87,7 +101,8 @@ const Sidebar = () => {
             <button
               onClick={() => setBatchesOpen(!batchesOpen)}
               className={`w-full flex items-center justify-between gap-3 p-3 rounded-lg transition-all duration-200 ${
-                isActive("/Pages/Manager/Batches") || isActive("/Pages/Manager/NewBatch")
+                isActive("/Pages/Manager/Batches") ||
+                isActive("/Pages/Manager/NewBatch")
                   ? "bg-gradient-to-r from-blue-600/80 to-indigo-600/80 text-white shadow-md"
                   : "text-gray-300 hover:bg-blue-800/30 hover:text-white"
               }`}
@@ -95,7 +110,8 @@ const Sidebar = () => {
               <div className="flex items-center gap-3">
                 <div
                   className={`p-2 rounded-md ${
-                    isActive("/Pages/Manager/Batches") || isActive("/Pages/Manager/NewBatch")
+                    isActive("/Pages/Manager/Batches") ||
+                    isActive("/Pages/Manager/NewBatch")
                       ? "bg-white/20"
                       : "bg-gray-800"
                   }`}
@@ -104,7 +120,11 @@ const Sidebar = () => {
                 </div>
                 <span>Batches</span>
               </div>
-              <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${batchesOpen ? "rotate-180" : ""}`} />
+              <ChevronDown
+                className={`w-4 h-4 transition-transform duration-200 ${
+                  batchesOpen ? "rotate-180" : ""
+                }`}
+              />
             </button>
 
             {/* Dropdown menu */}
@@ -154,7 +174,13 @@ const Sidebar = () => {
                   : "text-gray-300 hover:bg-blue-800/30 hover:text-white"
               }`}
             >
-              <div className={`p-2 rounded-md ${isActive("/Pages/Manager/Employee") ? "bg-white/20" : "bg-gray-800"}`}>
+              <div
+                className={`p-2 rounded-md ${
+                  isActive("/Pages/Manager/Employee")
+                    ? "bg-white/20"
+                    : "bg-gray-800"
+                }`}
+              >
                 <BsPersonVcardFill className="w-4 h-4" />
               </div>
               <span>Employees</span>
@@ -170,10 +196,39 @@ const Sidebar = () => {
                   : "text-gray-300 hover:bg-blue-800/30 hover:text-white"
               }`}
             >
-              <div className={`p-2 rounded-md ${isActive("/performance") ? "bg-white/20" : "bg-gray-800"}`}>
-                <GrDocumentPerformance className="w-4 h-4" style={{ color: "white" }} />
+              <div
+                className={`p-2 rounded-md ${
+                  isActive("/performance") ? "bg-white/20" : "bg-gray-800"
+                }`}
+              >
+                <GrDocumentPerformance
+                  className="w-4 h-4"
+                  style={{ color: "white" }}
+                />
               </div>
               <span>Performance</span>
+            </Link>
+          </li>
+          <li>
+            <Link
+              href="/Pages/Manager/Report"
+              className={`flex items-center gap-3 p-3 rounded-lg transition-all duration-200 ${
+                isActive("/performance")
+                  ? "bg-gradient-to-r from-blue-600/80 to-indigo-600/80 text-white shadow-md"
+                  : "text-gray-300 hover:bg-blue-800/30 hover:text-white"
+              }`}
+            >
+              <div
+                className={`p-2 rounded-md ${
+                  isActive("/performance") ? "bg-white/20" : "bg-gray-800"
+                }`}
+              >
+                <HiOutlineDocumentReport
+                  className="w-4 h-4"
+                  style={{ color: "white" }}
+                />
+              </div>
+              <span>Report</span>
             </Link>
           </li>
         </ul>
@@ -205,8 +260,7 @@ const Sidebar = () => {
         </button>
       </div>
     </div>
-  )
-}
+  );
+};
 
-export default Sidebar
-
+export default Sidebar;

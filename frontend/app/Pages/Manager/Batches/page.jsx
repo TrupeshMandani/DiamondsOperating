@@ -79,7 +79,7 @@ export default function BatchesPage() {
   return (
     <div className="min-h-screen bg-gray-50 flex">
       {/* Fixed Sidebar */}
-      <div className="fixed left-0 top-0 w-64 h-full bg-gray-800 text-white">
+      <div className="w-72 h-screen fixed top-0 left-0 bg-[#121828] text-white shadow-xl z-10">
         <Sidebar />
       </div>
 
