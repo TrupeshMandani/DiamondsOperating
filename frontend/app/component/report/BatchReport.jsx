@@ -1,4 +1,5 @@
 "use client";
+
 import React, { useState, useEffect } from "react";
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
@@ -9,17 +10,23 @@ export default function BatchReport() {
   const [selectedBatchId, setSelectedBatchId] = useState(null);
   const [batchData, setBatchData] = useState(null);
   const [tasks, setTasks] = useState([]);
+  const [taskLoading, setTaskLoading] = useState(false);
+  const [taskError, setTaskError] = useState(null);
 
   useEffect(() => {
     const fetchRecentBatches = async () => {
-      const res = await fetch("http://localhost:5023/api/batches");
-      const data = await res.json();
-      const recent = data
-        .sort((a, b) => new Date(b.currentDate) - new Date(a.currentDate))
-        .slice(0, 10);
-      setBatchList(recent);
-      if (recent.length > 0) {
-        setSelectedBatchId(recent[0].batchId);
+      try {
+        const res = await fetch("http://localhost:5023/api/batches");
+        const data = await res.json();
+        const recent = data
+          .sort((a, b) => new Date(b.currentDate) - new Date(a.currentDate))
+          .slice(0, 10);
+        setBatchList(recent);
+        if (recent.length > 0) {
+          setSelectedBatchId(recent[0].batchId);
+        }
+      } catch (error) {
+        console.error("Error fetching batches:", error);
       }
     };
     fetchRecentBatches();
@@ -29,19 +36,39 @@ export default function BatchReport() {
     if (!selectedBatchId) return;
 
     const fetchBatch = async () => {
-      const res = await fetch(
-        `http://localhost:5023/api/batches/${selectedBatchId}`
-      );
-      const data = await res.json();
-      setBatchData(data);
+      try {
+        const res = await fetch(
+          `http://localhost:5023/api/batches/${selectedBatchId}`
+        );
+        const data = await res.json();
+        setBatchData(data);
+      } catch (error) {
+        console.error("Error fetching batch:", error);
+      }
     };
 
     const fetchTasks = async () => {
-      const res = await fetch(
-        `http://localhost:5023/api/tasks/title/${selectedBatchId}`
-      );
-      const taskData = await res.json();
-      setTasks(taskData);
+      setTaskLoading(true);
+      setTaskError(null);
+      try {
+        const res = await fetch(
+          `http://localhost:5023/api/tasks/title/${selectedBatchId}`
+        );
+        const taskData = await res.json();
+
+        if (Array.isArray(taskData)) {
+          setTasks(taskData);
+        } else {
+          console.warn("Unexpected task data format:", taskData);
+          setTasks([]);
+        }
+      } catch (error) {
+        console.error("Error fetching tasks:", error);
+        setTasks([]);
+        setTaskError("Unable to load task data.");
+      } finally {
+        setTaskLoading(false);
+      }
     };
 
     fetchBatch();
@@ -182,11 +209,11 @@ export default function BatchReport() {
             <h2 className="text-xl font-semibold text-gray-800 mb-4">
               Task Details
             </h2>
-            {tasks.length === 0 ? (
-              <p className="text-gray-600">
-                No tasks available for this batch.
-              </p>
-            ) : (
+            {taskLoading ? (
+              <p className="text-gray-500">Loading tasks...</p>
+            ) : taskError ? (
+              <p className="text-red-600">{taskError}</p>
+            ) : Array.isArray(tasks) && tasks.length > 0 ? (
               <table className="min-w-full border-collapse text-sm">
                 <thead className="bg-gray-100 text-gray-800">
                   <tr>
@@ -235,12 +262,17 @@ export default function BatchReport() {
                   ))}
                 </tbody>
               </table>
+            ) : (
+              <p className="text-gray-600">
+                No tasks available for this batch.
+              </p>
             )}
           </div>
         </div>
       ) : (
         <p className="text-gray-600">Loading batch data...</p>
       )}
+
       <div className="flex gap-4 justify-end mt-6">
         <button
           onClick={exportPDF}
