@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { ArrowRight, AlertCircle } from "lucide-react";
+import { ArrowRight, alertCircle } from "lucide-react";
 import { motion } from "framer-motion";
 import {
   Card,
@@ -165,7 +165,6 @@ export default function TaskAssignment({ selectedBatchId }) {
 
       alert("Task successfully deleted!");
     } catch (error) {
-      console.error("Error deleting task:", error);
       alert("Failed to delete task: " + error.message);
     }
   };
@@ -272,7 +271,7 @@ export default function TaskAssignment({ selectedBatchId }) {
                     >
                       {!isAvailable ? (
                         <div className="col-span-full flex flex-col items-center justify-center py-8 text-gray-500">
-                          <AlertCircle className="h-12 w-12 mb-2 text-gray-400" />
+                          <alertCircle className="h-12 w-12 mb-2 text-gray-400" />
                           <p>
                             Process {process} was not selected for this batch
                           </p>

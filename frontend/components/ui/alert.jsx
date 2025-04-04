@@ -18,7 +18,7 @@ const alertVariants = cva(
   }
 );
 
-const Alert = React.forwardRef(({ className, variant, ...props }, ref) => (
+const alert = React.forwardRef(({ className, variant, ...props }, ref) => (
   <div
     ref={ref}
     role="alert"
@@ -26,24 +26,24 @@ const Alert = React.forwardRef(({ className, variant, ...props }, ref) => (
     {...props}
   />
 ));
-Alert.displayName = "Alert";
+alert.displayName = "alert";
 
-const AlertTitle = React.forwardRef(({ className, ...props }, ref) => (
+const alertTitle = React.forwardRef(({ className, ...props }, ref) => (
   <h5
     ref={ref}
     className={cn("mb-1 font-medium leading-none tracking-tight", className)}
     {...props}
   />
 ));
-AlertTitle.displayName = "AlertTitle";
+alertTitle.displayName = "alertTitle";
 
-const AlertDescription = React.forwardRef(({ className, ...props }, ref) => (
+const alertDescription = React.forwardRef(({ className, ...props }, ref) => (
   <div
     ref={ref}
     className={cn("text-sm [&_p]:leading-relaxed", className)}
     {...props}
   />
 ));
-AlertDescription.displayName = "AlertDescription";
+alertDescription.displayName = "alertDescription";
 
-export { Alert, AlertTitle, AlertDescription };
+export { alert, alertTitle, alertDescription };
