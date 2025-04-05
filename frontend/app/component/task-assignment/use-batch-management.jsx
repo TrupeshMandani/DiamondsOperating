@@ -97,12 +97,17 @@ export function useBatchManagement(socket) {
   const fetchUpdatedBatch = useCallback(async (batchId) => {
     try {
       const res = await fetch(`http://localhost:5023/api/batches/${batchId}`);
-      if (!res.ok) throw new Error("Failed to fetch updated batch");
+
+      if (!res.ok) {
+        const errorText = await res.text();
+        throw new Error(
+          `Failed to fetch updated batch: ${res.status} ${res.statusText} - ${errorText}`
+        );
+      }
 
       const updatedBatch = await res.json();
       console.log("Updated Batch Data:", updatedBatch);
 
-      // Ensure the batch has a selectedProcesses property
       const enhancedBatch = {
         ...updatedBatch,
         selectedProcesses:
@@ -117,9 +122,7 @@ export function useBatchManagement(socket) {
         ...enhancedBatch,
         currentProcess: updatedBatch.currentProcess,
       }));
-    } catch (err) {
-      alert("Error fetching updated batch:", err.message);
-    }
+    } catch (err) {}
   }, []);
 
   return {
