@@ -1,41 +1,51 @@
-"use client"
+"use client";
 
-import { createContext, useContext, useState } from "react"
+import { createContext, useContext, useState } from "react";
 
-const ToastContext = createContext({})
+const alertContext = createContext({});
 
-export const ToastProvider = ({ children }) => {
-  const [toasts, setToasts] = useState([])
+export const alertProvider = ({ children }) => {
+  const [alerts, setalerts] = useState([]);
 
-  const toast = ({ title, description, variant = "default", duration = 5000 }) => {
-    const id = Math.random().toString(36).substring(2, 9)
-    const newToast = { id, title, description, variant, duration }
+  const alert = ({
+    title,
+    description,
+    variant = "default",
+    duration = 5000,
+  }) => {
+    const id = Math.random().toString(36).substring(2, 9);
+    const newalert = { id, title, description, variant, duration };
 
-    setToasts((prevToasts) => [...prevToasts, newToast])
+    setalerts((prevalerts) => [...prevalerts, newalert]);
 
     if (duration !== Number.POSITIVE_INFINITY) {
       setTimeout(() => {
-        setToasts((prevToasts) => prevToasts.filter((toast) => toast.id !== id))
-      }, duration)
+        setalerts((prevalerts) =>
+          prevalerts.filter((alert) => alert.id !== id)
+        );
+      }, duration);
     }
 
-    return id
-  }
+    return id;
+  };
 
   const dismiss = (id) => {
-    setToasts((prevToasts) => prevToasts.filter((toast) => toast.id !== id))
-  }
+    setalerts((prevalerts) => prevalerts.filter((alert) => alert.id !== id));
+  };
 
-  return <ToastContext.Provider value={{ toast, dismiss, toasts }}>{children}</ToastContext.Provider>
-}
+  return (
+    <alertContext.Provider value={{ alert, dismiss, alerts }}>
+      {children}
+    </alertContext.Provider>
+  );
+};
 
-export const useToast = () => {
-  const context = useContext(ToastContext)
+export const usealert = () => {
+  const context = useContext(alertContext);
 
   if (context === undefined) {
-    throw new Error("useToast must be used within a ToastProvider")
+    throw new Error("usealert must be used within a alertProvider");
   }
 
-  return context
-}
-
+  return context;
+};
