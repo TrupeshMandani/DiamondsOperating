@@ -20,7 +20,7 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { DatePicker } from "@/components/ui/date-picker";
-import { AlertCircle } from "lucide-react";
+import { alertCircle } from "lucide-react";
 
 export function TaskAssignmentDialog({
   isOpen,
@@ -93,7 +93,7 @@ export function TaskAssignmentDialog({
 
         {error && (
           <div className="flex items-start space-x-2 rounded-md border border-red-300 bg-red-50 p-3 text-sm text-red-800 mb-4">
-            <AlertCircle className="h-4 w-4 mt-0.5 text-red-600" />
+            <alertCircle className="h-4 w-4 mt-0.5 text-red-600" />
             <div>{error}</div>
           </div>
         )}

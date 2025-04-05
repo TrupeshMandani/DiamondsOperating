@@ -6,7 +6,6 @@ import BatchTabs from "../../../component/batch-tabs/batch-tabs";
 import TaskAssignment from "../../../component/task-assignment/task-assignment";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
-// Initialize socket connection
 const socket = io("http://localhost:5023");
 
 export default function BatchesPage() {
@@ -15,7 +14,6 @@ export default function BatchesPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // Fetch batches on component mount
   useEffect(() => {
     const fetchBatches = async () => {
       try {
@@ -28,7 +26,6 @@ export default function BatchesPage() {
 
         const data = await response.json();
 
-        // Ensure each batch has a selectedProcesses property
         const processedBatches = data.map((batch) => ({
           ...batch,
           selectedProcesses:
@@ -50,7 +47,6 @@ export default function BatchesPage() {
 
     fetchBatches();
 
-    // Listen for real-time batch updates
     socket.on("batchUpdated", (updatedBatch) => {
       setBatches((prevBatches) =>
         prevBatches.map((batch) =>
@@ -60,13 +56,11 @@ export default function BatchesPage() {
         )
       );
 
-      // Update selected batch if it's the one that was updated
       if (selectedBatch && selectedBatch.batchId === updatedBatch.batchId) {
         setSelectedBatch((prev) => ({ ...prev, ...updatedBatch }));
       }
     });
 
-    // Clean up socket listeners on unmount
     return () => {
       socket.off("batchUpdated");
     };
@@ -77,14 +71,13 @@ export default function BatchesPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex">
-      {/* Fixed Sidebar */}
-      <div className="fixed left-0 top-0 w-64 h-full bg-gray-800 text-white">
+    <div className="flex min-h-screen bg-gray-50">
+      <div className="w-72 fixed inset-y-0 left-0 bg-[#121828] text-white shadow-xl z-10">
         <Sidebar />
       </div>
 
-      <div className="flex-1 ml-64 p-6">
-        <div className="flex flex-col gap-6">
+      <main className="flex-1 ml-72 p-6">
+        <div className="max-w-7xl mx-auto flex flex-col gap-6">
           <div className="flex justify-between items-center">
             <h1 className="text-2xl font-bold text-gray-800">
               Batch Management
@@ -103,14 +96,12 @@ export default function BatchesPage() {
             </Card>
           ) : (
             <>
-              {/* Batch Tabs Component */}
               <BatchTabs
                 batches={batches}
                 onSelectBatch={handleSelectBatch}
                 socket={socket}
               />
 
-              {/* Task Assignment Component */}
               {selectedBatch && (
                 <Card className="mt-6">
                   <CardHeader>
@@ -125,11 +116,12 @@ export default function BatchesPage() {
               )}
             </>
           )}
+
           <div className="w-full">
             <TaskAssignment />
           </div>
         </div>
-      </div>
+      </main>
     </div>
   );
 }

@@ -48,8 +48,16 @@ const EmpTaskList = () => {
         }
       );
 
-      if (!response.ok)
-        throw new Error(`Failed to fetch tasks: ${await response.text()}`);
+      if (!response.ok) {
+        const errorText = await response.text();
+        // Show empty state message instead of generic error
+        if (response.status === 404 || errorText.includes("No tasks")) {
+          setTasks({ assigned: [], inProgress: [], completed: [] });
+          setError(null); // not a real error
+          return;
+        }
+        throw new Error(`Failed to fetch tasks: ${errorText}`);
+      }
 
       const data = await response.json();
 
