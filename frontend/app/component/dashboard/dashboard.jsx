@@ -99,7 +99,10 @@ const Dashboard = () => {
           employeeName: task.employeeName,
           diamondNumber: task.diamondNumber,
           currentProcess: task.currentProcess,
+          startTime: task.startTime,
+          endTime: task.endTime,
         }))
+
 
         // Update task counts for employees
         const employeeTaskCounts = {}
