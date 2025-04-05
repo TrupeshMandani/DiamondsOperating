@@ -37,9 +37,11 @@ const taskSchema = new mongoose.Schema({
   },
   status: {
     type: String,
-    enum: ["Pending", "In Progress", "Completed"],
+    enum: ["Pending", "In Progress", "Completed", "Partially Completed"],
     required: true,
   },
+  partialReason: { type: String, default: "" }, // 👈 Add this line
+  
   assignedDate: { type: Date, default: Date.now },
   startTime: { type: Date, default: null },
   endTime: { type: Date, default: null },

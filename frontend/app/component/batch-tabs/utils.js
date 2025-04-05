@@ -6,21 +6,18 @@
 export const categorizeBatches = (batches, tasks = [], io) => {
   return batches.reduce(
     (acc, batch) => {
-      // Ensure tasks is always an array, even if it's undefined or null
       const batchTasks = tasks.filter((task) => task.batchId === batch.batchId);
 
-      // For "Unassigned" or "Assigned" categories, check the batch status
       if (batch.status === "Pending") {
-        acc.notAssigned.push(batch); // Unassigned
+        acc.notAssigned.push(batch);
       } else if (batch.status === "Assigned") {
-        acc.assigned.push(batch); // Assigned
+        acc.assigned.push(batch);
       } else if (batch.status === "In Progress") {
-        acc.inProgress.push(batch); // In Progress
+        acc.inProgress.push(batch);
       } else if (batch.status === "Completed") {
-        acc.completed.push(batch); // Completed
+        acc.completed.push(batch);
       }
 
-      // Emit real-time WebSocket event when batch status changes
       if (io) {
         io.emit("batchStatusUpdated", {
           batchId: batch.batchId,
@@ -99,7 +96,6 @@ export function getAssignmentProgress(batch, io) {
     result.assignmentStatus = "assigned";
   }
 
-  // Emit real-time WebSocket event when assignment status changes
   if (io) {
     io.emit("assignmentProgressUpdated", {
       batchId: batch.batchId,
@@ -110,4 +106,25 @@ export function getAssignmentProgress(batch, io) {
   }
 
   return result;
+}
+
+/**
+ * Updates the batch's progress if a task is deleted (e.g., reset stage progress)
+ * @param {Object} batch - The batch object
+ * @param {String} process - The process name that was removed (optional)
+ * @returns {Object} - Updated batch
+ */
+export function updateBatchAfterTaskDeletion(batch, process = null) {
+  if (!batch || !batch.progress) return batch;
+
+  const newProgress = { ...batch.progress };
+
+  if (process && newProgress[process] !== undefined) {
+    newProgress[process] = 0;
+  }
+
+  return {
+    ...batch,
+    progress: newProgress,
+  };
 }

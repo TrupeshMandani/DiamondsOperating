@@ -65,8 +65,11 @@ const EmpTaskList = () => {
       setTasks({
         assigned: data.filter((task) => task.status === "Pending"),
         inProgress: data.filter((task) => task.status === "In Progress"),
-        completed: data.filter((task) => task.status === "Completed"),
+        completed: data.filter(
+          (task) => task.status === "Completed" || task.status === "Partially Completed"
+        ),
       });
+      
 
       setError(null);
     } catch (err) {
