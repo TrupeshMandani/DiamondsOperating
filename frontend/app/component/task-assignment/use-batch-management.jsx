@@ -51,7 +51,7 @@ export function useBatchManagement(socket) {
 
       setBatches(processedBatches);
     } catch (err) {
-      console.error("Error fetching batches:", err);
+      alert("Error fetching batches:", err);
     } finally {
       setLoading(false);
     }
@@ -65,7 +65,7 @@ export function useBatchManagement(socket) {
       const data = await res.json();
       setEmployees(data);
     } catch (error) {
-      console.error("Error fetching employees:", error);
+      alert("Error fetching employees:", error);
       setEmployees([]);
     }
   }, []);
@@ -118,7 +118,6 @@ export function useBatchManagement(socket) {
         currentProcess: updatedBatch.currentProcess,
       }));
     } catch (err) {
-      console.error("Error fetching updated batch:", err.message);
     }
   }, []);
 

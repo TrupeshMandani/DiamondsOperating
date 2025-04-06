@@ -62,13 +62,11 @@ const EmpTaskCardWithTimer = ({
       const data = await response.json();
       console.log("Fetched Batch Details:", data);
 
+      // Check process flow dependencies
       if (task.currentProcess === "Stitching") {
-        const sarinTask = data.find(
-          (task) =>
-            task.currentProcess === "Sarin" && task.status === "Completed"
-        );
+        const sarinTask = data.find((t) => t.currentProcess === "Sarin");
 
-        if (!sarinTask) {
+        if (sarinTask && sarinTask.status !== "Completed") {
           alert(
             "Please wait until 'Sarin' task is completed before starting 'Stitching' task."
           );
@@ -77,23 +75,24 @@ const EmpTaskCardWithTimer = ({
       }
 
       if (task.currentProcess === "4P Cutting") {
-        const sarinTask = data.find(
-          (task) =>
-            task.currentProcess === "Sarin" && task.status === "Completed"
-        );
+        const sarinTask = data.find((t) => t.currentProcess === "Sarin");
         const stitchingTask = data.find(
-          (task) =>
-            task.currentProcess === "Stitching" && task.status === "Completed"
+          (t) => t.currentProcess === "Stitching"
         );
 
-        if (!sarinTask || !stitchingTask) {
+        const sarinIncomplete = sarinTask && sarinTask.status !== "Completed";
+        const stitchingIncomplete =
+          stitchingTask && stitchingTask.status !== "Completed";
+
+        if (sarinIncomplete || stitchingIncomplete) {
           alert(
-            "Please wait until both 'Sarin' and 'Stitching' tasks to be completed before starting the '4P Cutting' task."
+            "Please wait until both 'Sarin' and 'Stitching' tasks are completed before starting '4P Cutting' task."
           );
           return;
         }
       }
 
+      // All checks passed
       startTask();
     } catch (error) {
       console.error("Error fetching batch details:", error);
@@ -106,43 +105,56 @@ const EmpTaskCardWithTimer = ({
     updateTaskStatus(task._id, "In Progress");
   };
   const handlePartialComplete = async (taskId) => {
-  const reason = prompt("Please enter a reason for partial completion:");
-
-  if (!reason) {
-    alert("Partial reason is required.");
-    return;
-  }
-
-  try {
-    const token = localStorage.getItem("authToken");
-    const response = await fetch(
-      `http://localhost:5023/api/tasks/${taskId}/update-status`,
-    
-      {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          status: "Partially Completed",
-          partialReason: reason,
-        }),
-      }
-    );        
-
-    const result = await response.json();
-
-    if (!response.ok) {
-      throw new Error(result.message || "Failed to mark as partially complete");
+    const reason = prompt("Please enter a reason for partial completion:");
+    if (!reason) {
+      alert("Partial reason is required.");
+      return;
     }
-
-    alert("Task marked as partially completed.");
-  } catch (error) {
-    console.error("Error:", error);
-    alert("Error marking task as partially completed.");
-  }
-};
+  
+    const completedDiamondsInput = prompt("Enter number of diamonds completed:");
+    const completedDiamonds = Number(completedDiamondsInput);
+  
+    if (isNaN(completedDiamonds) || completedDiamonds < 0) {
+      alert("Please enter a valid number for completed diamonds.");
+      return;
+    }
+  
+    if (completedDiamonds > task.diamondNumber) {
+      alert(`You cannot complete more than ${task.diamondNumber} diamonds.`);
+      return;
+    }
+  
+    try {
+      const token = localStorage.getItem("authToken");
+      const response = await fetch(
+        `http://localhost:5023/api/tasks/${taskId}/update-status`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            status: "Partially Completed",
+            completedDiamonds,
+            partialReason: reason,
+          }),
+        }
+      );
+  
+      const result = await response.json();
+  
+      if (!response.ok) {
+        throw new Error(result.message || "Failed to mark as partially complete");
+      }
+  
+      alert("Task marked as partially completed.");
+    } catch (error) {
+      console.error("Error:", error);
+      alert("Error marking task as partially completed.");
+    }
+  };
+  
 
 
   const formatDuration = (ms) => {
