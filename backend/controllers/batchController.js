@@ -263,8 +263,9 @@ export const getTasksForBatch = async (req, res) => {
     }
 
     // Fetch tasks using the found batch's ObjectId
-    const tasks = await Task.find({ batchId: batch._id }).select("+status +partialReason");
-
+    const tasks = await Task.find({ batchId: batch._id }).select(
+      "+status +partialReason"
+    );
 
     if (!tasks || tasks.length === 0) {
       return res.status(404).json({ message: "No tasks found for this batch" });
@@ -334,6 +335,7 @@ export const assignBatchToEmployee = async (req, res) => {
     // Create the task
     const numericRate = Number(rate);
     const numericDiamondNumber = Number(diamondNumber);
+    const taskearnings = numericRate * numericDiamondNumber;
 
     const task = new Task({
       batchId: batch._id,
@@ -348,6 +350,7 @@ export const assignBatchToEmployee = async (req, res) => {
       status: status || "Pending",
       assignedDate: new Date(),
       rate: numericRate,
+      taskEarnings: taskearnings,
     });
 
     const savedTask = await task.save();

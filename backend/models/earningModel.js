@@ -38,5 +38,4 @@ const earningSchema = new mongoose.Schema({
 });
 
 const Earning = mongoose.model("Earning", earningSchema);
-
 export default Earning;

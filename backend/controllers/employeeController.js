@@ -2,7 +2,15 @@ import Employee from "../models/Employee.js"; // Import the Employee model
 import Batch from "../models/batchModel.js";
 // Create a new employee
 export const createEmployee = async (req, res) => {
-  const { firstName, lastName, email, phoneNumber, address, dateOfBirth, skills } = req.body;
+  const {
+    firstName,
+    lastName,
+    email,
+    phoneNumber,
+    address,
+    dateOfBirth,
+    skills,
+  } = req.body;
 
   try {
     const checkEmployee = await Employee.findOne({ email });
@@ -31,7 +39,6 @@ export const createEmployee = async (req, res) => {
   }
 };
 
-
 // Get all employees
 export const getEmployees = async (req, res) => {
   try {
@@ -45,7 +52,15 @@ export const getEmployees = async (req, res) => {
 // Update an existing employee
 export const updateEmployee = async (req, res) => {
   const { id } = req.params;
-  const { firstName, lastName, email, phoneNumber, address, dateOfBirth, skills } = req.body;
+  const {
+    firstName,
+    lastName,
+    email,
+    phoneNumber,
+    address,
+    dateOfBirth,
+    skills,
+  } = req.body;
 
   try {
     const employee = await Employee.findById(id);
@@ -63,13 +78,16 @@ export const updateEmployee = async (req, res) => {
     employee.skills = skills || employee.skills;
 
     const updatedEmployee = await employee.save();
-    
-    res.status(200).json({ message: "Employee updated successfully", updatedEmployee });
+
+    res
+      .status(200)
+      .json({ message: "Employee updated successfully", updatedEmployee });
   } catch (error) {
-    res.status(500).json({ message: "Error updating employee", error: error.message });
+    res
+      .status(500)
+      .json({ message: "Error updating employee", error: error.message });
   }
 };
-
 
 // Delete an existing employee
 export const deleteEmployee = async (req, res) => {
