@@ -13,11 +13,23 @@ const taskSchema = new mongoose.Schema({
     required: true,
   },
   employeeName: { type: String, required: true },
+
   diamondNumber: {
     type: Number,
     required: true,
     min: [1, "At least 1 diamond required"],
   },
+  completedDiamonds: {
+    type: Number,
+    default: 0,
+  },
+  remainingDiamonds: {
+    type: Number,
+    default: function () {
+      return this.diamondNumber;
+    },
+  },
+
   rate: {
     type: Number,
     required: true,
@@ -40,8 +52,8 @@ const taskSchema = new mongoose.Schema({
     enum: ["Pending", "In Progress", "Completed", "Partially Completed"],
     required: true,
   },
-  partialReason: { type: String, default: "" }, // 👈 Add this line
-  
+  partialReason: { type: String, default: "" },
+
   assignedDate: { type: Date, default: Date.now },
   startTime: { type: Date, default: null },
   endTime: { type: Date, default: null },

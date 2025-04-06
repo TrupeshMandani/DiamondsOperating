@@ -6,6 +6,7 @@ import {
   getTasksByBatchTitle,
   updateTaskStatus,
   getTaskSummaryForEmployee,
+  reassignTaskToEmployee,  // ✅ NEW
 } from "../controllers/taskController.js";
 
 const router = express.Router();
@@ -25,8 +26,10 @@ router.get("/employee/:employeeId/summary", getTaskSummaryForEmployee);
 // Route to update task status by Task ID
 router.put("/:taskId/update-status", updateTaskStatus);
 
+// ✅ NEW: Route to reassign task by Task ID
+router.put("/:taskId/reassign", reassignTaskToEmployee); 
+
 // Route to delete task by Task ID
 router.delete("/:taskId", deleteTask);
-
 
 export default router;

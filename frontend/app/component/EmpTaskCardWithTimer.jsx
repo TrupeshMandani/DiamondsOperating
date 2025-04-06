@@ -105,43 +105,56 @@ const EmpTaskCardWithTimer = ({
     updateTaskStatus(task._id, "In Progress");
   };
   const handlePartialComplete = async (taskId) => {
-  const reason = prompt("Please enter a reason for partial completion:");
-
-  if (!reason) {
-    alert("Partial reason is required.");
-    return;
-  }
-
-  try {
-    const token = localStorage.getItem("authToken");
-    const response = await fetch(
-      `http://localhost:5023/api/tasks/${taskId}/update-status`,
-    
-      {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          status: "Partially Completed",
-          partialReason: reason,
-        }),
-      }
-    );        
-
-    const result = await response.json();
-
-    if (!response.ok) {
-      throw new Error(result.message || "Failed to mark as partially complete");
+    const reason = prompt("Please enter a reason for partial completion:");
+    if (!reason) {
+      alert("Partial reason is required.");
+      return;
     }
-
-    alert("Task marked as partially completed.");
-  } catch (error) {
-    console.error("Error:", error);
-    alert("Error marking task as partially completed.");
-  }
-};
+  
+    const completedDiamondsInput = prompt("Enter number of diamonds completed:");
+    const completedDiamonds = Number(completedDiamondsInput);
+  
+    if (isNaN(completedDiamonds) || completedDiamonds < 0) {
+      alert("Please enter a valid number for completed diamonds.");
+      return;
+    }
+  
+    if (completedDiamonds > task.diamondNumber) {
+      alert(`You cannot complete more than ${task.diamondNumber} diamonds.`);
+      return;
+    }
+  
+    try {
+      const token = localStorage.getItem("authToken");
+      const response = await fetch(
+        `http://localhost:5023/api/tasks/${taskId}/update-status`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            status: "Partially Completed",
+            completedDiamonds,
+            partialReason: reason,
+          }),
+        }
+      );
+  
+      const result = await response.json();
+  
+      if (!response.ok) {
+        throw new Error(result.message || "Failed to mark as partially complete");
+      }
+  
+      alert("Task marked as partially completed.");
+    } catch (error) {
+      console.error("Error:", error);
+      alert("Error marking task as partially completed.");
+    }
+  };
+  
 
 
   const formatDuration = (ms) => {
