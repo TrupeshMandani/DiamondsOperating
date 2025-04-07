@@ -53,17 +53,18 @@ export function useTaskManagement(
     });
 
     // Handle task updates
-    socket.on("taskUpdated", (updatedTask) => {
-      console.log("Real-time Task Updated:", updatedTask);
-      // Update task status or other fields in the state
+    socket.on("taskUpdated", (updatedTaskData) => {
+      const updatedTask = updatedTaskData.task; // 👈 get the actual task object from emitted data
+      console.log("🔄 Real-time Task Updated:", updatedTask);
+    
+      // Update the full task object in state
       setTasks((prevTasks) =>
         prevTasks.map((task) =>
-          task._id === updatedTask.taskId
-            ? { ...task, status: updatedTask.status }
-            : task
+          task._id === updatedTask._id ? { ...task, ...updatedTask } : task
         )
       );
     });
+    
 
     return () => {
       socket.off("taskAssigned");

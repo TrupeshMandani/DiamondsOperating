@@ -15,6 +15,10 @@ const EmpTaskCardWithTimer = ({
   const [elapsedTime, setElapsedTime] = useState(null);
   const [batchDetails, setBatchDetails] = useState(null);
   const [loading, setLoading] = useState(false);
+  useEffect(() => {
+    console.log("📦 TASK RECEIVED:", task);
+  }, [task]);
+
 
   useEffect(() => {
     let interval;
@@ -100,6 +104,58 @@ const EmpTaskCardWithTimer = ({
   const startTask = () => {
     updateTaskStatus(task._id, "In Progress");
   };
+  const handlePartialComplete = async (taskId) => {
+    const reason = prompt("Please enter a reason for partial completion:");
+    if (!reason) {
+      alert("Partial reason is required.");
+      return;
+    }
+  
+    const completedDiamondsInput = prompt("Enter number of diamonds completed:");
+    const completedDiamonds = Number(completedDiamondsInput);
+  
+    if (isNaN(completedDiamonds) || completedDiamonds < 0) {
+      alert("Please enter a valid number for completed diamonds.");
+      return;
+    }
+  
+    if (completedDiamonds > task.diamondNumber) {
+      alert(`You cannot complete more than ${task.diamondNumber} diamonds.`);
+      return;
+    }
+  
+    try {
+      const token = localStorage.getItem("authToken");
+      const response = await fetch(
+        `http://localhost:5023/api/tasks/${taskId}/update-status`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            status: "Partially Completed",
+            completedDiamonds,
+            partialReason: reason,
+          }),
+        }
+      );
+  
+      const result = await response.json();
+  
+      if (!response.ok) {
+        throw new Error(result.message || "Failed to mark as partially complete");
+      }
+  
+      alert("Task marked as partially completed.");
+    } catch (error) {
+      console.error("Error:", error);
+      alert("Error marking task as partially completed.");
+    }
+  };
+  
+
 
   const formatDuration = (ms) => {
     const totalSec = Math.floor(ms / 1000);
@@ -124,19 +180,29 @@ const EmpTaskCardWithTimer = ({
       transition={{ duration: 0.2 }}
       className="bg-white p-4 rounded-lg border border-gray-100 shadow-sm hover:shadow-md transition-all"
     >
-      <div className="flex justify-between items-start mb-3">
-        <div>
-          <h3 className="text-base font-semibold text-gray-900">
-            {task.batchTitle || "Unknown Batch"}
-          </h3>
-          <p className="text-sm text-gray-500 mt-1">
-            {task.currentProcess || "N/A"}
-          </p>
-        </div>
-        <Badge className={`${getPriorityColor(task.priority)} text-xs`}>
-          {task.priority}
-        </Badge>
-      </div>
+<div className="flex justify-between items-start mb-3">
+  <div>
+    <h3 className="text-base font-semibold text-gray-900">
+      {task.batchTitle || "Unknown Batch"}
+    </h3>
+    <p className="text-sm text-gray-500 mt-1">
+      {task.currentProcess || "N/A"}
+    </p>
+  </div>
+  <div className="flex flex-col items-end gap-1">
+    <Badge className={`${getPriorityColor(task.priority)} text-xs`}>
+      {task.priority}
+    </Badge>
+    
+    {/* 👇 Show if partially completed */}
+    {task.status === "Partially Completed" && (
+      <Badge className="bg-yellow-200 text-yellow-800 text-xs">
+        Partially Completed
+      </Badge>
+    )}
+  </div>
+</div>
+
 
       <hr className="border-gray-100 my-3" />
 
@@ -204,6 +270,15 @@ const EmpTaskCardWithTimer = ({
           "{task.description}"
         </p>
       )}
+      {task.partiallyCompleted && task.partialReason && (
+  <div className="mt-3 bg-yellow-50 border border-yellow-200 rounded-md p-3">
+    <p className="text-sm font-medium text-yellow-800">⚠️ Partially Completed</p>
+    <p className="text-sm text-yellow-700 mt-1">
+      Reason: <span className="italic">{task.partialReason}</span>
+    </p>
+  </div>
+)}
+
 
       <div className="mt-4 space-y-2">
         {section === "assigned" && (
@@ -226,6 +301,15 @@ const EmpTaskCardWithTimer = ({
             {updatingTasks.has(task._id) ? "Completing..." : "Mark Complete ✓"}
           </Button>
         )}
+        <Button
+        className="w-full"
+        variant="outline"
+        onClick={() => handlePartialComplete(task._id)}
+        disabled={updatingTasks.has(task._id)}
+        >
+          Mark as Partially Complete ⚠
+          </Button>
+
 
         <Button
           variant="ghost"
