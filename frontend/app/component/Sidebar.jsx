@@ -72,27 +72,7 @@ const Sidebar = () => {
             </Link>
           </li>
 
-          <li>
-            <Link
-              href="/Pages/Manager/Tasks"
-              className={`flex items-center gap-3 p-3 rounded-lg transition-all duration-200 ${
-                isActive("/Pages/Manager/Tasks")
-                  ? "bg-gradient-to-r from-blue-600/80 to-indigo-600/80 text-white shadow-md"
-                  : "text-gray-300 hover:bg-blue-800/30 hover:text-white"
-              }`}
-            >
-              <div
-                className={`p-2 rounded-md ${
-                  isActive("/Pages/Manager/Tasks")
-                    ? "bg-white/20"
-                    : "bg-gray-800"
-                }`}
-              >
-                <FaTasks className="w-4 h-4" />
-              </div>
-              <span>Tasks</span>
-            </Link>
-          </li>
+          
 
           {/* Dropdown for Batches */}
           <li className="relative">
@@ -184,25 +164,7 @@ const Sidebar = () => {
             </Link>
           </li>
 
-          <li>
-            <Link
-              href="/performance"
-              className={`flex items-center gap-3 p-3 rounded-lg transition-all duration-200 ${
-                isActive("/performance")
-                  ? "bg-gradient-to-r from-blue-600/80 to-indigo-600/80 text-white shadow-md"
-                  : "text-gray-300 hover:bg-blue-800/30 hover:text-white"
-              }`}
-            >
-              <div
-                className={`p-2 rounded-md ${
-                  isActive("/performance") ? "bg-white/20" : "bg-gray-800"
-                }`}
-              >
-                <GrDocumentPerformance className="w-4 h-4 text-white" />
-              </div>
-              <span>Performance</span>
-            </Link>
-          </li>
+          
 
           <li>
             <Link
