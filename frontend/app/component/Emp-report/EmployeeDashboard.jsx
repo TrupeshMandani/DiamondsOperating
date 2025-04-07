@@ -23,53 +23,54 @@ const EmployeeDashboard = () => {
 
   useEffect(() => {
     if (!employeeId) {
-      setError("Employee ID not found in localStorage.")
-      setLoading(false)
-      return
+      setError("Employee ID not found in localStorage.");
+      setLoading(false);
+      return;
     }
-
+  
     const fetchData = async () => {
       try {
-        setLoading(true)
-
-        // Fetch tasks data
-        const tasksResponse = await axios.get("http://localhost:5023/api/batches")
-        const tasksData = tasksResponse.data.filter((task) => task.employeeId === employeeId)
-
-        setTasks(tasksData)
-
+        setLoading(true);
+  
+        // Fetch tasks data by employee ID
+        const tasksResponse = await axios.get(`http://localhost:5023/api/employees/${employeeId}/tasks`);
+        const tasksData = tasksResponse.data;
+  
+        setTasks(tasksData);
+  
         // Fetch earnings data
-        const earningsResponse = await axios.get(`http://localhost:5023/api/earnings/${employeeId}`)
-        const earningsData = earningsResponse.data.data
-
+        const earningsResponse = await axios.get(`http://localhost:5023/api/earnings/${employeeId}`);
+        const earningsData = earningsResponse.data.data;
+  
         if (!Array.isArray(earningsData)) {
-          throw new Error("Invalid earnings data format received")
+          throw new Error("Invalid earnings data format received");
         }
-
-        setEarningsData(earningsData)
-
+  
+        setEarningsData(earningsData);
+  
         // Calculate monthly earnings
-        const selectedMonthData = earningsData.find((entry) => entry.month === selectedMonth)
-        const monthly = selectedMonthData ? selectedMonthData.totalEarnings : 0
-
+        const selectedMonthData = earningsData.find((entry) => entry.month === selectedMonth);
+        const monthly = selectedMonthData ? selectedMonthData.totalEarnings : 0;
+  
         // Calculate yearly earnings
         const yearly = earningsData
           .filter((entry) => entry.year === new Date().getFullYear())
-          .reduce((acc, entry) => acc + entry.totalEarnings, 0)
-
-        setMonthlyEarnings(monthly)
-        setYearlyEarnings(yearly)
-
-        setError(null)
+          .reduce((acc, entry) => acc + entry.totalEarnings, 0);
+  
+        setMonthlyEarnings(monthly);
+        setYearlyEarnings(yearly);
+  
+        setError(null);
       } catch (err) {
-        setError(err.response?.data?.message || err.message)
+        setError(err.response?.data?.message || err.message);
       } finally {
-        setLoading(false)
+        setLoading(false);
       }
-    }
-
-    fetchData()
-  }, [employeeId, selectedMonth])
+    };
+  
+    fetchData();
+  }, [employeeId, selectedMonth]);
+  
 
   // Handle month change for earnings
   const handleMonthChange = (month) => {
