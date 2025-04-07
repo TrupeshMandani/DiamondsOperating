@@ -9,8 +9,6 @@ import employeeRoutes from "./routes/employeeRoutes.js";
 import batchRoutes from "./routes/batchRoutes.js";
 import taskRoutes from "./routes/tasks.js";
 import earningRoutes from "./routes/earningRoutes.js";
-import managerRoutes from "./routes/managerRoutes.js"; // ✅
-
 
 dotenv.config();
 connectDB();
@@ -39,8 +37,6 @@ app.use("/api/employees", employeeRoutes);
 app.use("/api/tasks", taskRoutes);
 app.use("/api/batches", batchRoutes);
 app.use("/api/earnings", earningRoutes);
-app.use("/api/manager", managerRoutes); // ✅
-
 
 app.get("/", (req, res) =>
   res.send("Welcome to the Diamond Management System API!")

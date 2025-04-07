@@ -1,31 +1,25 @@
-"use client";
+"use client"
 
-import { usealert } from "@/hooks/use-alert";
-import {
-  alert,
-  alertClose,
-  alertDescription,
-  alertProvider,
-  alertTitle,
-  alertViewport,
-} from "@/components/ui/alert";
+import { useToast } from "@/hooks/use-toast"
+import { Toast, ToastClose, ToastDescription, ToastProvider, ToastTitle, ToastViewport } from "@/components/ui/toast"
 
-export function alerter() {
-  const { alerts } = usealert();
+export function Toaster() {
+  const { toasts } = useToast()
 
   return (
-    <alertProvider>
-      {alerts.map(({ id, title, description, action, ...props }) => (
-        <alert key={id} {...props}>
+    <ToastProvider>
+      {toasts.map(({ id, title, description, action, ...props }) => (
+        <Toast key={id} {...props}>
           <div className="grid gap-1">
-            {title && <alertTitle>{title}</alertTitle>}
-            {description && <alertDescription>{description}</alertDescription>}
+            {title && <ToastTitle>{title}</ToastTitle>}
+            {description && <ToastDescription>{description}</ToastDescription>}
           </div>
           {action}
-          <alertClose />
-        </alert>
+          <ToastClose />
+        </Toast>
       ))}
-      <alertViewport />
-    </alertProvider>
-  );
+      <ToastViewport />
+    </ToastProvider>
+  )
 }
+

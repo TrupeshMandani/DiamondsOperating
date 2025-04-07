@@ -18,8 +18,6 @@ npm install react@18 react-dom@18 --legacy-peer-deps
 npm list @radix-ui/react-tabs
 npm install @radix-ui/react-tabs
 npm i jwt-decode
-npm install jspdf html2canvas xlsx
-
 
 
 
