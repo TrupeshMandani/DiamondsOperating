@@ -28,7 +28,6 @@ export const getTasksByBatchId = async (req, res) => {
     const tasks = await Task.find({
       batchId: new mongoose.Types.ObjectId(batchId),
     })
-      .select("+partialReason +partiallyCompleted")
       .populate("employeeId", "firstName lastName")
       .populate("batchId", "batchId currentProcess");
 
@@ -49,9 +48,9 @@ export const getTasksByBatchId = async (req, res) => {
 export const updateTaskStatus = async (req, res) => {
   try {
     const { taskId } = req.params;
-    const { status, completedDiamonds } = req.body;
+    const { status } = req.body;
 
-    const validStatuses = ["Pending", "In Progress", "Completed", "Partially Completed"];
+    const validStatuses = ["Pending", "In Progress", "Completed"];
     if (!validStatuses.includes(status)) {
       return res.status(400).json({ message: "Invalid status value" });
     }
@@ -61,29 +60,7 @@ export const updateTaskStatus = async (req, res) => {
       return res.status(404).json({ message: "Task not found" });
     }
 
-    // Handle Partially Completed status
-    if (status === "Partially Completed") {
-      const completed = Number(completedDiamonds);
-      const reason = req.body.partialReason;
-    
-      if (isNaN(completed) || completed < 0) {
-        return res.status(400).json({ message: "Invalid completedDiamonds value" });
-      }
-    
-      if (completed > task.diamondNumber) {
-        return res.status(400).json({ message: "Completed diamonds exceed assigned quantity" });
-      }
-    
-      if (!reason || typeof reason !== "string" || reason.trim() === "") {
-        return res.status(400).json({ message: "Partial reason is required" });
-      }
-    
-      task.completedDiamonds = completed;
-      task.remainingDiamonds = task.diamondNumber - completed;
-      task.partialReason = reason;
-      task.partiallyCompleted = true; // optional, for UI logic
-    }
-     // Start time
+    // Start time
     if (status === "In Progress" && !task.startTime) {
       task.startTime = new Date();
     }
@@ -100,68 +77,45 @@ export const updateTaskStatus = async (req, res) => {
 
     // Recalculate earnings based on diamondNumber and rate
     if (status === "Completed") {
-      task.earnings = task.diamondNumber * task.rate;
+      task.earnings = task.diamondNumber * task.rate; // Recalculate earnings
     }
 
     task.status = status;
     await task.save();
 
-    // Handle earnings for completed tasks
+    // Create earning using the earnings calculated from diamondNumber * rate
     if (status === "Completed") {
-      const month = task.completedAt.getUTCMonth() + 1;
-      const year = task.completedAt.getUTCFullYear();
+      const earning = new Earning({
+        employeeId: task.employeeId,
+        taskId: task._id,
+        totalEarnings: task.earnings, // Use task's earnings directly
+        date: task.completedAt,
+        month: task.completedAt.getUTCMonth() + 1,
+        year: task.completedAt.getUTCFullYear(),
+        periodStart: task.startTime, // Set periodStart to task start time
+        periodEnd: task.endTime, // Set periodEnd to task end time
+      });
 
-      await Earning.updateOne(
-        {
-          employeeId: task.employeeId,
-          month,
-          year,
-        },
-        {
-          $set: {
-            date: task.completedAt,
-            periodStart: task.startTime,
-            periodEnd: task.endTime,
-          },
-          $inc: {
-            totalEarnings: task.earnings || 0,
-          },
-        },
-        { upsert: true }
-      );
+      await earning.save();
     }
 
     // Update batch status
     const batch = await Batch.findById(task.batchId);
     if (batch) {
-      const allTasks = await Task.find({ batchId: batch._id });
-
-      const allTasksCompleted = allTasks.every(
-        (task) => task.status === "Completed"
-      );
-
-      const hasInProgressTask = allTasks.some(
-        (task) => task.status === "In Progress"
-      );
-
-      if (allTasksCompleted) {
-        batch.status = "Completed";
-      } else if (hasInProgressTask) {
+      if (status === "In Progress") {
         batch.status = "In Progress";
-      } else {
-        const allTasksAssigned = allTasks.every(
-          (task) => task.status === "Pending" || task.status === "Completed"
-        );
-        batch.status = allTasksAssigned ? "Assigned" : "Pending";
+        await batch.save();
       }
 
-      await batch.save();
-
-      if (req.io) {
-        req.io.emit("batchStatusUpdate", {
-          batchId: batch.batchId,
-          status: batch.status,
+      if (status === "Completed") {
+        const allTasksCompleted = await Task.find({
+          batchId: batch._id,
+          status: { $ne: "Completed" },
         });
+        if (allTasksCompleted.length === 0) {
+          batch.status = "Completed";
+          await batch.save();
+        }
       }
     }
 
@@ -186,7 +140,6 @@ export const updateTaskStatus = async (req, res) => {
   }
 };
 
-
 // Delete task
 export const deleteTask = async (req, res) => {
   try {
@@ -201,21 +154,25 @@ export const deleteTask = async (req, res) => {
       return res.status(404).json({ message: "Task not found" });
     }
 
+    // Delete task and related earnings
     const deletedTask = await Task.findByIdAndDelete(taskId);
     await Earning.deleteMany({ taskId });
 
+    // Update batch status
     const batch = await Batch.findById(task.batchId);
     if (batch) {
       batch.status = "Pending";
       await batch.save();
-
-      req.io?.emit("batchStatusUpdate", {
-        batchId: batch.batchId,
-        status: "Pending",
-      });
     }
 
-    req.io?.emit("taskDeleted", { taskId, employeeId: task.employeeId });
+    // Real-time updates
+    if (req.io) {
+      req.io.emit("batchStatusUpdate", {
+        batchId: batch?.batchId,
+        status: "Pending",
+      });
+      req.io.emit("taskDeleted", { taskId, employeeId: task.employeeId });
+    }
 
     res.status(200).json({
       message: "Task deleted successfully and batch status updated",
@@ -279,57 +236,3 @@ export const getTasksByBatchTitle = async (req, res) => {
     });
   }
 };
-
-// ✅ Reassign partially completed task to another employee
-// ✅ Reassign partially completed task to another employee + update fields
-export const reassignTaskToEmployee = async (req, res) => {
-  try {
-    const { taskId } = req.params;
-    const { newEmployeeId, dueDate, rate, priority } = req.body;
-
-    if (
-      !mongoose.Types.ObjectId.isValid(taskId) ||
-      !mongoose.Types.ObjectId.isValid(newEmployeeId)
-    ) {
-      return res.status(400).json({ message: "Invalid task or employee ID" });
-    }
-
-    const task = await Task.findById(taskId);
-    if (!task || task.status !== "Partially Completed") {
-      return res.status(404).json({ message: "Only partially completed tasks can be reassigned" });
-    }
-
-    const employee = await Employee.findById(newEmployeeId);
-    if (!employee) return res.status(404).json({ message: "New employee not found" });
-
-    // 🧠 Update fields
-    task.employeeId = newEmployeeId;
-    task.employeeName = `${employee.firstName} ${employee.lastName}`;
-    task.status = "Pending";
-    task.startTime = null;
-    task.endTime = null;
-    task.durationInMinutes = null;
-    task.partiallyCompleted = false;
-    task.partialReason = "";
-    task.earnings = 0;
-    task.assignedDate = new Date();
-
-    // 🆕 Updated fields from frontend
-    if (dueDate) task.dueDate = new Date(dueDate);
-    if (rate !== undefined) task.rate = rate;
-    if (priority) task.priority = priority;
-
-    await task.save();
-
-    req.io?.emit("taskUpdated", {
-      message: "Task reassigned successfully",
-      task,
-    });
-
-    res.status(200).json({ message: "Task reassigned successfully", task });
-  } catch (error) {
-    console.error("Error reassigning task:", error);
-    res.status(500).json({ message: "Error reassigning task", error: error.message });
-  }
-};
-
