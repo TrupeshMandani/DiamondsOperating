@@ -53,18 +53,17 @@ export function useTaskManagement(
     });
 
     // Handle task updates
-    socket.on("taskUpdated", (updatedTaskData) => {
-      const updatedTask = updatedTaskData.task; // 👈 get the actual task object from emitted data
-      console.log("🔄 Real-time Task Updated:", updatedTask);
-    
-      // Update the full task object in state
+    socket.on("taskUpdated", (updatedTask) => {
+      console.log("Real-time Task Updated:", updatedTask);
+      // Update task status or other fields in the state
       setTasks((prevTasks) =>
         prevTasks.map((task) =>
-          task._id === updatedTask._id ? { ...task, ...updatedTask } : task
+          task._id === updatedTask.taskId
+            ? { ...task, status: updatedTask.status }
+            : task
         )
       );
     });
-    
 
     return () => {
       socket.off("taskAssigned");
@@ -148,7 +147,7 @@ export function useTaskManagement(
 
       return validTasks;
     } catch (err) {
-      alert("Error fetching tasks:", err.message);
+      console.error("Error fetching tasks:", err.message);
       // Set empty tasks array on error
       setTasks([]);
       return [];
@@ -299,7 +298,7 @@ export function useTaskManagement(
         fetchTasksForBatch(selectedBatch.batchId);
       }, 500);
     } catch (err) {
-      alert("Error assigning task:", err.message);
+      console.error("Error assigning task:", err.message);
       alert(`Error assigning task: ${err.message}`);
     }
   };
@@ -316,7 +315,7 @@ export function useTaskManagement(
       const employeeData = await response.json();
       return `${employeeData.firstName} ${employeeData.lastName}`;
     } catch (err) {
-      alert("Error fetching employee details:", err.message);
+      console.error("Error fetching employee details:", err.message);
       return "Unknown Employee"; // Fallback if there's an error
     }
   };
@@ -326,7 +325,7 @@ export function useTaskManagement(
     try {
       // Validate task ID format
       if (!taskId || typeof taskId !== "string") {
-        alert("Invalid task ID:", taskId);
+        console.error("Invalid task ID:", taskId);
 
         // Refresh tasks to get proper IDs
         if (selectedBatch) {
@@ -393,7 +392,7 @@ export function useTaskManagement(
 
       // No need to alert here as we've already updated the UI
     } catch (error) {
-      alert("Error deleting task:", error);
+      console.error("Error deleting task:", error);
 
       // If there was an error, fetch the tasks again to ensure UI is in sync
       if (selectedBatch) {
