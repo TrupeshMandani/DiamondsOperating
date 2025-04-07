@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Plus, Search, UserPlus } from "lucide-react";
-import { toast } from "sonner";
+import { alert } from "sonner";
 import { Button } from "../../../component/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogTrigger } from "@/components/ui/dialog";
@@ -58,7 +58,7 @@ export default function EmployeeDashboard() {
         const data = await response.json();
         setEmployees(data);
       } catch (error) {
-        toast.error(error.message);
+        alert.error(error.message);
       }
     };
 
@@ -90,9 +90,9 @@ export default function EmployeeDashboard() {
       setEmployees((prevEmployees) =>
         prevEmployees.filter((employee) => employee._id !== id)
       );
-      toast.success("Employee deleted successfully");
+      alert.success("Employee deleted successfully");
     } catch (error) {
-      toast.error(`Error: ${error.message}`);
+      alert.error(`Error: ${error.message}`);
     }
   };
 

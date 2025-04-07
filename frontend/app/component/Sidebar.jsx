@@ -1,20 +1,20 @@
-"use client"
+"use client";
 
-import { useEffect,useState } from "react"
-import Link from "next/link"
-import { usePathname,useRouter  } from "next/navigation"
-import { RiDashboardLine } from "react-icons/ri"
-import { FaTasks } from "react-icons/fa"
-import { MdBatchPrediction } from "react-icons/md"
-import { BsPersonVcardFill } from "react-icons/bs"
-import { GrDocumentPerformance } from "react-icons/gr"
-import { FaPlus } from "react-icons/fa"
-import { FiLogOut } from "react-icons/fi"
-import { Diamond, ChevronDown, User } from "lucide-react"
+import { useEffect, useState } from "react";
+import Link from "next/link";
+import { usePathname, useRouter } from "next/navigation";
+import { RiDashboardLine } from "react-icons/ri";
+import { FaTasks, FaPlus } from "react-icons/fa";
+import { MdBatchPrediction } from "react-icons/md";
+import { BsPersonVcardFill } from "react-icons/bs";
+import { GrDocumentPerformance } from "react-icons/gr";
+import { HiOutlineDocumentReport } from "react-icons/hi";
+import { FiLogOut } from "react-icons/fi";
+import { Diamond, ChevronDown, User } from "lucide-react";
 
 const Sidebar = () => {
-  const pathname = usePathname()
-  const [batchesOpen, setBatchesOpen] = useState(false)
+  const pathname = usePathname();
+  const [batchesOpen, setBatchesOpen] = useState(false);
   const router = useRouter();
   const [name, setName] = useState("");
 
@@ -23,19 +23,19 @@ const Sidebar = () => {
     if (storedName) setName(storedName);
   }, []);
 
-  // Check if the current path matches the link
-  const isActive = (path) => {
-    return pathname === path
-  }
+  const isActive = (path) => pathname === path;
 
   const handleLogout = () => {
-    localStorage.clear();
-    router.push("/Pages/login"); // Change this path if your login route is different
+    const confirmLogout = window.confirm("Are you sure you want to logout?");
+    if (confirmLogout) {
+      localStorage.clear();
+      router.push("/Pages/login");
+    }
   };
 
   return (
     <div className="w-full h-full bg-gradient-to-b from-[#0f172a] to-[#1e293b] text-white flex flex-col overflow-hidden">
-      {/* Header with logo */}
+      {/* Header */}
       <div className="p-6 border-b border-blue-900/30">
         <div className="flex items-center gap-3">
           <div className="bg-gradient-to-br from-blue-400 to-indigo-600 p-2 rounded-lg shadow-lg">
@@ -47,7 +47,7 @@ const Sidebar = () => {
         </div>
       </div>
 
-      {/* Navigation */}
+      {/* Navigation Links */}
       <div className="flex-1 overflow-y-auto py-6 px-4">
         <ul className="space-y-2">
           <li>
@@ -59,35 +59,28 @@ const Sidebar = () => {
                   : "text-gray-300 hover:bg-blue-800/30 hover:text-white"
               }`}
             >
-              <div className={`p-2 rounded-md ${isActive("/Pages/Manager/Dashboard") ? "bg-white/20" : "bg-gray-800"}`}>
+              <div
+                className={`p-2 rounded-md ${
+                  isActive("/Pages/Manager/Dashboard")
+                    ? "bg-white/20"
+                    : "bg-gray-800"
+                }`}
+              >
                 <RiDashboardLine className="w-4 h-4" />
               </div>
               <span>Dashboard</span>
             </Link>
           </li>
 
-          <li>
-            <Link
-              href="/Pages/Manager/Tasks"
-              className={`flex items-center gap-3 p-3 rounded-lg transition-all duration-200 ${
-                isActive("/Pages/Manager/Tasks")
-                  ? "bg-gradient-to-r from-blue-600/80 to-indigo-600/80 text-white shadow-md"
-                  : "text-gray-300 hover:bg-blue-800/30 hover:text-white"
-              }`}
-            >
-              <div className={`p-2 rounded-md ${isActive("/Pages/Manager/Tasks") ? "bg-white/20" : "bg-gray-800"}`}>
-                <FaTasks className="w-4 h-4" />
-              </div>
-              <span>Tasks</span>
-            </Link>
-          </li>
+          
 
-          {/* Batches dropdown */}
+          {/* Dropdown for Batches */}
           <li className="relative">
             <button
               onClick={() => setBatchesOpen(!batchesOpen)}
               className={`w-full flex items-center justify-between gap-3 p-3 rounded-lg transition-all duration-200 ${
-                isActive("/Pages/Manager/Batches") || isActive("/Pages/Manager/NewBatch")
+                isActive("/Pages/Manager/Batches") ||
+                isActive("/Pages/Manager/NewBatch")
                   ? "bg-gradient-to-r from-blue-600/80 to-indigo-600/80 text-white shadow-md"
                   : "text-gray-300 hover:bg-blue-800/30 hover:text-white"
               }`}
@@ -95,7 +88,8 @@ const Sidebar = () => {
               <div className="flex items-center gap-3">
                 <div
                   className={`p-2 rounded-md ${
-                    isActive("/Pages/Manager/Batches") || isActive("/Pages/Manager/NewBatch")
+                    isActive("/Pages/Manager/Batches") ||
+                    isActive("/Pages/Manager/NewBatch")
                       ? "bg-white/20"
                       : "bg-gray-800"
                   }`}
@@ -104,10 +98,13 @@ const Sidebar = () => {
                 </div>
                 <span>Batches</span>
               </div>
-              <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${batchesOpen ? "rotate-180" : ""}`} />
+              <ChevronDown
+                className={`w-4 h-4 transition-transform duration-200 ${
+                  batchesOpen ? "rotate-180" : ""
+                }`}
+              />
             </button>
 
-            {/* Dropdown menu */}
             <div
               className={`overflow-hidden transition-all duration-200 ${
                 batchesOpen ? "max-h-40 opacity-100" : "max-h-0 opacity-0"
@@ -154,34 +151,51 @@ const Sidebar = () => {
                   : "text-gray-300 hover:bg-blue-800/30 hover:text-white"
               }`}
             >
-              <div className={`p-2 rounded-md ${isActive("/Pages/Manager/Employee") ? "bg-white/20" : "bg-gray-800"}`}>
+              <div
+                className={`p-2 rounded-md ${
+                  isActive("/Pages/Manager/Employee")
+                    ? "bg-white/20"
+                    : "bg-gray-800"
+                }`}
+              >
                 <BsPersonVcardFill className="w-4 h-4" />
               </div>
               <span>Employees</span>
             </Link>
           </li>
 
+          
+
           <li>
             <Link
-              href="/performance"
+              href="/Pages/Manager/Report"
               className={`flex items-center gap-3 p-3 rounded-lg transition-all duration-200 ${
-                isActive("/performance")
+                isActive("/Pages/Manager/Report")
                   ? "bg-gradient-to-r from-blue-600/80 to-indigo-600/80 text-white shadow-md"
                   : "text-gray-300 hover:bg-blue-800/30 hover:text-white"
               }`}
             >
-              <div className={`p-2 rounded-md ${isActive("/performance") ? "bg-white/20" : "bg-gray-800"}`}>
-                <GrDocumentPerformance className="w-4 h-4" style={{ color: "white" }} />
+              <div
+                className={`p-2 rounded-md ${
+                  isActive("/Pages/Manager/Report")
+                    ? "bg-white/20"
+                    : "bg-gray-800"
+                }`}
+              >
+                <HiOutlineDocumentReport className="w-4 h-4 text-white" />
               </div>
-              <span>Performance</span>
+              <span>Report</span>
             </Link>
           </li>
         </ul>
       </div>
 
-      {/* User profile and logout */}
+      {/* ✅ Manager Profile Link */}
       <div className="mt-auto border-t border-blue-900/30 p-4">
-        <div className="flex items-center gap-3 mb-4 p-3 bg-blue-900/20 rounded-lg">
+        <Link
+          href="/Pages/Manager/Profile"
+          className="flex items-center gap-3 mb-4 p-3 bg-blue-900/20 rounded-lg hover:bg-blue-800/30 transition"
+        >
           <div className="relative">
             <div className="h-10 w-10 rounded-full bg-gradient-to-br from-blue-400 to-indigo-600 flex items-center justify-center">
               <User className="h-5 w-5 text-white" />
@@ -190,9 +204,9 @@ const Sidebar = () => {
           </div>
           <div>
             <p className="font-medium text-sm">{name || "Manager"}</p>
-            <p className="text-xs text-gray-400">Manager</p>
+            <p className="text-xs text-gray-400">Profile</p>
           </div>
-        </div>
+        </Link>
 
         <button
           onClick={handleLogout}
@@ -205,8 +219,7 @@ const Sidebar = () => {
         </button>
       </div>
     </div>
-  )
-}
+  );
+};
 
-export default Sidebar
-
+export default Sidebar;

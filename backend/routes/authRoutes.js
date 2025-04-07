@@ -7,7 +7,7 @@ router.post("/register", register);
 
 router.post("/login", login);
 
-router.post("/update-password", updatePassword);
+router.put("/update-password", updatePassword);
 
 
 export default router;

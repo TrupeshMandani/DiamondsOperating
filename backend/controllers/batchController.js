@@ -263,7 +263,8 @@ export const getTasksForBatch = async (req, res) => {
     }
 
     // Fetch tasks using the found batch's ObjectId
-    const tasks = await Task.find({ batchId: batch._id });
+    const tasks = await Task.find({ batchId: batch._id }).select("+status +partialReason");
+
 
     if (!tasks || tasks.length === 0) {
       return res.status(404).json({ message: "No tasks found for this batch" });
@@ -431,3 +432,4 @@ export const getTasksForEmployee = async (req, res) => {
       .json({ message: "Error fetching employee tasks", error: error.message });
   }
 };
+
