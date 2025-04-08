@@ -11,6 +11,7 @@ import {
   Tooltip,
   Legend,
 } from "chart.js";
+import Sidebar from "./Sidebar";
 
 // Registering Chart.js components for the bar chart
 ChartJS.register(

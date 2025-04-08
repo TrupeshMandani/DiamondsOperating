@@ -263,7 +263,10 @@ export const getTasksForBatch = async (req, res) => {
     }
 
     // Fetch tasks using the found batch's ObjectId
-    const tasks = await Task.find({ batchId: batch._id });
+
+    const tasks = await Task.find({ batchId: batch._id }).select(
+      "+status +partialReason"
+    );
 
     if (!tasks || tasks.length === 0) {
       return res.status(404).json({ message: "No tasks found for this batch" });
@@ -329,10 +332,38 @@ export const assignBatchToEmployee = async (req, res) => {
 
     // Maintain all processes, update progress only for assigned process
     batch.assignedEmployees.push({ employeeId, process });
+    // 🔍 Check for existing tasks for this batch + process
+    const existingTasks = await Task.find({
+      batchId: batch._id,
+      currentProcess: process,
+    });
+
+    // ❌ If completed task exists, block
+    const completedTask = existingTasks.find((t) => t.status === "Completed");
+    if (completedTask) {
+      return res.status(400).json({
+        message: `Task for process "${process}" is already completed for this batch.`,
+      });
+    }
+
+    // ✅ If partially completed, calculate remaining diamonds
+    const partialTask = existingTasks.find(
+      (t) => t.status === "Partially Completed"
+    );
+    if (partialTask) {
+      const remaining =
+        partialTask.diamondNumber - (partialTask.partialDiamondNumber || 0);
+      if (diamondNumber > remaining) {
+        return res.status(400).json({
+          message: `Only ${remaining} diamonds remaining for this process.`,
+        });
+      }
+    }
 
     // Create the task
     const numericRate = Number(rate);
     const numericDiamondNumber = Number(diamondNumber);
+    const taskearnings = numericRate * numericDiamondNumber;
 
     const task = new Task({
       batchId: batch._id,
@@ -347,6 +378,7 @@ export const assignBatchToEmployee = async (req, res) => {
       status: status || "Pending",
       assignedDate: new Date(),
       rate: numericRate,
+      taskEarnings: taskearnings,
     });
 
     const savedTask = await task.save();
