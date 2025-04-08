@@ -25,8 +25,6 @@ import { TaskCard } from "./task-card";
 import { EmptyTasksPlaceholder } from "./empty-tasks-placeholder";
 import { useTaskManagement } from "./use-task-management";
 import { useBatchManagement } from "./use-batch-management";
-import { ReassignTaskDialog } from "./ReassignTaskDialog";
-
 
 const PROCESS_TYPES = ["Sarin", "Stitching", "4P Cutting"];
 const socket = io("http://localhost:5023");
@@ -35,11 +33,6 @@ const ITEMS_PER_PAGE = 6;
 export default function TaskAssignment({ selectedBatchId }) {
   const [selectedProcess, setSelectedProcess] = useState(PROCESS_TYPES[0]);
   const [isAssigningTask, setIsAssigningTask] = useState(false);
-  const [taskToReassign, setTaskToReassign] = useState(null);
-  const handleReassignTask = (task) => {
-    setTaskToReassign(task); // Open the dialog with the selected task
-  };
-
   const [currentPage, setCurrentPage] = useState(1);
   const [availableProcesses, setAvailableProcesses] = useState([]);
   const [tasks, setTasks] = useState([]);
@@ -172,6 +165,7 @@ export default function TaskAssignment({ selectedBatchId }) {
 
       alert("Task successfully deleted!");
     } catch (error) {
+      console.error("Error deleting task:", error);
       alert("Failed to delete task: " + error.message);
     }
   };
@@ -296,7 +290,6 @@ export default function TaskAssignment({ selectedBatchId }) {
                                 key={`${getTaskId(task)}-${index}`}
                                 task={task}
                                 handleDeleteTask={handleDeleteTask}
-                                handleReassignTask={handleReassignTask}
                               />
                             ))
                           ) : (
@@ -347,51 +340,6 @@ export default function TaskAssignment({ selectedBatchId }) {
           </Card>
         )}
       </div>
-      <ReassignTaskDialog
-  open={!!taskToReassign}
-  onClose={() => setTaskToReassign(null)}
-  task={taskToReassign}
-  employees={employees}
-  onReassign={async (task, newEmployeeId, dueDate, rate, priority) => {
-    try {
-      const token = localStorage.getItem("authToken");
-
-      const response = await fetch(`http://localhost:5023/api/tasks/${task._id}/reassign`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          newEmployeeId,
-          dueDate,
-          rate,
-          priority,
-        }),
-      });
-
-      if (!response.ok) throw new Error("Failed to reassign task");
-
-      alert("✅ Task reassigned successfully!");
-
-      fetchTasksForBatch(); // Refresh task list
-      setTaskToReassign(null); // Close dialog
-
-      socket.emit("taskReassigned", {
-        taskId: task._id,
-        newEmployeeId,
-      });
-    } catch (error) {
-      alert("❌ Reassign failed: " + error.message);
-    }
-  }}
-/>
-
-
-</motion.div>
-    
-    
-    
-    
+    </motion.div>
   );
 }

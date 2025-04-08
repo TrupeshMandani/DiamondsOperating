@@ -1,37 +1,24 @@
-"use client";
+"use client"
 
-import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-} from "recharts";
-import { ChartContainer, ChartTooltipContent } from "@/components/ui/chart";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts"
+import { ChartContainer, ChartTooltipContent } from "@/components/ui/chart"
 
 const EmployeePerformanceChart = ({ employees }) => {
-  // Calculate performance for each employee
-  const performanceData = employees.map((emp) => ({
-    name: emp.name.split(" ")[0], // First name only
-    tasksCompleted: emp.completedTasks || 0,
-    performance:
-      emp.assignedTasks > 0
-        ? Math.round((emp.completedTasks / emp.assignedTasks) * 100)
-        : 0,
-  }));
-
-  // Sort and get top 5 by performance
-  const topEmployees = performanceData
+  // Sort employees by performance and take top 5
+  const topEmployees = [...employees]
     .sort((a, b) => b.performance - a.performance)
-    .slice(0, 5);
+    .slice(0, 5)
+    .map((emp) => ({
+      name: emp.name.split(" ")[0], // Just first name for display
+      performance: emp.performance,
+      tasksCompleted: emp.completedTasks || 0,
+    }))
 
   return (
     <ChartContainer
       config={{
         performance: {
-          label: "Performance (%)",
+          label: "Performance",
           color: "hsl(var(--chart-1))",
         },
         tasksCompleted: {
@@ -55,20 +42,14 @@ const EmployeePerformanceChart = ({ employees }) => {
           <XAxis type="number" />
           <YAxis dataKey="name" type="category" />
           <Tooltip content={<ChartTooltipContent />} />
-          <Bar
-            dataKey="performance"
-            fill="var(--color-performance)"
-            name="Performance (%)"
-          />
-          <Bar
-            dataKey="tasksCompleted"
-            fill="var(--color-tasksCompleted)"
-            name="Tasks Completed"
-          />
+          <Bar dataKey="performance" fill="#3B82F6" name="Performance %" />         {/* Blue-500 */}
+          <Bar dataKey="tasksCompleted" fill="#10B981" name="Tasks Completed" />    {/* Green-500 */}
+
         </BarChart>
       </ResponsiveContainer>
     </ChartContainer>
-  );
-};
+  )
+}
 
-export default EmployeePerformanceChart;
+export default EmployeePerformanceChart
+
