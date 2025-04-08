@@ -43,29 +43,28 @@ export const getTasksByBatchId = async (req, res) => {
     });
   }
 };
-
-// Update task status
 export const updateTaskStatus = async (req, res) => {
   try {
     const { taskId } = req.params;
-    const { status } = req.body;
+    const { status, partialDiamondNumber, partialReason } = req.body;
 
-    const validStatuses = ["Pending", "In Progress", "Completed"];
+    const validStatuses = [
+      "Pending",
+      "In Progress",
+      "Completed",
+      "Partially Completed",
+    ];
     if (!validStatuses.includes(status)) {
       return res.status(400).json({ message: "Invalid status value" });
     }
 
     const task = await Task.findById(taskId);
-    if (!task) {
-      return res.status(404).json({ message: "Task not found" });
-    }
+    if (!task) return res.status(404).json({ message: "Task not found" });
 
-    // Start time
     if (status === "In Progress" && !task.startTime) {
       task.startTime = new Date();
     }
 
-    // End time + Duration
     if (status === "Completed" && !task.endTime) {
       task.endTime = new Date();
       if (task.startTime) {
@@ -75,38 +74,40 @@ export const updateTaskStatus = async (req, res) => {
       task.completedAt = new Date();
     }
 
-    // Recalculate earnings based on diamondNumber and rate
-    if (status === "Completed") {
-      task.earnings = task.diamondNumber * task.rate; // Recalculate earnings
+    if (status === "Partially Completed") {
+      if (!partialDiamondNumber || partialDiamondNumber <= 0) {
+        return res
+          .status(400)
+          .json({
+            message:
+              "Partial diamond number is required and should be greater than 0",
+          });
+      }
+      if (partialDiamondNumber > task.diamondNumber) {
+        return res
+          .status(400)
+          .json({
+            message:
+              "Partial diamond number cannot be greater than total diamond number",
+          });
+      }
+
+      task.partialDiamondNumber = partialDiamondNumber;
+      task.partialReason = partialReason || "Not specified";
+      task.taskEarnings = partialDiamondNumber * task.rate;
+    } else if (status === "Completed") {
+      task.taskEarnings = task.diamondNumber * task.rate;
     }
 
     task.status = status;
     await task.save();
 
-    // Create earning using the earnings calculated from diamondNumber * rate
-    if (status === "Completed") {
-      const earning = new Earning({
-        employeeId: task.employeeId,
-        taskId: task._id,
-        totalEarnings: task.earnings, // Use task's earnings directly
-        date: task.completedAt,
-        month: task.completedAt.getUTCMonth() + 1,
-        year: task.completedAt.getUTCFullYear(),
-        periodStart: task.startTime, // Set periodStart to task start time
-        periodEnd: task.endTime, // Set periodEnd to task end time
-      });
-
-      await earning.save();
-    }
-
-    // Update batch status
     const batch = await Batch.findById(task.batchId);
     if (batch) {
       if (status === "In Progress") {
         batch.status = "In Progress";
         await batch.save();
       }
-
       if (status === "Completed") {
         const allTasksCompleted = await Task.find({
           batchId: batch._id,
@@ -119,7 +120,6 @@ export const updateTaskStatus = async (req, res) => {
       }
     }
 
-    // Real-time update
     if (req.io) {
       req.io.emit("taskUpdated", {
         message: `Task status updated to ${status} for task: ${taskId}`,
@@ -127,19 +127,14 @@ export const updateTaskStatus = async (req, res) => {
       });
     }
 
-    res.status(200).json({
-      message: "Task status updated successfully",
-      task,
-    });
+    res.status(200).json({ message: "Task status updated successfully", task });
   } catch (error) {
     console.error("Error updating task status:", error);
-    res.status(500).json({
-      message: "Error updating task status",
-      error: error.message,
-    });
+    res
+      .status(500)
+      .json({ message: "Error updating task status", error: error.message });
   }
 };
-
 // Delete task
 export const deleteTask = async (req, res) => {
   try {

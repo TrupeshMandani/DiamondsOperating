@@ -11,7 +11,7 @@ export const generateMonthlyEarningsForEmployee = async (employeeId) => {
 
     const completedTasks = await Task.find({
       employeeId,
-      status: "Completed",
+      status: { $in: ["Completed", "Partially Completed"] },
     });
 
     if (!completedTasks.length) {

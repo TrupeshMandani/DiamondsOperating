@@ -21,21 +21,26 @@ const taskSchema = new mongoose.Schema({
   currentProcess: { type: String, required: true },
   description: { type: String, required: true },
   dueDate: { type: Date, required: true },
-priority: {
-  type: String,
-  enum: ["High", "Medium", "Low"],
-  required: true,
-},
-status: {
-  type: String,
-  enum: ["Pending", "In Progress", "Completed"],
-  default: "Pending",
-},
-
+  priority: {
+    type: String,
+    enum: ["High", "Medium", "Low"],
+    required: true,
+  },
+  status: {
+    type: String,
+    enum: ["Pending", "In Progress", "Completed", "Partially Completed"],
+    default: "Pending",
+  },
   assignedDate: { type: Date, default: Date.now },
   rate: { type: Number, required: true },
   taskEarnings: { type: Number, required: true },
-  partialReason: { type: String },
+  partialDiamondNumber: { type: Number }, // NEW
+  partialReason: { type: String }, // already there
+  startTime: { type: Date },
+  endTime: { type: Date },
+  durationInMinutes: { type: Number },
+  completedAt: { type: Date },
+  earnings: { type: Number }, // optional if you're using taskEarnings instead
 });
 
 export default mongoose.model("Task", taskSchema);
