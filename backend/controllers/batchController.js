@@ -433,3 +433,4 @@ export const getTasksForEmployee = async (req, res) => {
   }
 };
 
+// Update task status 
