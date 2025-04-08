@@ -1,3 +1,4 @@
+// TaskAssignmentDialog.jsx
 "use client";
 
 import { useState, useEffect } from "react";
@@ -34,17 +35,14 @@ export function TaskAssignmentDialog({
 }) {
   const [availableProcesses, setAvailableProcesses] = useState([]);
   const [error, setError] = useState("");
+  const [maxAllowed, setMaxAllowed] = useState(null);
 
   useEffect(() => {
-    // Reset error when dialog opens/closes
     setError("");
 
-    // Set available processes based on the selected batch
     if (selectedBatch && selectedBatch.selectedProcesses) {
       setAvailableProcesses(selectedBatch.selectedProcesses);
     } else if (selectedBatch) {
-      // Fallback to currentProcess if selectedProcesses is not available
-      // This is for backward compatibility
       setAvailableProcesses(
         Array.isArray(selectedBatch.currentProcess)
           ? selectedBatch.currentProcess
@@ -53,7 +51,58 @@ export function TaskAssignmentDialog({
     }
   }, [selectedBatch, isOpen]);
 
-  // Update the process availability check
+  useEffect(() => {
+    const fetchRemainingDiamonds = async () => {
+      if (!selectedBatch || !selectedProcess) return;
+
+      try {
+        const res = await fetch(
+          `http://localhost:5023/api/tasks/title/${selectedBatch.batchId}`
+        );
+        const data = await res.json();
+
+        const tasksForProcess = data.filter(
+          (t) => t.currentProcess === selectedProcess
+        );
+
+        const completedTask = tasksForProcess.find(
+          (t) => t.status === "Completed"
+        );
+        if (completedTask) {
+          setError(`Task for ${selectedProcess} is already fully completed.`);
+          setMaxAllowed(0);
+          return;
+        }
+
+        const totalAssigned = tasksForProcess.reduce(
+          (sum, t) => sum + (t.partialDiamondNumber || 0),
+          0
+        );
+
+        const baseDiamondNumber = tasksForProcess[0]?.diamondNumber || 0;
+        const remaining = baseDiamondNumber - totalAssigned;
+
+        setNewTask((prev) => ({
+          ...prev,
+          diamondNumber: remaining,
+        }));
+
+        setMaxAllowed(remaining);
+        if (remaining > 0) {
+          setError(
+            `Only ${remaining} diamonds remaining for this process in this batch.`
+          );
+        } else {
+          setError(`No diamonds remaining for this process.`);
+        }
+      } catch (err) {
+        console.error("Error checking remaining diamonds", err);
+      }
+    };
+
+    fetchRemainingDiamonds();
+  }, [selectedProcess, selectedBatch]);
+
   const isProcessAvailable =
     selectedProcess &&
     selectedBatch &&
@@ -65,12 +114,13 @@ export function TaskAssignmentDialog({
 
   const handleSubmit = () => {
     if (!isProcessAvailable) {
-      setError(
-        `Process "${selectedProcess}" is not available for this batch. Please select a valid process.`
-      );
+      setError(`Process "${selectedProcess}" is not available for this batch.`);
       return;
     }
-
+    if (maxAllowed !== null && newTask.diamondNumber > maxAllowed) {
+      setError(`Only ${maxAllowed} diamonds can be assigned.`);
+      return;
+    }
     handleAssignTask();
   };
 
@@ -138,6 +188,7 @@ export function TaskAssignmentDialog({
               }
             />
           </div>
+
           <div className="flex flex-col space-y-2">
             <label className="text-sm font-medium">Due Date</label>
             <DatePicker
@@ -145,6 +196,7 @@ export function TaskAssignmentDialog({
               setDate={(date) => setNewTask({ ...newTask, dueDate: date })}
             />
           </div>
+
           <div className="flex flex-col space-y-2">
             <label className="text-sm font-medium">Rate</label>
             <input
@@ -157,6 +209,7 @@ export function TaskAssignmentDialog({
               onChange={(e) => setNewTask({ ...newTask, rate: e.target.value })}
             />
           </div>
+
           <div className="flex flex-col space-y-2">
             <label className="text-sm font-medium">Priority</label>
             <Select
@@ -176,7 +229,24 @@ export function TaskAssignmentDialog({
               </SelectContent>
             </Select>
           </div>
+
+          <div className="flex flex-col space-y-2">
+            <label className="text-sm font-medium">Diamond Count</label>
+            <input
+              type="number"
+              min="1"
+              className="p-2 border rounded w-full"
+              value={newTask.diamondNumber ?? ""}
+              onChange={(e) =>
+                setNewTask({
+                  ...newTask,
+                  diamondNumber: Number(e.target.value),
+                })
+              }
+            />
+          </div>
         </div>
+
         <DialogFooter className="flex justify-end mt-4">
           <Button variant="outline" onClick={() => setIsOpen(false)}>
             Cancel
