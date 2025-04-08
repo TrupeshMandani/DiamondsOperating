@@ -1,22 +1,23 @@
 "use client";
 import React, { useEffect, useState } from "react";
 import axios from "axios";
-import { Bar } from "react-chartjs-2"; // Importing the Bar chart component from react-chartjs-2
+import { Bar, Pie } from "react-chartjs-2";
 import {
   Chart as ChartJS,
   CategoryScale,
   LinearScale,
   BarElement,
+  ArcElement,
   Title,
   Tooltip,
   Legend,
 } from "chart.js";
 
-// Registering Chart.js components for the bar chart
 ChartJS.register(
   CategoryScale,
   LinearScale,
   BarElement,
+  ArcElement,
   Title,
   Tooltip,
   Legend
@@ -24,14 +25,14 @@ ChartJS.register(
 
 const EarningsDashboard = () => {
   const [earningsData, setEarningsData] = useState([]);
-  const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1); // Default to current month
+  const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
   const [monthlyEarnings, setMonthlyEarnings] = useState(0);
   const [yearlyEarnings, setYearlyEarnings] = useState(0);
+  const [performanceScore, setPerformanceScore] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // Fetch employeeId from localStorage
-  const employeeId = localStorage.getItem("employeeId"); // Ensure this is set somewhere before
+  const employeeId = localStorage.getItem("employeeId");
 
   useEffect(() => {
     if (!employeeId) {
@@ -46,37 +47,44 @@ const EarningsDashboard = () => {
           throw new Error("Invalid employee ID format");
         }
 
-        const response = await axios.get(
-          `http://localhost:5023/api/earnings/${employeeId}`
-        );
-        const earningsData = response.data.data;
+        const [earningsRes, tasksRes] = await Promise.all([
+          axios.get(`http://localhost:5023/api/earnings/${employeeId}`),
+          axios.get(`http://localhost:5023/api/employees/${employeeId}/tasks`)
+        ]);
+
+        const earningsData = earningsRes.data.data;
+        const taskData = tasksRes.data;
 
         if (!Array.isArray(earningsData)) {
-          throw new Error("Invalid data format received");
+          throw new Error("Invalid earnings data format received");
         }
 
         setEarningsData(earningsData);
 
-        // Calculate the earnings for the selected month
         const selectedMonthData = earningsData.find(
           (entry) => entry.month === selectedMonth
         );
         const monthly = selectedMonthData ? selectedMonthData.totalEarnings : 0;
 
-        // Calculate yearly earnings
         const yearly = earningsData
           .filter((entry) => entry.year === new Date().getFullYear())
           .reduce((acc, entry) => acc + entry.totalEarnings, 0);
 
         setMonthlyEarnings(monthly);
         setYearlyEarnings(yearly);
+
+        const completed = taskData.filter((t) => t.status === "Completed").length;
+        const total = taskData.length;
+        const score = total > 0 ? Math.round((completed / total) * 100) : 0;
+        setPerformanceScore(score);
+
         setError(null);
       } catch (err) {
         setError(err.response?.data?.message || err.message);
-        // Reset earnings if there's an error
         if (err.response?.status === 404) {
           setMonthlyEarnings(0);
           setYearlyEarnings(0);
+          setPerformanceScore(0);
         }
       } finally {
         setLoading(false);
@@ -86,26 +94,14 @@ const EarningsDashboard = () => {
     fetchEarningsData();
   }, [employeeId, selectedMonth]);
 
-  // Prepare the chart data
   const prepareChartData = () => {
     const months = [
-      "January",
-      "February",
-      "March",
-      "April",
-      "May",
-      "June",
-      "July",
-      "August",
-      "September",
-      "October",
-      "November",
-      "December",
+      "January", "February", "March", "April", "May", "June",
+      "July", "August", "September", "October", "November", "December"
     ];
-    const monthlyEarningsData = Array(12).fill(0); // Initialize array with zeroes for each month
-
+    const monthlyEarningsData = Array(12).fill(0);
     earningsData.forEach((entry) => {
-      const monthIndex = entry.month - 1; // Adjust for 0-based index
+      const monthIndex = entry.month - 1;
       monthlyEarningsData[monthIndex] = entry.totalEarnings;
     });
 
@@ -123,14 +119,27 @@ const EarningsDashboard = () => {
     };
   };
 
-  // Inline CSS styles
+  const preparePerformanceChartData = () => {
+    return {
+      labels: ["Completed", "Remaining"],
+      datasets: [
+        {
+          label: "Performance Progress",
+          data: [performanceScore, 100 - performanceScore],
+          backgroundColor: ["#10B981", "#E5E7EB"],
+          borderWidth: 1,
+        },
+      ],
+    };
+  };
+
   const styles = {
     container: {
       display: "flex",
       justifyContent: "space-between",
       gap: "2rem",
       padding: "1.5rem",
-      flexWrap: "wrap", // Makes sure it looks good on mobile
+      flexWrap: "wrap",
     },
     card: {
       background: "#ffffff",
@@ -138,10 +147,7 @@ const EarningsDashboard = () => {
       padding: "2rem",
       boxShadow: "0 4px 6px rgba(0, 0, 0, 0.1)",
       transition: "transform 0.2s",
-      flex: "1 1 45%", // Makes it responsive for larger and smaller screens
-      ":hover": {
-        transform: "translateY(-2px)",
-      },
+      flex: "1 1 45%",
     },
     amount: {
       fontSize: "2.5rem",
@@ -173,8 +179,9 @@ const EarningsDashboard = () => {
       width: "100%",
     },
     chartContainer: {
-      flex: "1 1 45%", // Makes it responsive and ensures the graph takes up half of the space
-      minWidth: "300px", // Ensures the chart doesn't get too small
+      flex: "1 1 45%",
+      minWidth: "300px",
+      minHeight: "300px",
     },
   };
 
@@ -188,24 +195,16 @@ const EarningsDashboard = () => {
 
   return (
     <div className="flex flex-col items-center justify-center h-screen bg-gray-100">
-      {/* Dropdown Menu */}
       <select
         value={selectedMonth}
         onChange={handleMonthChange}
         style={styles.dropdown}
       >
-        <option value={1}>January</option>
-        <option value={2}>February</option>
-        <option value={3}>March</option>
-        <option value={4}>April</option>
-        <option value={5}>May</option>
-        <option value={6}>June</option>
-        <option value={7}>July</option>
-        <option value={8}>August</option>
-        <option value={9}>September</option>
-        <option value={10}>October</option>
-        <option value={11}>November</option>
-        <option value={12}>December</option>
+        {Array.from({ length: 12 }, (_, i) => (
+          <option key={i + 1} value={i + 1}>
+            {new Date(0, i).toLocaleString("default", { month: "long" })}
+          </option>
+        ))}
       </select>
 
       <div style={styles.container}>
@@ -216,8 +215,7 @@ const EarningsDashboard = () => {
             {new Date(new Date().setMonth(selectedMonth - 1)).toLocaleString(
               "default",
               { month: "long" }
-            )}{" "}
-            {new Date().getFullYear()}
+            )} {new Date().getFullYear()}
           </p>
         </div>
 
@@ -228,9 +226,13 @@ const EarningsDashboard = () => {
         </div>
       </div>
 
-      {/* Bar Chart Container */}
-      <div style={styles.chartContainer}>
-        <Bar data={prepareChartData()} options={{ responsive: true }} />
+      <div style={styles.container}>
+        <div style={styles.chartContainer}>
+          <Bar data={prepareChartData()} options={{ responsive: true, maintainAspectRatio: false }} height={300} />
+        </div>
+        <div style={styles.chartContainer}>
+          <Pie data={preparePerformanceChartData()} options={{ responsive: true }} />
+        </div>
       </div>
     </div>
   );
