@@ -28,7 +28,7 @@ export const EmployeeCard = ({ employee, onViewDetails, onDelete }) => {
               </div>
               <Button
                 onClick={() => onDelete(employee._id)}
-                className="bg-red-600 text-white hover:bg-red-700 justify-end rounded-full ml-10"
+                className="bg-red-600 text-white hover:bg-red-700 rounded-full ml-10"
               >
                 <FaTrash size={14} />
               </Button>

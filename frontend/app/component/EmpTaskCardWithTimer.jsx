@@ -13,8 +13,8 @@ const EmpTaskCardWithTimer = ({
   getPriorityColor,
 }) => {
   const [elapsedTime, setElapsedTime] = useState(null);
-  const [batchDetails, setBatchDetails] = useState(null);
   const [loading, setLoading] = useState(false);
+
   useEffect(() => {
     console.log("📦 TASK RECEIVED:", task);
   }, [task]);
@@ -49,9 +49,7 @@ const EmpTaskCardWithTimer = ({
 
     try {
       const response = await fetch(
-        `http://localhost:5023/api/tasks/title/${encodeURIComponent(
-          task.batchTitle
-        )}`
+        `http://localhost:5023/api/tasks/title/${encodeURIComponent(task.batchTitle)}`
       );
 
       if (!response.ok) {
@@ -61,11 +59,13 @@ const EmpTaskCardWithTimer = ({
       const data = await response.json();
       console.log("Fetched Batch Details:", data);
 
-      // Check process flow dependencies
       if (task.currentProcess === "Stitching") {
-        const sarinTask = data.find((t) => t.currentProcess === "Sarin");
+        const sarinTask = data.find(
+          (task) =>
+            task.currentProcess === "Sarin" && task.status === "Completed"
+        );
 
-        if (sarinTask && sarinTask.status !== "Completed") {
+        if (!sarinTask) {
           alert(
             "Please wait until 'Sarin' task is completed before starting 'Stitching' task."
           );
@@ -74,24 +74,23 @@ const EmpTaskCardWithTimer = ({
       }
 
       if (task.currentProcess === "4P Cutting") {
-        const sarinTask = data.find((t) => t.currentProcess === "Sarin");
+        const sarinTask = data.find(
+          (task) =>
+            task.currentProcess === "Sarin" && task.status === "Completed"
+        );
         const stitchingTask = data.find(
-          (t) => t.currentProcess === "Stitching"
+          (task) =>
+            task.currentProcess === "Stitching" && task.status === "Completed"
         );
 
-        const sarinIncomplete = sarinTask && sarinTask.status !== "Completed";
-        const stitchingIncomplete =
-          stitchingTask && stitchingTask.status !== "Completed";
-
-        if (sarinIncomplete || stitchingIncomplete) {
+        if (!sarinTask || !stitchingTask) {
           alert(
-            "Please wait until both 'Sarin' and 'Stitching' tasks are completed before starting '4P Cutting' task."
+            "Please wait until both 'Sarin' and 'Stitching' tasks to be completed before starting the '4P Cutting' task."
           );
           return;
         }
       }
 
-      // All checks passed
       startTask();
     } catch (error) {
       console.error("Error fetching batch details:", error);
@@ -103,6 +102,7 @@ const EmpTaskCardWithTimer = ({
   const startTask = () => {
     updateTaskStatus(task._id, "In Progress");
   };
+
   const handlePartialComplete = async (taskId) => {
     const reason = prompt("Please enter a reason for partial completion:");
 
@@ -115,7 +115,6 @@ const EmpTaskCardWithTimer = ({
       const token = localStorage.getItem("authToken");
       const response = await fetch(
         `http://localhost:5023/api/tasks/${taskId}/update-status`,
-
         {
           method: "PUT",
           headers: {
@@ -180,8 +179,6 @@ const EmpTaskCardWithTimer = ({
           <Badge className={`${getPriorityColor(task.priority)} text-xs`}>
             {task.priority}
           </Badge>
-
-          {/* 👇 Show if partially completed */}
           {task.status === "Partially Completed" && (
             <Badge className="bg-yellow-200 text-yellow-800 text-xs">
               Partially Completed
@@ -252,11 +249,10 @@ const EmpTaskCardWithTimer = ({
       )}
 
       {task.description && (
-        <p className="mt-3 text-sm text-gray-600 italic">
-          "{task.description}"
-        </p>
+        <p className="mt-3 text-sm text-gray-600 italic">"{task.description}"</p>
       )}
-      {task.partiallyCompleted && task.partialReason && (
+
+      {task.status === "Partially Completed" && task.partialReason && (
         <div className="mt-3 bg-yellow-50 border border-yellow-200 rounded-md p-3">
           <p className="text-sm font-medium text-yellow-800">
             ⚠️ Partially Completed
@@ -279,23 +275,25 @@ const EmpTaskCardWithTimer = ({
         )}
 
         {section === "inProgress" && (
-          <Button
-            className="w-full"
-            variant="success"
-            onClick={() => updateTaskStatus(task._id, "Completed")}
-            disabled={updatingTasks.has(task._id)}
-          >
-            {updatingTasks.has(task._id) ? "Completing..." : "Mark Complete ✓"}
-          </Button>
+          <>
+            <Button
+              className="w-full"
+              variant="success"
+              onClick={() => updateTaskStatus(task._id, "Completed")}
+              disabled={updatingTasks.has(task._id)}
+            >
+              {updatingTasks.has(task._id) ? "Completing..." : "Mark Complete ✓"}
+            </Button>
+            <Button
+              className="w-full"
+              variant="outline"
+              onClick={() => handlePartialComplete(task._id)}
+              disabled={updatingTasks.has(task._id)}
+            >
+              Mark as Partially Complete ⚠
+            </Button>
+          </>
         )}
-        <Button
-          className="w-full"
-          variant="outline"
-          onClick={() => handlePartialComplete(task._id)}
-          disabled={updatingTasks.has(task._id)}
-        >
-          Mark as Partially Complete ⚠
-        </Button>
 
         <Button
           variant="ghost"

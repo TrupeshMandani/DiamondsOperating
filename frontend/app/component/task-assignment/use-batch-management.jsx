@@ -51,7 +51,7 @@ export function useBatchManagement(socket) {
 
       setBatches(processedBatches);
     } catch (err) {
-      alert("Error fetching batches:", err);
+      console.error("Error fetching batches:", err);
     } finally {
       setLoading(false);
     }
@@ -65,7 +65,7 @@ export function useBatchManagement(socket) {
       const data = await res.json();
       setEmployees(data);
     } catch (error) {
-      alert("Error fetching employees:", error);
+      console.error("Error fetching employees:", error);
       setEmployees([]);
     }
   }, []);
@@ -97,17 +97,12 @@ export function useBatchManagement(socket) {
   const fetchUpdatedBatch = useCallback(async (batchId) => {
     try {
       const res = await fetch(`http://localhost:5023/api/batches/${batchId}`);
-
-      if (!res.ok) {
-        const errorText = await res.text();
-        throw new Error(
-          `Failed to fetch updated batch: ${res.status} ${res.statusText} - ${errorText}`
-        );
-      }
+      if (!res.ok) throw new Error("Failed to fetch updated batch");
 
       const updatedBatch = await res.json();
       console.log("Updated Batch Data:", updatedBatch);
 
+      // Ensure the batch has a selectedProcesses property
       const enhancedBatch = {
         ...updatedBatch,
         selectedProcesses:
@@ -122,7 +117,9 @@ export function useBatchManagement(socket) {
         ...enhancedBatch,
         currentProcess: updatedBatch.currentProcess,
       }));
-    } catch (err) {}
+    } catch (err) {
+      console.error("Error fetching updated batch:", err.message);
+    }
   }, []);
 
   return {

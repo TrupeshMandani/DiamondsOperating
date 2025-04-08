@@ -42,8 +42,9 @@ const EmployeePerformanceChart = ({ employees }) => {
           <XAxis type="number" />
           <YAxis dataKey="name" type="category" />
           <Tooltip content={<ChartTooltipContent />} />
-          <Bar dataKey="performance" fill="var(--color-performance)" name="Performance %" />
-          <Bar dataKey="tasksCompleted" fill="var(--color-tasksCompleted)" name="Tasks Completed" />
+          <Bar dataKey="performance" fill="#3B82F6" name="Performance %" />         {/* Blue-500 */}
+          <Bar dataKey="tasksCompleted" fill="#10B981" name="Tasks Completed" />    {/* Green-500 */}
+
         </BarChart>
       </ResponsiveContainer>
     </ChartContainer>

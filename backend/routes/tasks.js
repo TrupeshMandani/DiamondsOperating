@@ -28,5 +28,4 @@ router.put("/:taskId/update-status", updateTaskStatus);
 // Route to delete task by Task ID
 router.delete("/:taskId", deleteTask);
 
-
 export default router;
