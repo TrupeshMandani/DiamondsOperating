@@ -8,14 +8,12 @@ import mongoose from "mongoose";
 // Generate QR code for batch details
 export const generateQRCode = async (req, res) => {
   try {
-    // Fetch the batch by ID from MongoDB
     const batch = await Batch.findOne({ batchId: req.params.id });
 
     if (!batch) {
       return res.status(404).json({ message: "Batch not found1" });
     }
 
-    // Prepare the data you want to encode into the QR code (for example, the batch information)
     const batchData = {
       batchNumber: batch.batchId,
       customer: batch.firstName,
@@ -23,13 +21,10 @@ export const generateQRCode = async (req, res) => {
       selectedProcesses: batch.selectedProcesses || [batch.currentProcess],
     };
 
-    // Convert the batch data to a string and generate the QR code
     QRCode.toDataURL(JSON.stringify(batchData), (err, url) => {
       if (err) {
         return res.status(500).json({ message: "Error generating QR code" });
       }
-
-      // Send the generated QR code as a response
       res.json({ qrCode: url });
     });
   } catch (error) {
@@ -51,8 +46,8 @@ export const createBatch = async (req, res) => {
     diamondWeight,
     diamondNumber,
     expectedDate,
-    currentProcess, // This will now be an array
-    assignedEmployee, // Optional
+    currentProcess,
+    assignedEmployee,
   } = req.body;
 
   try {
@@ -69,7 +64,6 @@ export const createBatch = async (req, res) => {
       }
     }
 
-    // Create batch with multiple processes
     const newBatch = new Batch({
       batchId,
       materialType,
@@ -81,7 +75,7 @@ export const createBatch = async (req, res) => {
       diamondWeight,
       diamondNumber,
       expectedDate,
-      currentProcess, // Store multiple selected processes
+      currentProcess,
       processStartDate: new Date(),
       status: "Pending",
       assignedEmployee: assignedEmployee || null,
@@ -120,8 +114,6 @@ export const getBatches = async (req, res) => {
 export const getBatchByID = async (req, res) => {
   try {
     const { id } = req.params;
-
-    // Fetch batch details by batchId
     const batch = await Batch.findOne({ batchId: id });
 
     if (!batch) {
@@ -140,7 +132,7 @@ export const getBatchByID = async (req, res) => {
       expectedDate: batch.expectedDate,
       currentDate: batch.currentDate,
       currentProcess: batch.currentProcess,
-      selectedProcesses: batch.selectedProcesses || [batch.currentProcess], // Include selected processes
+      selectedProcesses: batch.selectedProcesses || [batch.currentProcess],
       status: batch.status,
       progress: batch.progress,
     });
@@ -161,16 +153,11 @@ export const getBatchProgress = async (req, res) => {
       return res.status(404).json({ message: "Batch not found 3" });
     }
 
-    // Fetch tasks related to the batch
     const tasks = await Task.find({ batch_id: batch._id });
-
-    // Count completed tasks
     const completedTasks = tasks.filter(
       (task) => task.status === "Completed"
     ).length;
     const totalTasks = tasks.length;
-
-    // Calculate progress percentage
     const progress =
       totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
 
@@ -194,10 +181,9 @@ export const getBatchProgress = async (req, res) => {
 // Update batch details
 export const updateBatch = async (req, res) => {
   try {
-    const { id } = req.params; // Batch ID from URL
-    const { stage, progress } = req.body; // Stage and progress value from body
+    const { id } = req.params;
+    const { stage, progress } = req.body;
 
-    // Fetch the batch by batchId
     const batch = await Batch.findOne({ batchId: id });
     if (!batch) {
       return res.status(404).json({ message: "Batch not found 11" });
@@ -208,8 +194,6 @@ export const updateBatch = async (req, res) => {
       "Stitching",
       "4P Cutting",
     ];
-
-    // Validate if the stage is valid for this batch
     if (!validStages.includes(stage)) {
       return res.status(400).json({
         message: "Invalid stage for this batch",
@@ -217,52 +201,43 @@ export const updateBatch = async (req, res) => {
       });
     }
 
-    // Update the batch progress for the specific stage
     batch.progress[stage] = progress;
 
-    // If progress for the current stage is 100%, move to the next stage
     if (progress === 100) {
-      // Determine the next stage
       const currentIndex = validStages.indexOf(stage);
       if (currentIndex < validStages.length - 1) {
-        batch.currentProcess = validStages[currentIndex + 1]; // Set the next process
+        batch.currentProcess = validStages[currentIndex + 1];
       } else {
-        batch.status = "Completed"; // Mark the batch as completed if all stages are finished
+        batch.status = "Completed";
       }
     }
 
-    // Save the batch with updated progress and status
     await batch.save();
 
-    // Send response with the updated batch
     res.json({
       message: `Batch progress updated for stage ${stage}`,
       batch,
     });
   } catch (error) {
     console.error(error);
-    res.status(500).json({
-      message: "Error updating the batch progress",
-      error: error.message,
-    });
+    res
+      .status(500)
+      .json({
+        message: "Error updating the batch progress",
+        error: error.message,
+      });
   }
 };
 
-//get batch for employee
+// Get tasks for a batch
 export const getTasksForBatch = async (req, res) => {
   try {
     const { id } = req.params;
-
-    console.log(`Fetching tasks for batch: ${id}`); // Debugging
-
-    // Find the batch using its batchId (which is a string)
     const batch = await Batch.findOne({ batchId: id });
 
     if (!batch) {
       return res.status(404).json({ message: "Batch not found" });
     }
-
-    // Fetch tasks using the found batch's ObjectId
 
     const tasks = await Task.find({ batchId: batch._id }).select(
       "+status +partialReason"
@@ -281,6 +256,7 @@ export const getTasksForBatch = async (req, res) => {
   }
 };
 
+// Assign batch and create task
 export const assignBatchToEmployee = async (req, res) => {
   try {
     const {
@@ -295,8 +271,6 @@ export const assignBatchToEmployee = async (req, res) => {
       diamondNumber,
     } = req.body;
 
-    console.log("Received Task Data:", req.body);
-
     if (
       !batchId ||
       !employeeId ||
@@ -310,13 +284,11 @@ export const assignBatchToEmployee = async (req, res) => {
       return res.status(400).json({ message: "Missing required fields" });
     }
 
-    // Find the batch
     const batch = await Batch.findOne({ batchId });
     if (!batch) {
       return res.status(404).json({ message: "Batch not found" });
     }
 
-    // Check if the process is valid for the batch
     if (!batch.currentProcess.includes(process)) {
       return res.status(400).json({
         message: `Process "${process}" is not available for this batch`,
@@ -324,29 +296,25 @@ export const assignBatchToEmployee = async (req, res) => {
       });
     }
 
-    // Find the employee
     const employee = await Employee.findById(employeeId);
     if (!employee) {
       return res.status(404).json({ message: "Employee not found" });
     }
 
-    // Maintain all processes, update progress only for assigned process
     batch.assignedEmployees.push({ employeeId, process });
-    // 🔍 Check for existing tasks for this batch + process
+
     const existingTasks = await Task.find({
       batchId: batch._id,
       currentProcess: process,
     });
-
-    // ❌ If completed task exists, block
     const completedTask = existingTasks.find((t) => t.status === "Completed");
+
     if (completedTask) {
       return res.status(400).json({
         message: `Task for process "${process}" is already completed for this batch.`,
       });
     }
 
-    // ✅ If partially completed, calculate remaining diamonds
     const partialTask = existingTasks.find(
       (t) => t.status === "Partially Completed"
     );
@@ -360,7 +328,6 @@ export const assignBatchToEmployee = async (req, res) => {
       }
     }
 
-    // Create the task
     const numericRate = Number(rate);
     const numericDiamondNumber = Number(diamondNumber);
     const taskearnings = numericRate * numericDiamondNumber;
@@ -382,22 +349,10 @@ export const assignBatchToEmployee = async (req, res) => {
     });
 
     const savedTask = await task.save();
-    console.log("Saved task:", savedTask);
 
-    // Get all tasks for this batch
-    const allTasks = await Task.find({ batchId: batch._id });
+    // ✅ Update batch status
+    await updateBatchAssignmentStatus(batch);
 
-    // Check if all processes have assigned tasks
-    const allProcessesAssigned = batch.currentProcess.every((process) =>
-      allTasks.some((task) => task.currentProcess === process)
-    );
-
-    // Update batch status based on task assignments
-    batch.status = allProcessesAssigned ? "Assigned" : "Pending";
-
-    await batch.save();
-
-    // 🔔 Send Email Notification to Employee
     await sendEmail({
       to: employee.email,
       subject: "New Task Assigned",
@@ -415,7 +370,6 @@ Thanks,
 Diamond Management System`,
     });
 
-    // Emit WebSocket event
     req.io.emit("taskAssigned", {
       message: "A new task has been assigned!",
       task: savedTask,
@@ -433,11 +387,10 @@ Diamond Management System`,
   }
 };
 
+// Fetch tasks by employee
 export const getTasksForEmployee = async (req, res) => {
   try {
     const { employeeId } = req.params;
-    console.log(`Fetching tasks for employee: ${employeeId}`);
-
     const tasks = await Task.find({ employeeId }).populate(
       "batchId",
       "batchTitle currentProcess selectedProcesses"
@@ -449,7 +402,6 @@ export const getTasksForEmployee = async (req, res) => {
         .json({ message: "No tasks found for this employee" });
     }
 
-    // Emit WebSocket event to notify that tasks have been fetched
     req.io.emit(`tasksFetched-${employeeId}`, {
       message: "Your tasks have been updated!",
       tasks,
@@ -464,6 +416,12 @@ export const getTasksForEmployee = async (req, res) => {
   }
 };
 
-
-// Update task status 
-
+// ✅ Helper to update batch status based on assigned processes
+const updateBatchAssignmentStatus = async (batch) => {
+  const allTasks = await Task.find({ batchId: batch._id });
+  const allProcessesAssigned = batch.currentProcess.every((proc) =>
+    allTasks.some((task) => task.currentProcess === proc)
+  );
+  batch.status = allProcessesAssigned ? "Assigned" : "Pending";
+  await batch.save();
+};
