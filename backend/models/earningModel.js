@@ -10,7 +10,7 @@ const earningSchema = new mongoose.Schema({
   taskId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "Task",
-    required: true,
+    required: false,
   },
   totalEarnings: {
     type: Number,
