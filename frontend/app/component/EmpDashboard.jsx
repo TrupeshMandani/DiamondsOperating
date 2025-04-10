@@ -1,157 +1,129 @@
 "use client";
-import { useState, useEffect, memo } from "react";
-import { useErrorBoundary, ErrorBoundary } from "react-error-boundary";
-import EmpSidebar from "./EmpSidebar";
+import { useState, useEffect } from "react";
+import axios from "axios";
+import PerformanceReport from "./Emp-report/PerformanceReport";
 
-const ErrorFallback = ({ error, resetErrorBoundary }) => (
-  <div className="flex flex-col items-center justify-center h-screen bg-red-50 space-y-4">
-    <h2 className="text-2xl font-bold text-red-600">⚠️ Error</h2>
-    <p className="text-red-500">{error.message}</p>
-    <button
-      onClick={resetErrorBoundary}
-      className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-    >
-      Try Again
-    </button>
-  </div>
-);
-
-const LoadingSpinner = () => (
-  <div className="flex justify-center items-center h-screen">
-    <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-600"></div>
-  </div>
-);
-
-const RenderTaskSummaryCard = memo(({ title, count, bgColor, textColor }) => (
-  <div
-    className={`w-full p-6 shadow-lg rounded-xl text-center ${bgColor} transition-all hover:scale-105`}
-  >
-    <h3 className={`text-xl font-semibold mb-2 ${textColor}`}>{title}</h3>
-    <p className={`text-4xl font-bold ${textColor}`}>{count}</p>
-  </div>
-));
-
-function EmployeeDashboard() {
-  const [tasks, setTasks] = useState({
-    counts: { assigned: 0, inProgress: 0, completed: 0 },
-  });
+const EmployeeDashboard = () => {
+  const [employeeId, setEmployeeId] = useState(null);
+  const [tasks, setTasks] = useState([]);
+  const [earningsData, setEarningsData] = useState([]);
+  const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
+  const [monthlyEarnings, setMonthlyEarnings] = useState(0);
+  const [yearlyEarnings, setYearlyEarnings] = useState(0);
   const [loading, setLoading] = useState(true);
-  const [lastUpdated, setLastUpdated] = useState("");
-  const { showBoundary } = useErrorBoundary();
+  const [error, setError] = useState(null);
+  const [activeTab, setActiveTab] = useState("performance");
 
-  const fetchEmployeeData = async (empId) => {
-    try {
-      const response = await fetch(
-        `http://localhost:5023/api/tasks/employee/${empId}/summary`
-      );
-
-      if (!response.ok) throw new Error("Failed to fetch task summary");
-
-      const result = await response.json();
-
-      setTasks({
-        counts: {
-          assigned: result?.assigned || 0,
-          inProgress: result?.inProgress || 0,
-          completed: result?.completed || 0,
-        },
-      });
-      setLastUpdated(new Date().toLocaleTimeString());
-    } catch (error) {
-      console.error("Fetch error:", error);
-      showBoundary(error);
-    } finally {
-      setLoading(false);
+  // ✅ Safely get employee ID on client side
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const idFromStorage = localStorage.getItem("employeeId");
+      setEmployeeId(idFromStorage);
     }
-  };
+  }, []);
 
   useEffect(() => {
-    const empId = localStorage.getItem("employeeId");
-    if (!empId) {
-      showBoundary(new Error("No employee ID found in storage"));
-      return;
-    }
+    if (!employeeId) return;
 
-    fetchEmployeeData(empId);
+    const fetchData = async () => {
+      try {
+        setLoading(true);
 
-    const interval = setInterval(() => {
-      fetchEmployeeData(empId);
-    }, 30000);
+        // Fetch tasks
+        const tasksResponse = await axios.get(
+          `http://localhost:5023/api/employees/${employeeId}/tasks`
+        );
+        const tasksData = tasksResponse.data;
+        setTasks(tasksData);
 
-    return () => clearInterval(interval);
-  }, [showBoundary]);
+        // Fetch earnings
+        const earningsResponse = await axios.get(
+          `http://localhost:5023/api/earnings/${employeeId}`
+        );
+        const earningsData = earningsResponse.data?.monthlyEarnings;
 
-  if (loading) return <LoadingSpinner />;
+        if (!Array.isArray(earningsData)) {
+          throw new Error("Invalid earnings data format received");
+        }
+
+        setEarningsData(earningsData);
+
+        // Calculate monthly earnings
+        const selectedMonthData = earningsData.find(
+          (entry) => entry.month === selectedMonth
+        );
+        const monthly = selectedMonthData ? selectedMonthData.totalEarnings : 0;
+
+        // Calculate yearly earnings
+        const yearly = earningsData
+          .filter((entry) => entry.year === new Date().getFullYear())
+          .reduce((acc, entry) => acc + entry.totalEarnings, 0);
+
+        setMonthlyEarnings(monthly);
+        setYearlyEarnings(yearly);
+        setError(null);
+      } catch (err) {
+        setError(err.response?.data?.message || err.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, [employeeId, selectedMonth]);
+
+  const handleMonthChange = (month) => {
+    setSelectedMonth(month);
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <div className="text-xl font-semibold">Loading performance data...</div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <div className="text-xl font-semibold text-red-600">Error: {error}</div>
+      </div>
+    );
+  }
 
   return (
-    <div className="flex h-screen bg-gray-50 text-gray-800">
-      <EmpSidebar />
-      <div className="flex-1 p-8 ml-72">
-        <div className="flex justify-between items-center mb-8">
-          <h1 className="text-3xl font-bold">Employee Dashboard</h1>
-          <span className="text-sm text-gray-500">
-            Last updated: {lastUpdated}
-          </span>
+    <div className="bg-gray-50 min-h-screen p-4 md:p-8">
+      <div className="max-w-7xl mx-auto">
+        <h1 className="text-2xl md:text-3xl font-bold mb-6">
+          Employee Performance Dashboard
+        </h1>
+
+        {/* Tabs */}
+        <div className="flex mb-6 border-b">
+      
+
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 mb-8">
-          <RenderTaskSummaryCard
-            title="Assigned Tasks"
-            count={tasks.counts.assigned}
-            bgColor="bg-blue-800 hover:bg-blue-900"
-            textColor="text-white"
-          />
-          <RenderTaskSummaryCard
-            title="In Progress"
-            count={tasks.counts.inProgress}
-            bgColor="bg-blue-600 hover:bg-blue-700"
-            textColor="text-white"
-          />
-          <RenderTaskSummaryCard
-            title="Completed"
-            count={tasks.counts.completed}
-            bgColor="bg-white hover:bg-gray-50"
-            textColor="text-blue-800"
-          />
-        </div>
+        {/* Tabs Content */}
+        {activeTab === "performance" && (
+          <PerformanceReport tasks={tasks} earningsData={earningsData} />
+        )}
 
-        <div className="bg-white p-6 rounded-lg shadow">
-          <h2 className="text-xl font-semibold mb-4">Task Statistics</h2>
-          <div className="grid grid-cols-2 gap-4">
-            <div className="p-4 border rounded-lg">
-              <h3 className="text-sm font-medium text-gray-500">Total Tasks</h3>
-              <p className="text-2xl font-bold">
-                {tasks.counts.assigned +
-                  tasks.counts.inProgress +
-                  tasks.counts.completed}
-              </p>
-            </div>
-            <div className="p-4 border rounded-lg">
-              <h3 className="text-sm font-medium text-gray-500">
-                Completion Rate
-              </h3>
-              <p className="text-2xl font-bold">
-                {Math.round(
-                  (tasks.counts.completed /
-                    (tasks.counts.assigned +
-                      tasks.counts.inProgress +
-                      tasks.counts.completed || 1)) *
-                    100
-                )}
-                %
-              </p>
-            </div>
-          </div>
-        </div>
+        {activeTab === "earnings" && (
+          <EarningsReport
+            earningsData={earningsData}
+            selectedMonth={selectedMonth}
+            monthlyEarnings={monthlyEarnings}
+            yearlyEarnings={yearlyEarnings}
+            onMonthChange={handleMonthChange}
+          />
+        )}
+
+        {activeTab === "tasks" && <TaskHistory tasks={tasks} />}
       </div>
     </div>
   );
-}
+};
 
-export default function DashboardWrapper() {
-  return (
-    <ErrorBoundary FallbackComponent={ErrorFallback}>
-      <EmployeeDashboard />
-    </ErrorBoundary>
-  );
-}
+export default EmployeeDashboard;
