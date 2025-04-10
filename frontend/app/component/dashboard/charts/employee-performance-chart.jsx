@@ -3,9 +3,44 @@
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts"
 import { ChartContainer, ChartTooltipContent } from "@/components/ui/chart"
 
-const EmployeePerformanceChart = ({ employees }) => {
-  // Sort employees by performance and take top 5
-  const topEmployees = [...employees]
+const EmployeePerformanceChart = ({ employees, tasks }) => {
+  // Filter tasks assigned in the last 7 days
+  const today = new Date();
+  const last7Days = new Date();
+  last7Days.setDate(today.getDate() - 7);
+
+  const tasksLast7Days = tasks.filter((task) => {
+    const assignedDate = new Date(task.assignedDate);
+    return assignedDate >= last7Days;
+  });
+
+  // Get completed tasks from last 7 days
+  const completedTasksLast7Days = tasksLast7Days.filter(
+    (task) => task.status === "Completed"
+  );
+
+  // Map employee performance based on last 7 days
+  const performanceData = employees.map((emp) => {
+    const empId = emp.id || emp._id;
+
+    const assigned = tasksLast7Days.filter(
+      (task) => String(task.assignedTo) === String(empId)
+    ).length;
+
+    const completed = completedTasksLast7Days.filter(
+      (task) => String(task.assignedTo) === String(empId)
+    ).length;
+
+    return {
+      name: emp.name.split(" ")[0],
+      tasksCompleted: completed,
+      performance: assigned > 0 ? Math.round((completed / assigned) * 100) : 0,
+    };
+  });
+
+  // Get top 5 employees by performance
+  const topEmployees = performanceData
+>>>>>>> Trupesh
     .sort((a, b) => b.performance - a.performance)
     .slice(0, 5)
     .map((emp) => ({
