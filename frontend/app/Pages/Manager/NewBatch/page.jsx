@@ -1,7 +1,7 @@
 "use client";
 import axios from "axios";
 import { useState, useEffect } from "react";
-
+import { toast } from "react-hot-toast";
 import { Button } from "../../../component/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -77,11 +77,11 @@ export default function BatchCreationForm() {
 
     try {
       await axios.post("http://localhost:5023/api/batches/create", payload);
-      alert.success("Batch Created Successfully!");
+      toast.success("Batch Created Successfully!");
       alert("Batch Created successfully");
     } catch (error) {
       console.error("Error Details:", error.response?.data || error.message);
-      alert.error("Error Creating Batch!");
+      toast.error("Error Creating Batch!");
     }
   };
 
@@ -89,7 +89,7 @@ export default function BatchCreationForm() {
 
   return (
     <div className="flex h-screen overflow-hidden">
-      <div className="w-72 h-screen fixed top-0 left-0 bg-[#121828] text-white shadow-xl z-10">
+      <div className="w-[250px] h-full overflow-y-auto">
         <Sidebar />
       </div>
       <div className="flex-1 overflow-y-auto bg-gray-100 p-8 text-black">
@@ -125,21 +125,11 @@ export default function BatchCreationForm() {
                       <SelectValue placeholder="Select Material Type" />
                     </SelectTrigger>
                     <SelectContent className="z-50 text-black bg-white">
-                      <SelectItem value="Rough Diamond">
-                        Rough Diamond
-                      </SelectItem>
-                      <SelectItem value="Graphite Powder">
-                        Graphite Powder
-                      </SelectItem>
-                      <SelectItem value="Diamond Paste">
-                        Diamond Paste
-                      </SelectItem>
-                      <SelectItem value="Diamond Blades">
-                        Diamond Blades
-                      </SelectItem>
-                      <SelectItem value="Cutting Fluids">
-                        Cutting Fluids
-                      </SelectItem>
+                      <SelectItem value="Rough Diamond">Rough Diamond</SelectItem>
+                      <SelectItem value="Graphite Powder">Graphite Powder</SelectItem>
+                      <SelectItem value="Diamond Paste">Diamond Paste</SelectItem>
+                      <SelectItem value="Diamond Blades">Diamond Blades</SelectItem>
+                      <SelectItem value="Cutting Fluids">Cutting Fluids</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>

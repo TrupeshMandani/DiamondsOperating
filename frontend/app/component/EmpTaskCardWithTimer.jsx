@@ -1,3 +1,4 @@
+// EmpTaskCardWithTimer.jsx
 "use client";
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
@@ -13,12 +14,21 @@ const EmpTaskCardWithTimer = ({
   getPriorityColor,
 }) => {
   const [elapsedTime, setElapsedTime] = useState(null);
-  const [batchDetails, setBatchDetails] = useState(null);
-  const [loading, setLoading] = useState(false);
-  useEffect(() => {
-    console.log("📦 TASK RECEIVED:", task);
-  }, [task]);
+  const [isPartialComplete, setIsPartialComplete] = useState(false);
+  const [partialDetails, setPartialDetails] = useState({
+    diamonds: 0,
+    reason: "",
+  });
 
+  useEffect(() => {
+    if (task.status === "Partially Completed") {
+      setIsPartialComplete(true);
+      setPartialDetails({
+        diamonds: task.partialDiamondNumber,
+        reason: task.partialReason,
+      });
+    }
+  }, [task]);
 
   useEffect(() => {
     let interval;
@@ -40,122 +50,86 @@ const EmpTaskCardWithTimer = ({
   }, [task.status, task.startTime, task.endTime]);
 
   const fetchBatchDetails = async () => {
-    if (!task.batchTitle) {
-      console.error("Batch Title is missing!");
-      return;
-    }
-
-    console.log("Fetching batch details for Batch Title:", task.batchTitle);
-    setLoading(true);
-
+    if (!task.batchTitle) return alert("Batch Title is missing!");
     try {
       const response = await fetch(
         `http://localhost:5023/api/tasks/title/${encodeURIComponent(
           task.batchTitle
         )}`
       );
-
-      if (!response.ok) {
-        throw new Error("Failed to fetch batch details");
-      }
-
+      if (!response.ok) throw new Error("Failed to fetch batch details");
       const data = await response.json();
-      console.log("Fetched Batch Details:", data);
 
-      // Check process flow dependencies
-      if (task.currentProcess === "Stitching") {
-        const sarinTask = data.find((t) => t.currentProcess === "Sarin");
+      const hasSarin = data.some((t) => t.currentProcess === "Sarin");
+      const hasStitching = data.some((t) => t.currentProcess === "Stitching");
 
-        if (sarinTask && sarinTask.status !== "Completed") {
-          alert(
-            "Please wait until 'Sarin' task is completed before starting 'Stitching' task."
-          );
-          return;
-        }
+      if (task.currentProcess === "Stitching" && hasSarin) {
+        const sarinTask = data.find(
+          (t) => t.currentProcess === "Sarin" && t.status === "Completed"
+        );
+        if (!sarinTask) return alert("Complete 'Sarin' task first");
       }
 
       if (task.currentProcess === "4P Cutting") {
-        const sarinTask = data.find((t) => t.currentProcess === "Sarin");
-        const stitchingTask = data.find(
-          (t) => t.currentProcess === "Stitching"
-        );
-
-        const sarinIncomplete = sarinTask && sarinTask.status !== "Completed";
-        const stitchingIncomplete =
-          stitchingTask && stitchingTask.status !== "Completed";
-
-        if (sarinIncomplete || stitchingIncomplete) {
-          alert(
-            "Please wait until both 'Sarin' and 'Stitching' tasks are completed before starting '4P Cutting' task."
-          );
-          return;
-        }
+        if (
+          hasSarin &&
+          !data.find(
+            (t) => t.currentProcess === "Sarin" && t.status === "Completed"
+          )
+        )
+          return alert("Complete 'Sarin' task first");
+        if (
+          hasStitching &&
+          !data.find(
+            (t) => t.currentProcess === "Stitching" && t.status === "Completed"
+          )
+        )
+          return alert("Complete 'Stitching' task first");
       }
 
-      // All checks passed
-      startTask();
+      updateTaskStatus(task._id, "In Progress");
     } catch (error) {
-      console.error("Error fetching batch details:", error);
-    } finally {
-      setLoading(false);
+      console.error("Batch Dependency Error:", error);
+      alert("Error verifying batch dependencies");
     }
   };
 
-  const startTask = () => {
-    updateTaskStatus(task._id, "In Progress");
-  };
   const handlePartialComplete = async (taskId) => {
-    const reason = prompt("Please enter a reason for partial completion:");
-    if (!reason) {
-      alert("Partial reason is required.");
+    if (task.status === "Completed" || isPartialComplete) {
+      alert("Task already completed");
       return;
     }
-  
-    const completedDiamondsInput = prompt("Enter number of diamonds completed:");
-    const completedDiamonds = Number(completedDiamondsInput);
-  
-    if (isNaN(completedDiamonds) || completedDiamonds < 0) {
-      alert("Please enter a valid number for completed diamonds.");
+
+    const diamonds = prompt(`Completed diamonds (max ${task.diamondNumber}):`);
+    const partialDiamonds = parseInt(diamonds);
+    if (
+      !partialDiamonds ||
+      partialDiamonds <= 0 ||
+      partialDiamonds > task.diamondNumber
+    ) {
+      alert(`Enter number between 1-${task.diamondNumber}`);
       return;
     }
-  
-    if (completedDiamonds > task.diamondNumber) {
-      alert(`You cannot complete more than ${task.diamondNumber} diamonds.`);
+
+    const reason = prompt("Reason for partial completion:");
+    if (!reason?.trim()) {
+      alert("Reason is required");
       return;
     }
-  
+
     try {
-      const token = localStorage.getItem("authToken");
-      const response = await fetch(
-        `http://localhost:5023/api/tasks/${taskId}/update-status`,
-        {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({
-            status: "Partially Completed",
-            completedDiamonds,
-            partialReason: reason,
-          }),
-        }
-      );
-  
-      const result = await response.json();
-  
-      if (!response.ok) {
-        throw new Error(result.message || "Failed to mark as partially complete");
-      }
-  
-      alert("Task marked as partially completed.");
+      await updateTaskStatus(taskId, "Partially Completed", {
+        partialDiamondNumber: partialDiamonds,
+        partialReason: reason,
+      });
+      setIsPartialComplete(true);
+      setPartialDetails({ diamonds: partialDiamonds, reason });
+      alert("Partial completion recorded");
     } catch (error) {
-      console.error("Error:", error);
-      alert("Error marking task as partially completed.");
+      console.error("Partial Complete Error:", error);
+      alert(error.message || "Failed to save partial completion");
     }
   };
-  
-
 
   const formatDuration = (ms) => {
     const totalSec = Math.floor(ms / 1000);
@@ -177,32 +151,26 @@ const EmpTaskCardWithTimer = ({
       key={task._id}
       initial={{ opacity: 0, scale: 0.95 }}
       animate={{ opacity: 1, scale: 1 }}
-      transition={{ duration: 0.2 }}
       className="bg-white p-4 rounded-lg border border-gray-100 shadow-sm hover:shadow-md transition-all"
     >
-<div className="flex justify-between items-start mb-3">
-  <div>
-    <h3 className="text-base font-semibold text-gray-900">
-      {task.batchTitle || "Unknown Batch"}
-    </h3>
-    <p className="text-sm text-gray-500 mt-1">
-      {task.currentProcess || "N/A"}
-    </p>
-  </div>
-  <div className="flex flex-col items-end gap-1">
-    <Badge className={`${getPriorityColor(task.priority)} text-xs`}>
-      {task.priority}
-    </Badge>
-    
-    {/* 👇 Show if partially completed */}
-    {task.status === "Partially Completed" && (
-      <Badge className="bg-yellow-200 text-yellow-800 text-xs">
-        Partially Completed
-      </Badge>
-    )}
-  </div>
-</div>
-
+      <div className="flex justify-between items-start mb-3">
+        <div>
+          <h3 className="text-base font-semibold text-gray-900">
+            {task.batchTitle}
+          </h3>
+          <p className="text-sm text-gray-500 mt-1">{task.currentProcess}</p>
+        </div>
+        <div className="flex flex-col items-end gap-1">
+          <Badge className={`${getPriorityColor(task.priority)} text-xs`}>
+            {task.priority}
+          </Badge>
+          {task.status === "Partially Completed" && (
+            <Badge className="bg-yellow-200 text-yellow-800 text-xs">
+              Partial
+            </Badge>
+          )}
+        </div>
+      </div>
 
       <hr className="border-gray-100 my-3" />
 
@@ -249,9 +217,9 @@ const EmpTaskCardWithTimer = ({
 
       <div className="mt-3 p-2 bg-green-50 rounded-md border border-green-100">
         <div className="flex justify-between items-center">
-          <span className="text-sm text-green-800">Total Earnings</span>
+          <span className="text-sm text-green-800">Earnings</span>
           <span className="font-medium text-green-700">
-            ₹{task.earnings?.toLocaleString()}
+            ₹{task.taskEarnings?.toLocaleString()}
           </span>
         </div>
       </div>
@@ -259,7 +227,7 @@ const EmpTaskCardWithTimer = ({
       {durationDisplay && (
         <div className="mt-3 bg-blue-50 p-2 rounded-md">
           <div className="flex items-center gap-2 text-sm">
-            <span className="text-blue-600">⏱ Time Spent:</span>
+            <span className="text-blue-600">⏱ Duration:</span>
             <span className="font-medium text-blue-700">{durationDisplay}</span>
           </div>
         </div>
@@ -270,15 +238,20 @@ const EmpTaskCardWithTimer = ({
           "{task.description}"
         </p>
       )}
-      {task.partiallyCompleted && task.partialReason && (
-  <div className="mt-3 bg-yellow-50 border border-yellow-200 rounded-md p-3">
-    <p className="text-sm font-medium text-yellow-800">⚠️ Partially Completed</p>
-    <p className="text-sm text-yellow-700 mt-1">
-      Reason: <span className="italic">{task.partialReason}</span>
-    </p>
-  </div>
-)}
 
+      {isPartialComplete && (
+        <div className="mt-3 bg-yellow-50 border border-yellow-200 rounded-md p-3">
+          <p className="text-sm font-medium text-yellow-800">
+            ⚠️ Partial Completion
+          </p>
+          <p className="text-sm text-yellow-700 mt-1">
+            Diamonds: {partialDetails.diamonds}/{task.diamondNumber}
+          </p>
+          <p className="text-sm text-yellow-700 mt-1">
+            Reason: <span className="italic">{partialDetails.reason}</span>
+          </p>
+        </div>
+      )}
 
       <div className="mt-4 space-y-2">
         {section === "assigned" && (
@@ -292,39 +265,38 @@ const EmpTaskCardWithTimer = ({
         )}
 
         {section === "inProgress" && (
-          <Button
-            className="w-full"
-            variant="success"
-            onClick={() => updateTaskStatus(task._id, "Completed")}
-            disabled={updatingTasks.has(task._id)}
-          >
-            {updatingTasks.has(task._id) ? "Completing..." : "Mark Complete ✓"}
-          </Button>
+          <>
+            <Button
+              className="w-full"
+              variant="success"
+              onClick={() => updateTaskStatus(task._id, "Completed")}
+              disabled={updatingTasks.has(task._id)}
+            >
+              {updatingTasks.has(task._id) ? "Completing..." : "Complete ✓"}
+            </Button>
+            <Button
+              className="w-full"
+              variant="outline"
+              onClick={() => handlePartialComplete(task._id)}
+              disabled={updatingTasks.has(task._id)}
+            >
+              Partial Complete ⚠
+            </Button>
+          </>
         )}
-        <Button
-        className="w-full"
-        variant="outline"
-        onClick={() => handlePartialComplete(task._id)}
-        disabled={updatingTasks.has(task._id)}
-        >
-          Mark as Partially Complete ⚠
-          </Button>
-
 
         <Button
           variant="ghost"
           className="w-full text-gray-600 hover:bg-gray-50"
           onClick={() =>
             alert(
-              `Task ID: ${task._id}\nStart: ${
-                task.startTime ? new Date(task.startTime).toLocaleString() : "—"
-              }\nEnd: ${
-                task.endTime ? new Date(task.endTime).toLocaleString() : "—"
-              }\nTime Spent: ${durationDisplay || "—"}`
+              `Task Details:\nID: ${task._id}\nStarted: ${
+                task.startTime?.toLocaleString() || "--"
+              }\nEnded: ${task.endTime?.toLocaleString() || "--"}`
             )
           }
         >
-          View Full Details
+          View Details
         </Button>
       </div>
     </motion.div>

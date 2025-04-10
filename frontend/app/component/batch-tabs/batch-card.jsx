@@ -19,7 +19,6 @@ export default function BatchCard({ batch, onSelect, category }) {
   const [inProgressTasks, setInProgressTasks] = useState([]);
   const [completedTasks, setCompletedTasks] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [taskError, setTaskError] = useState(null);
 
   useEffect(() => {
     const fetchTasks = async () => {
@@ -28,19 +27,17 @@ export default function BatchCard({ batch, onSelect, category }) {
         batch.batchId
       ) {
         setLoading(true);
-        setTaskError(null);
         try {
           const response = await fetch(
             `http://localhost:5023/api/tasks/title/${encodeURIComponent(
               batch.batchId
             )}`
           );
-
           if (!response.ok) {
             throw new Error("Failed to fetch tasks");
           }
-
           const tasks = await response.json();
+          // Filter tasks by status
           const inProgress = tasks.filter(
             (task) => task.status === "In Progress"
           );
@@ -48,7 +45,7 @@ export default function BatchCard({ batch, onSelect, category }) {
           setInProgressTasks(inProgress);
           setCompletedTasks(completed);
         } catch (error) {
-          setTaskError("Unable to load task data. Please try again later.");
+          console.error("Error fetching tasks:", error);
         } finally {
           setLoading(false);
         }
@@ -58,6 +55,7 @@ export default function BatchCard({ batch, onSelect, category }) {
     fetchTasks();
   }, [category, batch.batchId]);
 
+  // Determine card styling based on category
   const getCardStyle = () => {
     switch (category) {
       case "notAssigned":
@@ -73,30 +71,35 @@ export default function BatchCard({ batch, onSelect, category }) {
     }
   };
 
+  // Get status badge styling
   const getStatusBadge = () => {
     switch (category) {
       case "notAssigned":
         return (
           <Badge className="bg-gray-100 text-gray-800">
-            <alertCircle className="w-3 h-3 mr-1" /> Not Assigned
+            <AlertCircle className="w-3 h-3 mr-1" />
+            Not Assigned
           </Badge>
         );
       case "inProgress":
         return (
           <Badge className="bg-yellow-100 text-yellow-800">
-            <Clock className="w-3 h-3 mr-1" /> In Progress
+            <Clock className="w-3 h-3 mr-1" />
+            In Progress
           </Badge>
         );
       case "assigned":
         return (
           <Badge className="bg-blue-100 text-blue-800">
-            <CheckCircle className="w-3 h-3 mr-1" /> Assigned
+            <CheckCircle className="w-3 h-3 mr-1" />
+            Assigned
           </Badge>
         );
       case "completed":
         return (
           <Badge className="bg-green-100 text-green-800">
-            <CheckCircle className="w-3 h-3 mr-1" /> Completed
+            <CheckCircle className="w-3 h-3 mr-1" />
+            Completed
           </Badge>
         );
       default:
@@ -138,7 +141,6 @@ export default function BatchCard({ batch, onSelect, category }) {
               {new Date(batch.expectedDate).toLocaleDateString()}
             </span>
           </div>
-
           <div className="mt-4">
             <div className="flex justify-between items-center mb-1">
               <span className="text-sm font-medium">Process Assignment</span>
@@ -163,17 +165,23 @@ export default function BatchCard({ batch, onSelect, category }) {
               ></div>
             </div>
           </div>
-
           <div className="flex flex-wrap gap-2 mt-2">
             {batch.selectedProcesses &&
               (Array.isArray(batch.selectedProcesses[0])
                 ? batch.selectedProcesses.flat()
                 : batch.selectedProcesses
               ).map((process) => {
+                // Determine if this process is assigned
                 const isAssigned =
-                  batch.progress && batch.progress[process] > 0;
+                  batch.progress &&
+                  batch.progress[process] !== undefined &&
+                  batch.progress[process] > 0;
+
+                // Determine if this process is completed
                 const isCompleted =
                   batch.progress && batch.progress[process] === 100;
+
+                // Determine if this process is in progress
                 const isInProgress =
                   batch.progress &&
                   batch.progress[process] > 0 &&
@@ -182,7 +190,8 @@ export default function BatchCard({ batch, onSelect, category }) {
                 return (
                   <Badge
                     key={process}
-                    className={`${
+                    className={`
+                    ${
                       isCompleted
                         ? "bg-green-100 text-green-800"
                         : isInProgress
@@ -190,7 +199,8 @@ export default function BatchCard({ batch, onSelect, category }) {
                         : isAssigned
                         ? "bg-blue-100 text-blue-800"
                         : "bg-gray-100 text-gray-800"
-                    }`}
+                    }
+                  `}
                   >
                     {process}
                     {isCompleted && <CheckCircle className="w-3 h-3 ml-1" />}
@@ -199,16 +209,13 @@ export default function BatchCard({ batch, onSelect, category }) {
                 );
               })}
           </div>
-
-          {/* In Progress Tasks */}
+          {/* In Progress Tasks Section */}
           {category === "inProgress" && (
             <div className="mt-3">
               <div className="text-sm font-medium text-gray-600 mb-2">
                 Tasks In Progress:
               </div>
-              {taskError ? (
-                <div className="text-sm text-red-600">{taskError}</div>
-              ) : loading ? (
+              {loading ? (
                 <div className="text-sm text-gray-500">Loading tasks...</div>
               ) : inProgressTasks.length > 0 ? (
                 <div className="flex flex-col gap-2">
@@ -242,15 +249,13 @@ export default function BatchCard({ batch, onSelect, category }) {
             </div>
           )}
 
-          {/* Completed Tasks */}
+          {/* Completed Tasks Section - Show in both Assigned and In Progress tabs */}
           {(category === "assigned" || category === "inProgress") && (
             <div className="mt-3">
               <div className="text-sm font-medium text-gray-600 mb-2">
                 Completed Tasks:
               </div>
-              {taskError ? (
-                <div className="text-sm text-red-600">{taskError}</div>
-              ) : loading ? (
+              {loading ? (
                 <div className="text-sm text-gray-500">Loading tasks...</div>
               ) : completedTasks.length > 0 ? (
                 <div className="flex flex-col gap-2">

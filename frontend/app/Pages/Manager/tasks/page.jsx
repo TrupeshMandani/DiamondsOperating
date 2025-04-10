@@ -11,7 +11,7 @@ const TaskPage = () => {
           "http://localhost:5023/api/batches/employees/assigned"
         );
         if (!response.ok) {
-          throw new alert("Failed to fetchszdfcdsf tasks");
+          throw new Error("Failed to fetch tasks");
         }
         const data = await response.json();
         setTasks(data);

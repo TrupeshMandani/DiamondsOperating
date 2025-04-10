@@ -1,3 +1,4 @@
+// earningModel.js
 import mongoose from "mongoose";
 
 const earningSchema = new mongoose.Schema({
@@ -9,7 +10,7 @@ const earningSchema = new mongoose.Schema({
   taskId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "Task",
-    required: true,
+    required: false,
   },
   totalEarnings: {
     type: Number,
@@ -29,14 +30,13 @@ const earningSchema = new mongoose.Schema({
   },
   periodStart: {
     type: Date,
-    required: true,
+    required: false,
   },
   periodEnd: {
     type: Date,
-    required: true,
+    required: false,
   },
 });
 
 const Earning = mongoose.model("Earning", earningSchema);
-
 export default Earning;
