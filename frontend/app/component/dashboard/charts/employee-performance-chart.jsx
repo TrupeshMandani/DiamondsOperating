@@ -1,7 +1,15 @@
-"use client"
+"use client";
 
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts"
-import { ChartContainer, ChartTooltipContent } from "@/components/ui/chart"
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+} from "recharts";
+import { ChartContainer, ChartTooltipContent } from "@/components/ui/chart";
 
 const EmployeePerformanceChart = ({ employees, tasks }) => {
   // Filter tasks assigned in the last 7 days
@@ -40,14 +48,13 @@ const EmployeePerformanceChart = ({ employees, tasks }) => {
 
   // Get top 5 employees by performance
   const topEmployees = performanceData
->>>>>>> Trupesh
     .sort((a, b) => b.performance - a.performance)
     .slice(0, 5)
     .map((emp) => ({
       name: emp.name.split(" ")[0], // Just first name for display
       performance: emp.performance,
       tasksCompleted: emp.completedTasks || 0,
-    }))
+    }));
 
   return (
     <ChartContainer
@@ -77,14 +84,18 @@ const EmployeePerformanceChart = ({ employees, tasks }) => {
           <XAxis type="number" />
           <YAxis dataKey="name" type="category" />
           <Tooltip content={<ChartTooltipContent />} />
-          <Bar dataKey="performance" fill="#3B82F6" name="Performance %" />         {/* Blue-500 */}
-          <Bar dataKey="tasksCompleted" fill="#10B981" name="Tasks Completed" />    {/* Green-500 */}
-
+          <Bar dataKey="performance" fill="#3B82F6" name="Performance %" />{" "}
+          {/* Blue-500 */}
+          <Bar
+            dataKey="tasksCompleted"
+            fill="#10B981"
+            name="Tasks Completed"
+          />{" "}
+          {/* Green-500 */}
         </BarChart>
       </ResponsiveContainer>
     </ChartContainer>
-  )
-}
+  );
+};
 
-export default EmployeePerformanceChart
-
+export default EmployeePerformanceChart;
