@@ -1,7 +1,7 @@
 "use client";
 import { useState, useEffect } from "react";
 import axios from "axios";
-import PerformanceReport from "./PerformanceReport";
+
 import EarningsReport from "./EarningsReport";
 import TaskHistory from "./TaskHistory";
 
@@ -15,7 +15,7 @@ const EmployeeDashboard = () => {
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [activeTab, setActiveTab] = useState("performance");
+  const [activeTab, setActiveTab] = useState("earnings");
 
   // ✅ Safely get employee ID on client side
   useEffect(() => {
@@ -104,16 +104,7 @@ const EmployeeDashboard = () => {
 
         {/* Tabs */}
         <div className="flex mb-6 border-b">
-          <button
-            className={`px-4 py-2 font-medium ${
-              activeTab === "performance"
-                ? "border-b-2 border-blue-500 text-blue-600"
-                : "text-gray-600 hover:text-blue-500"
-            }`}
-            onClick={() => setActiveTab("performance")}
-          >
-            Performance Report
-          </button>
+         
           <button
             className={`px-4 py-2 font-medium ${
               activeTab === "earnings"
@@ -137,9 +128,7 @@ const EmployeeDashboard = () => {
         </div>
 
         {/* Tabs Content */}
-        {activeTab === "performance" && (
-          <PerformanceReport tasks={tasks} earningsData={earningsData} />
-        )}
+       
 
         {activeTab === "earnings" && (
           <EarningsReport
