@@ -111,3 +111,50 @@ export function getAssignmentProgress(batch, io) {
 
   return result;
 }
+
+/**
+ * Updates batch state after a task is deleted
+ * @param {Object} batch - The batch object to update
+ * @param {string} taskId - The ID of the deleted task
+ * @param {string} process - The process associated with the deleted task
+ * @returns {Object} Updated batch object
+ */
+export const updateBatchAfterTaskDeletion = (batch, taskId, process) => {
+  // Create a new batch object to avoid mutating the original
+  const updatedBatch = { ...batch };
+
+  // Remove the task from the batch's tasks array if it exists
+  if (updatedBatch.tasks) {
+    updatedBatch.tasks = updatedBatch.tasks.filter(
+      (task) => task.taskId !== taskId
+    );
+  }
+
+  // Update the progress for the specific process
+  if (updatedBatch.progress && updatedBatch.progress[process] !== undefined) {
+    // If this was the last task for this process, set progress to 0
+    const remainingTasksForProcess =
+      updatedBatch.tasks?.filter((task) => task.process === process).length ||
+      0;
+
+    if (remainingTasksForProcess === 0) {
+      updatedBatch.progress[process] = 0;
+    }
+  }
+
+  // Update the batch status if needed
+  const allProcesses = Object.keys(updatedBatch.progress || {});
+  const completedProcesses = allProcesses.filter(
+    (proc) => updatedBatch.progress[proc] === 100
+  ).length;
+
+  if (completedProcesses === allProcesses.length) {
+    updatedBatch.status = "Completed";
+  } else if (completedProcesses > 0) {
+    updatedBatch.status = "In Progress";
+  } else {
+    updatedBatch.status = "Assigned";
+  }
+
+  return updatedBatch;
+};
