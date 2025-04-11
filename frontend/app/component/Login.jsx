@@ -3,6 +3,7 @@ import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { FiArrowRight, FiCheckCircle, FiLoader } from "react-icons/fi";
 import { jwtDecode } from "jwt-decode";
+import { API_URL } from "@/app/config";
 
 function LoginForm() {
   const [formData, setFormData] = useState({
@@ -57,38 +58,38 @@ function LoginForm() {
     e.preventDefault();
     setIsLoading(true);
     setError("");
-  
+
     try {
-      const response = await fetch("http://localhost:5023/api/auth/login", {
+      const response = await fetch(`${API_URL}/api/auth/login`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify(formData),
       });
-  
+
       const data = await response.json();
-  
+
       if (!response.ok) {
         throw new Error(data.message || "Authentication failed");
       }
-  
+
       setIsSuccess(true);
       const { token, result } = data;
-  
+
       // Decode token and get expiration time
       const decoded = jwtDecode(token);
       const expirationTime = decoded.exp * 1000; // Convert seconds to milliseconds
-  
+
       // Store token, expiration, employee ID, and role in localStorage
       localStorage.setItem("authToken", token);
       localStorage.setItem("authTokenExpiration", expirationTime);
       localStorage.setItem("employeeId", result._id);
       localStorage.setItem("role", decoded.role); // Store role
       localStorage.setItem("name", result.name); // Store name
-  
+
       const userRole = decoded.role;
-  
+
       setTimeout(() => {
         setIsSuccess(false);
         if (userRole === "Employee") {
@@ -102,7 +103,7 @@ function LoginForm() {
     } catch (err) {
       setError(err.message);
     }
-  
+
     setIsLoading(false);
   };
   return (
