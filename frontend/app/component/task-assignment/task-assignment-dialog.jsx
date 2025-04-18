@@ -1,4 +1,3 @@
-// TaskAssignmentDialog.jsx
 "use client";
 
 import { useState, useEffect } from "react";
@@ -40,7 +39,7 @@ export function TaskAssignmentDialog({
   useEffect(() => {
     setError("");
 
-    if (selectedBatch && selectedBatch.selectedProcesses) {
+    if (selectedBatch?.selectedProcesses) {
       setAvailableProcesses(selectedBatch.selectedProcesses);
     } else if (selectedBatch) {
       setAvailableProcesses(
@@ -61,26 +60,60 @@ export function TaskAssignmentDialog({
         );
         const data = await res.json();
 
-        const tasksForProcess = data.filter(
+        const diamondsPerProcess = selectedBatch.diamondNumber;
+        const processOrder = selectedBatch.selectedProcesses || [];
+        const currentIndex = processOrder.indexOf(selectedProcess);
+        const previousProcess =
+          currentIndex > 0 ? processOrder[currentIndex - 1] : null;
+
+        // ✅ Step 1: Ensure previous process is fully completed
+        if (previousProcess) {
+          const previousTasks = data.filter(
+            (t) => t.currentProcess === previousProcess
+          );
+
+          const diamondsWorkedInPrevious = previousTasks.reduce(
+            (sum, t) =>
+              sum +
+              (t.status === "Completed"
+                ? diamondsPerProcess
+                : t.partialDiamondNumber || 0),
+            0
+          );
+
+          if (diamondsWorkedInPrevious < diamondsPerProcess) {
+            setError(
+              `Cannot assign task for "${selectedProcess}" until "${previousProcess}" is completed for all diamonds.`
+            );
+            setMaxAllowed(0);
+            return;
+          }
+        }
+
+        // ✅ Step 2: Handle current process
+        const currentTasks = data.filter(
           (t) => t.currentProcess === selectedProcess
         );
 
-        const completedTask = tasksForProcess.find(
+        const currentCompleted = currentTasks.some(
           (t) => t.status === "Completed"
         );
-        if (completedTask) {
-          setError(`Task for ${selectedProcess} is already fully completed.`);
+        if (currentCompleted) {
+          setError(`${selectedProcess} is already fully completed.`);
           setMaxAllowed(0);
           return;
         }
 
-        const totalAssigned = tasksForProcess.reduce(
-          (sum, t) => sum + (t.partialDiamondNumber || 0),
+        const diamondsAlreadyWorked = currentTasks.reduce(
+          (sum, t) =>
+            sum +
+            (t.status === "Completed"
+              ? diamondsPerProcess
+              : t.partialDiamondNumber || 0),
           0
         );
 
-        const baseDiamondNumber = tasksForProcess[0]?.diamondNumber || 0;
-        const remaining = baseDiamondNumber - totalAssigned;
+        const remaining = diamondsPerProcess - diamondsAlreadyWorked;
 
         setNewTask((prev) => ({
           ...prev,
@@ -88,15 +121,17 @@ export function TaskAssignmentDialog({
         }));
 
         setMaxAllowed(remaining);
+
         if (remaining > 0) {
           setError(
-            `Only ${remaining} diamonds remaining for this process in this batch.`
+            `Only ${remaining} diamonds remaining for ${selectedProcess}.`
           );
         } else {
-          setError(`No diamonds remaining for this process.`);
+          setError(`No diamonds remaining for ${selectedProcess}.`);
         }
       } catch (err) {
-        console.error("Error checking remaining diamonds", err);
+        console.error("Error checking remaining diamonds:", err);
+        setError("Failed to validate task conditions.");
       }
     };
 
@@ -127,7 +162,7 @@ export function TaskAssignmentDialog({
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
-        <Button className="bg-blue-600 hover:bg-blue-700">
+        <Button className="bg-slate-900 hover:bg-slate-300 text-white hover:text-black font-semibold rounded-md shadow-sm px-4 py-2">
           Assign New Task
         </Button>
       </DialogTrigger>
