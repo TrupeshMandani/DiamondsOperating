@@ -60,6 +60,9 @@ export function TaskAssignmentDialog({
         );
         const data = await res.json();
 
+        // Handle empty object response by converting to empty array
+        const tasks = Array.isArray(data) ? data : [];
+
         const diamondsPerProcess = selectedBatch.diamondNumber;
         const processOrder = selectedBatch.selectedProcesses || [];
         const currentIndex = processOrder.indexOf(selectedProcess);
@@ -68,15 +71,15 @@ export function TaskAssignmentDialog({
 
         // ✅ Step 1: Ensure previous process is fully completed
         if (previousProcess) {
-          const previousTasks = data.filter(
-            (t) => t.currentProcess === previousProcess
+          const previousTasks = tasks.filter(
+            (t) => t.process === previousProcess
           );
 
           const diamondsWorkedInPrevious = previousTasks.reduce(
             (sum, t) =>
               sum +
               (t.status === "Completed"
-                ? diamondsPerProcess
+                ? t.diamondNumber
                 : t.partialDiamondNumber || 0),
             0
           );
@@ -91,9 +94,7 @@ export function TaskAssignmentDialog({
         }
 
         // ✅ Step 2: Handle current process
-        const currentTasks = data.filter(
-          (t) => t.currentProcess === selectedProcess
-        );
+        const currentTasks = tasks.filter((t) => t.process === selectedProcess);
 
         const currentCompleted = currentTasks.some(
           (t) => t.status === "Completed"
@@ -108,7 +109,7 @@ export function TaskAssignmentDialog({
           (sum, t) =>
             sum +
             (t.status === "Completed"
-              ? diamondsPerProcess
+              ? t.diamondNumber
               : t.partialDiamondNumber || 0),
           0
         );

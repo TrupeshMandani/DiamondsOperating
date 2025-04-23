@@ -304,8 +304,7 @@ export const assignBatchToEmployee = async (req, res) => {
       !dueDate ||
       !priority ||
       !process ||
-      rate === undefined ||
-      diamondNumber === undefined
+      rate === undefined
     ) {
       return res.status(400).json({ message: "Missing required fields" });
     }
@@ -330,15 +329,13 @@ export const assignBatchToEmployee = async (req, res) => {
       return res.status(404).json({ message: "Employee not found" });
     }
 
-    // Maintain all processes, update progress only for assigned process
-    batch.assignedEmployees.push({ employeeId, process });
-    // 🔍 Check for existing tasks for this batch + process
+    // Check for existing tasks for this batch + process
     const existingTasks = await Task.find({
       batchId: batch._id,
-      currentProcess: process,
+      process: process,
     });
 
-    // ❌ If completed task exists, block
+    // If completed task exists, block
     const completedTask = existingTasks.find((t) => t.status === "Completed");
     if (completedTask) {
       return res.status(400).json({
@@ -346,58 +343,46 @@ export const assignBatchToEmployee = async (req, res) => {
       });
     }
 
-    // ✅ If partially completed, calculate remaining diamonds
+    // If partially completed, calculate remaining diamonds
     const partialTask = existingTasks.find(
       (t) => t.status === "Partially Completed"
     );
+    let remainingDiamonds = batch.diamondNumber;
+
     if (partialTask) {
-      const remaining =
-        partialTask.diamondNumber - (partialTask.partialDiamondNumber || 0);
-      if (diamondNumber > remaining) {
-        return res.status(400).json({
-          message: `Only ${remaining} diamonds remaining for this process.`,
-        });
-      }
+      remainingDiamonds =
+        batch.diamondNumber - partialTask.partialDiamondNumber;
     }
 
-    // Create the task
-    const numericRate = Number(rate);
-    const numericDiamondNumber = Number(diamondNumber);
-    const taskearnings = numericRate * numericDiamondNumber;
+    // Calculate task earnings
+    const taskEarnings = remainingDiamonds * rate;
 
-    const task = new Task({
+    // Create new task with all required fields
+    const newTask = new Task({
       batchId: batch._id,
       batchTitle: batch.batchId,
-      employeeId: employee._id,
+      employeeId,
       employeeName: `${employee.firstName} ${employee.lastName}`,
-      currentProcess: process,
       description,
       dueDate,
       priority,
-      diamondNumber: numericDiamondNumber,
       status: status || "Pending",
+      process,
+      currentProcess: process,
+      rate,
+      diamondNumber: remainingDiamonds,
+      taskEarnings,
       assignedDate: new Date(),
-      rate: numericRate,
-      taskEarnings: taskearnings,
     });
 
-    const savedTask = await task.save();
-    console.log("Saved task:", savedTask);
+    await newTask.save();
 
-    // Get all tasks for this batch
-    const allTasks = await Task.find({ batchId: batch._id });
-
-    // Check if all processes have assigned tasks
-    const allProcessesAssigned = batch.currentProcess.every((process) =>
-      allTasks.some((task) => task.currentProcess === process)
-    );
-
-    // Update batch status based on task assignments
-    batch.status = allProcessesAssigned ? "Assigned" : "Pending";
-
+    // Update batch status
+    batch.status = "Assigned";
+    batch.assignedEmployees.push({ employeeId, process });
     await batch.save();
 
-    // 🔔 Send Email Notification to Employee
+    // Send email notification
     await sendEmail({
       to: employee.email,
       subject: "New Task Assigned",
@@ -415,21 +400,21 @@ Thanks,
 Diamond Management System`,
     });
 
-    // Emit WebSocket event
-    req.io.emit("taskAssigned", {
-      message: "A new task has been assigned!",
-      task: savedTask,
-    });
+    // Send real-time update
+    if (req.io) {
+      req.io.emit("taskAssigned", newTask);
+    }
 
-    res.status(200).json({
-      message: "Batch assigned & task created successfully",
-      task: savedTask,
+    res.status(201).json({
+      message: "Task assigned successfully",
+      task: newTask,
     });
   } catch (error) {
-    console.error("Error assigning batch:", error.message);
-    res
-      .status(500)
-      .json({ message: "Error assigning batch", error: error.message });
+    console.error("Error assigning task:", error);
+    res.status(500).json({
+      message: "Error assigning task",
+      error: error.message,
+    });
   }
 };
 
@@ -464,6 +449,4 @@ export const getTasksForEmployee = async (req, res) => {
   }
 };
 
-
-// Update task status 
-
+// Update task status
