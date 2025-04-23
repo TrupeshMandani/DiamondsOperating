@@ -9,17 +9,29 @@ export default function BatchReport() {
   const [selectedBatchId, setSelectedBatchId] = useState(null);
   const [batchData, setBatchData] = useState(null);
   const [tasks, setTasks] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     const fetchRecentBatches = async () => {
-      const res = await fetch("http://localhost:5023/api/batches");
-      const data = await res.json();
-      const recent = data
-        .sort((a, b) => new Date(b.currentDate) - new Date(a.currentDate))
-        .slice(0, 10);
-      setBatchList(recent);
-      if (recent.length > 0) {
-        setSelectedBatchId(recent[0].batchId);
+      try {
+        setLoading(true);
+        setError(null);
+        const res = await fetch("http://localhost:5023/api/batches");
+        if (!res.ok) throw new Error("Failed to fetch batches");
+        const data = await res.json();
+        const recent = data
+          .sort((a, b) => new Date(b.currentDate) - new Date(a.currentDate))
+          .slice(0, 10);
+        setBatchList(recent || []);
+        if (recent.length > 0) {
+          setSelectedBatchId(recent[0].batchId);
+        }
+      } catch (err) {
+        setError("Failed to load batches. Please try again later.");
+        setBatchList([]);
+      } finally {
+        setLoading(false);
       }
     };
     fetchRecentBatches();
@@ -29,19 +41,35 @@ export default function BatchReport() {
     if (!selectedBatchId) return;
 
     const fetchBatch = async () => {
-      const res = await fetch(
-        `http://localhost:5023/api/batches/${selectedBatchId}`
-      );
-      const data = await res.json();
-      setBatchData(data);
+      try {
+        setLoading(true);
+        setError(null);
+        const res = await fetch(
+          `http://localhost:5023/api/batches/${selectedBatchId}`
+        );
+        if (!res.ok) throw new Error("Failed to fetch batch data");
+        const data = await res.json();
+        setBatchData(data);
+      } catch (err) {
+        setError("Failed to load batch data. Please try again later.");
+        setBatchData(null);
+      } finally {
+        setLoading(false);
+      }
     };
 
     const fetchTasks = async () => {
-      const res = await fetch(
-        `http://localhost:5023/api/tasks/title/${selectedBatchId}`
-      );
-      const taskData = await res.json();
-      setTasks(taskData);
+      try {
+        const res = await fetch(
+          `http://localhost:5023/api/tasks/title/${selectedBatchId}`
+        );
+        if (!res.ok) throw new Error("Failed to fetch tasks");
+        const taskData = await res.json();
+        setTasks(taskData || []);
+      } catch (err) {
+        setError("Failed to load tasks. Please try again later.");
+        setTasks([]);
+      }
     };
 
     fetchBatch();
@@ -91,7 +119,7 @@ export default function BatchReport() {
           value={selectedBatchId || ""}
           onChange={(e) => setSelectedBatchId(e.target.value)}
         >
-          {batchList.map((batch) => (
+          {batchList?.map((batch) => (
             <option key={batch._id} value={batch.batchId}>
               {batch.batchId} –{" "}
               {new Date(batch.currentDate).toLocaleDateString()}
@@ -157,7 +185,7 @@ export default function BatchReport() {
                     </div>
                   </td>
                   <td className="border px-4 py-2">
-                    {Object.entries(batchData.progress || {}).map(
+                    {Object.entries(batchData?.progress || {}).map(
                       ([process, percent]) => (
                         <div key={process}>
                           {process}: {percent}%
@@ -166,7 +194,7 @@ export default function BatchReport() {
                     )}
                   </td>
                   <td className="border px-4 py-2">
-                    {batchData.assignedEmployees?.map((emp, i) => (
+                    {batchData?.assignedEmployees?.map((emp, i) => (
                       <div key={i}>
                         {emp.employeeId} – {emp.process}
                       </div>
@@ -203,7 +231,7 @@ export default function BatchReport() {
                   </tr>
                 </thead>
                 <tbody>
-                  {tasks.map((task) => (
+                  {tasks?.map((task) => (
                     <tr key={task._id} className="hover:bg-gray-50">
                       <td className="border px-4 py-2">
                         {task.currentProcess}
