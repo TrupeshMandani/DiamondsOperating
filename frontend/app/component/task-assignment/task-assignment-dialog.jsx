@@ -56,7 +56,7 @@ export function TaskAssignmentDialog({
 
       try {
         const res = await fetch(
-          `http://localhost:5023/api/tasks/title/${selectedBatch.batchId}`
+          `https://diamondsoperating.onrender.com/api/tasks/title/${selectedBatch.batchId}`
         );
         const data = await res.json();
 

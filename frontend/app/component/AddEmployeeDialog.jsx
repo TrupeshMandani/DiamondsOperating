@@ -1,6 +1,6 @@
-"use client"
+"use client";
 
-import { useState } from "react"
+import { useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -8,14 +8,20 @@ import {
   DialogHeader,
   DialogTitle,
   DialogFooter,
-} from "@/components/ui/dialog"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Plus, X } from "lucide-react"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Badge } from "@/components/ui/badge"
-import { ScrollArea } from "@/components/ui/scroll-area"
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Plus, X } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 const SKILLS_OPTIONS = [
   "Diamond Cutting",
@@ -27,7 +33,7 @@ const SKILLS_OPTIONS = [
   "Logistics",
   "Customer Service",
   "Others",
-]
+];
 
 export const AddEmployeeDialog = ({ isOpen, onClose, onAddEmployee }) => {
   const [newEmployee, setNewEmployee] = useState({
@@ -38,77 +44,80 @@ export const AddEmployeeDialog = ({ isOpen, onClose, onAddEmployee }) => {
     address: "",
     dateOfBirth: "",
     skills: [],
-  })
+  });
 
-  const [errors, setErrors] = useState({})
-  const [isSubmitting, setIsSubmitting] = useState(false)
-  const [feedback, setFeedback] = useState({ type: "", message: "" })
+  const [errors, setErrors] = useState({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [feedback, setFeedback] = useState({ type: "", message: "" });
 
   const validateEmail = (email) => {
-    const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-    return re.test(String(email).toLowerCase())
-  }
+    const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return re.test(String(email).toLowerCase());
+  };
 
   const validatePhoneNumber = (phoneNumber) => {
-    const re = /^\d{10}$/ // Assuming a 10-digit phone number
-    return re.test(String(phoneNumber))
-  }
+    const re = /^\d{10}$/; // Assuming a 10-digit phone number
+    return re.test(String(phoneNumber));
+  };
 
   const validateForm = () => {
-    const newErrors = {}
+    const newErrors = {};
 
-    if (!newEmployee.firstName.trim()) newErrors.firstName = "First name is required"
-    if (!newEmployee.lastName.trim()) newErrors.lastName = "Last name is required"
+    if (!newEmployee.firstName.trim())
+      newErrors.firstName = "First name is required";
+    if (!newEmployee.lastName.trim())
+      newErrors.lastName = "Last name is required";
 
     if (!newEmployee.email.trim()) {
-      newErrors.email = "Email is required"
+      newErrors.email = "Email is required";
     } else if (!validateEmail(newEmployee.email)) {
-      newErrors.email = "Invalid email format"
+      newErrors.email = "Invalid email format";
     }
 
     if (!newEmployee.phoneNumber.trim()) {
-      newErrors.phoneNumber = "Phone number is required"
+      newErrors.phoneNumber = "Phone number is required";
     } else if (!validatePhoneNumber(newEmployee.phoneNumber)) {
-      newErrors.phoneNumber = "Invalid phone number format (10 digits)"
+      newErrors.phoneNumber = "Invalid phone number format (10 digits)";
     }
 
-    if (!newEmployee.address.trim()) newErrors.address = "Address is required"
-    if (!newEmployee.dateOfBirth) newErrors.dateOfBirth = "Date of birth is required"
+    if (!newEmployee.address.trim()) newErrors.address = "Address is required";
+    if (!newEmployee.dateOfBirth)
+      newErrors.dateOfBirth = "Date of birth is required";
 
-    setErrors(newErrors)
-    return Object.keys(newErrors).length === 0
-  }
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
 
   const handleInputChange = (field, value) => {
     setNewEmployee((prev) => ({
       ...prev,
       [field]: value,
-    }))
+    }));
 
     // Clear error for this field when user types
     if (errors[field]) {
       setErrors((prev) => ({
         ...prev,
         [field]: undefined,
-      }))
+      }));
     }
-  }
+  };
 
   const handleAddSkill = (skill) => {
     if (!newEmployee.skills.includes(skill)) {
       setNewEmployee((prev) => ({
         ...prev,
         skills: [...prev.skills, skill],
-      }))
+      }));
     }
-  }
+  };
 
   const handleRemoveSkill = (skill) => {
     setNewEmployee((prev) => ({
       ...prev,
       skills: prev.skills.filter((s) => s !== skill),
-    }))
-  }
+    }));
+  };
 
   const resetForm = () => {
     setNewEmployee({
@@ -119,17 +128,20 @@ export const AddEmployeeDialog = ({ isOpen, onClose, onAddEmployee }) => {
       address: "",
       dateOfBirth: "",
       skills: [],
-    })
-    setErrors({})
-  }
+    });
+    setErrors({});
+  };
 
   const handleAddEmployee = async () => {
     if (!validateForm()) {
-      setFeedback({ type: "error", message: "Please correct the errors in the form." })
-      return
+      setFeedback({
+        type: "error",
+        message: "Please correct the errors in the form.",
+      });
+      return;
     }
 
-    setIsSubmitting(true)
+    setIsSubmitting(true);
 
     const employeeData = {
       firstName: newEmployee.firstName,
@@ -139,47 +151,58 @@ export const AddEmployeeDialog = ({ isOpen, onClose, onAddEmployee }) => {
       phoneNumber: newEmployee.phoneNumber,
       address: newEmployee.address,
       skills: newEmployee.skills,
-    }
+    };
 
     try {
-      const response = await fetch("http://localhost:5023/api/employees", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(employeeData),
-      })
+      const response = await fetch(
+        "https://diamondsoperating.onrender.com/api/employees",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(employeeData),
+        }
+      );
 
       if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.message || `Failed: ${response.statusText}`)
+        const errorData = await response.json();
+        throw new Error(errorData.message || `Failed: ${response.statusText}`);
       }
 
-      const addedEmployee = await response.json()
+      const addedEmployee = await response.json();
 
-      setFeedback({ type: "success", message: "Employee added successfully!" })
-      onAddEmployee(addedEmployee)
-      resetForm()
-      onClose()
+      setFeedback({ type: "success", message: "Employee added successfully!" });
+      onAddEmployee(addedEmployee);
+      resetForm();
+      onClose();
     } catch (error) {
-      console.error("Error adding employee:", error)
-      setFeedback({ type: "error", message: error instanceof Error ? error.message : "Failed to add employee" })
+      console.error("Error adding employee:", error);
+      setFeedback({
+        type: "error",
+        message:
+          error instanceof Error ? error.message : "Failed to add employee",
+      });
     } finally {
-      setIsSubmitting(false)
+      setIsSubmitting(false);
     }
-  }
+  };
 
   return (
     <Dialog
       open={isOpen}
       onOpenChange={(open) => {
         if (!open) {
-          onClose()
+          onClose();
         }
       }}
     >
       <DialogContent className="sm:max-w-[550px] bg-white rounded-xl border border-[#e2f0f9] p-0 overflow-hidden">
         <DialogHeader className="p-6 pb-2 bg-gradient-to-r from-[#f0f7ff] to-white">
-          <DialogTitle className="text-[#1a2b42] text-xl font-semibold">Add New Employee</DialogTitle>
-          <DialogDescription className="text-[#5a6a7e]">Enter the details of the new employee below</DialogDescription>
+          <DialogTitle className="text-[#1a2b42] text-xl font-semibold">
+            Add New Employee
+          </DialogTitle>
+          <DialogDescription className="text-[#5a6a7e]">
+            Enter the details of the new employee below
+          </DialogDescription>
         </DialogHeader>
 
         <ScrollArea className="max-h-[70vh] px-6 py-4">
@@ -193,10 +216,18 @@ export const AddEmployeeDialog = ({ isOpen, onClose, onAddEmployee }) => {
                   id="firstName"
                   placeholder="First name"
                   value={newEmployee.firstName}
-                  className={`border-[#e2f0f9] focus:border-[#64b5f6] focus:ring-[#64b5f6] ${errors.firstName ? "border-red-500" : ""}`}
-                  onChange={(e) => handleInputChange("firstName", e.target.value)}
+                  className={`border-[#e2f0f9] focus:border-[#64b5f6] focus:ring-[#64b5f6] ${
+                    errors.firstName ? "border-red-500" : ""
+                  }`}
+                  onChange={(e) =>
+                    handleInputChange("firstName", e.target.value)
+                  }
                 />
-                {errors.firstName && <span className="text-red-500 text-sm">{errors.firstName}</span>}
+                {errors.firstName && (
+                  <span className="text-red-500 text-sm">
+                    {errors.firstName}
+                  </span>
+                )}
               </div>
               <div className="grid gap-2">
                 <Label htmlFor="lastName" className="text-[#5a6a7e]">
@@ -206,10 +237,18 @@ export const AddEmployeeDialog = ({ isOpen, onClose, onAddEmployee }) => {
                   id="lastName"
                   placeholder="Last name"
                   value={newEmployee.lastName}
-                  className={`border-[#e2f0f9] focus:border-[#64b5f6] focus:ring-[#64b5f6] ${errors.lastName ? "border-red-500" : ""}`}
-                  onChange={(e) => handleInputChange("lastName", e.target.value)}
+                  className={`border-[#e2f0f9] focus:border-[#64b5f6] focus:ring-[#64b5f6] ${
+                    errors.lastName ? "border-red-500" : ""
+                  }`}
+                  onChange={(e) =>
+                    handleInputChange("lastName", e.target.value)
+                  }
                 />
-                {errors.lastName && <span className="text-red-500 text-sm">{errors.lastName}</span>}
+                {errors.lastName && (
+                  <span className="text-red-500 text-sm">
+                    {errors.lastName}
+                  </span>
+                )}
               </div>
             </div>
 
@@ -222,10 +261,14 @@ export const AddEmployeeDialog = ({ isOpen, onClose, onAddEmployee }) => {
                 type="email"
                 placeholder="Enter email address"
                 value={newEmployee.email}
-                className={`border-[#e2f0f9] focus:border-[#64b5f6] focus:ring-[#64b5f6] ${errors.email ? "border-red-500" : ""}`}
+                className={`border-[#e2f0f9] focus:border-[#64b5f6] focus:ring-[#64b5f6] ${
+                  errors.email ? "border-red-500" : ""
+                }`}
                 onChange={(e) => handleInputChange("email", e.target.value)}
               />
-              {errors.email && <span className="text-red-500 text-sm">{errors.email}</span>}
+              {errors.email && (
+                <span className="text-red-500 text-sm">{errors.email}</span>
+              )}
             </div>
 
             <div className="grid gap-2">
@@ -236,10 +279,18 @@ export const AddEmployeeDialog = ({ isOpen, onClose, onAddEmployee }) => {
                 id="phone"
                 placeholder="Enter 10-digit phone number"
                 value={newEmployee.phoneNumber}
-                className={`border-[#e2f0f9] focus:border-[#64b5f6] focus:ring-[#64b5f6] ${errors.phoneNumber ? "border-red-500" : ""}`}
-                onChange={(e) => handleInputChange("phoneNumber", e.target.value)}
+                className={`border-[#e2f0f9] focus:border-[#64b5f6] focus:ring-[#64b5f6] ${
+                  errors.phoneNumber ? "border-red-500" : ""
+                }`}
+                onChange={(e) =>
+                  handleInputChange("phoneNumber", e.target.value)
+                }
               />
-              {errors.phoneNumber && <span className="text-red-500 text-sm">{errors.phoneNumber}</span>}
+              {errors.phoneNumber && (
+                <span className="text-red-500 text-sm">
+                  {errors.phoneNumber}
+                </span>
+              )}
             </div>
 
             <div className="grid gap-2">
@@ -250,10 +301,14 @@ export const AddEmployeeDialog = ({ isOpen, onClose, onAddEmployee }) => {
                 id="address"
                 placeholder="Enter address"
                 value={newEmployee.address}
-                className={`border-[#e2f0f9] focus:border-[#64b5f6] focus:ring-[#64b5f6] ${errors.address ? "border-red-500" : ""}`}
+                className={`border-[#e2f0f9] focus:border-[#64b5f6] focus:ring-[#64b5f6] ${
+                  errors.address ? "border-red-500" : ""
+                }`}
                 onChange={(e) => handleInputChange("address", e.target.value)}
               />
-              {errors.address && <span className="text-red-500 text-sm">{errors.address}</span>}
+              {errors.address && (
+                <span className="text-red-500 text-sm">{errors.address}</span>
+              )}
             </div>
 
             <div className="grid gap-2">
@@ -264,10 +319,18 @@ export const AddEmployeeDialog = ({ isOpen, onClose, onAddEmployee }) => {
                 id="dateOfBirth"
                 type="date"
                 value={newEmployee.dateOfBirth}
-                className={`border-[#e2f0f9] focus:border-[#64b5f6] focus:ring-[#64b5f6] ${errors.dateOfBirth ? "border-red-500" : ""}`}
-                onChange={(e) => handleInputChange("dateOfBirth", e.target.value)}
+                className={`border-[#e2f0f9] focus:border-[#64b5f6] focus:ring-[#64b5f6] ${
+                  errors.dateOfBirth ? "border-red-500" : ""
+                }`}
+                onChange={(e) =>
+                  handleInputChange("dateOfBirth", e.target.value)
+                }
               />
-              {errors.dateOfBirth && <span className="text-red-500 text-sm">{errors.dateOfBirth}</span>}
+              {errors.dateOfBirth && (
+                <span className="text-red-500 text-sm">
+                  {errors.dateOfBirth}
+                </span>
+              )}
             </div>
 
             <div className="grid gap-2">
@@ -280,7 +343,11 @@ export const AddEmployeeDialog = ({ isOpen, onClose, onAddEmployee }) => {
                 </SelectTrigger>
                 <SelectContent className="bg-white border border-[#e2f0f9] rounded-lg shadow-sm  text-black">
                   {SKILLS_OPTIONS.map((skill) => (
-                    <SelectItem key={skill} value={skill} disabled={newEmployee.skills.includes(skill)}>
+                    <SelectItem
+                      key={skill}
+                      value={skill}
+                      disabled={newEmployee.skills.includes(skill)}
+                    >
                       {skill}
                     </SelectItem>
                   ))}
@@ -289,10 +356,15 @@ export const AddEmployeeDialog = ({ isOpen, onClose, onAddEmployee }) => {
 
               <div className="flex flex-wrap gap-2 mt-2">
                 {newEmployee.skills.length === 0 ? (
-                  <p className="text-sm text-[#5a6a7e] italic">No skills selected</p>
+                  <p className="text-sm text-[#5a6a7e] italic">
+                    No skills selected
+                  </p>
                 ) : (
                   newEmployee.skills.map((skill) => (
-                    <Badge key={skill} className="bg-[#e2f0f9] text-[#236294] hover:bg-[#d0e5f5]">
+                    <Badge
+                      key={skill}
+                      className="bg-[#e2f0f9] text-[#236294] hover:bg-[#d0e5f5]"
+                    >
                       {skill}
                       <button
                         onClick={() => handleRemoveSkill(skill)}
@@ -359,17 +431,24 @@ export const AddEmployeeDialog = ({ isOpen, onClose, onAddEmployee }) => {
       </DialogContent>
 
       {/* Feedback Dialog */}
-      <Dialog open={!!feedback.message} onOpenChange={() => setFeedback({ type: "", message: "" })}>
+      <Dialog
+        open={!!feedback.message}
+        onOpenChange={() => setFeedback({ type: "", message: "" })}
+      >
         <DialogContent className=" bg-white text-black sm:max-w-[425px]">
           <DialogHeader>
-            <DialogTitle>{feedback.type === "error" ? "Error" : "Success"}</DialogTitle>
+            <DialogTitle>
+              {feedback.type === "error" ? "Error" : "Success"}
+            </DialogTitle>
           </DialogHeader>
           <div className="text-sm text-gray-600">{feedback.message}</div>
           <DialogFooter>
-            <Button onClick={() => setFeedback({ type: "", message: "" })}>Close</Button>
+            <Button onClick={() => setFeedback({ type: "", message: "" })}>
+              Close
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
     </Dialog>
-  )
-}
+  );
+};

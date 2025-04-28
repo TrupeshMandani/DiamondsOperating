@@ -119,7 +119,7 @@ export function useTaskManagement(
       console.log(`Fetching tasks for batch: ${batchId}`);
 
       const response = await fetch(
-        `http://localhost:5023/api/batches/${batchId}/tasks`
+        `https://diamondsoperating.onrender.com/api/batches/${batchId}/tasks`
       );
 
       if (!response.ok) {
@@ -216,11 +216,14 @@ export function useTaskManagement(
 
       console.log("Sending Task Data:", taskData);
 
-      const response = await fetch("http://localhost:5023/api/batches/assign", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(taskData),
-      });
+      const response = await fetch(
+        "https://diamondsoperating.onrender.com/api/batches/assign",
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(taskData),
+        }
+      );
 
       if (!response.ok) {
         const errorText = await response.text();
@@ -307,7 +310,7 @@ export function useTaskManagement(
   const fetchEmployeeDetails = async (employeeId) => {
     try {
       const response = await fetch(
-        `http://localhost:5023/api/employees/id/${employeeId}`
+        `https://diamondsoperating.onrender.com/api/employees/id/${employeeId}`
       );
       if (!response.ok) {
         throw new Error("Failed to fetch employee details");
@@ -351,7 +354,7 @@ export function useTaskManagement(
       if (!token) throw new Error("No authentication token found");
 
       const response = await fetch(
-        `http://localhost:5023/api/tasks/${taskId}`,
+        `https://diamondsoperating.onrender.com/api/tasks/${taskId}`,
         {
           method: "DELETE",
           headers: {

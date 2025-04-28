@@ -25,7 +25,7 @@ const EmpProfile = () => {
         if (!id) return console.error("Employee ID not found in localStorage.");
 
         const response = await axios.get(
-          `http://localhost:5023/api/employees/id/${id}`
+          `https://diamondsoperating.onrender.com/api/employees/id/${id}`
         );
         const data = response.data;
 
@@ -55,7 +55,10 @@ const EmpProfile = () => {
   const handleSave = async () => {
     try {
       const id = employee._id;
-      await axios.put(`http://localhost:5023/api/employees/${id}`, form);
+      await axios.put(
+        `https://diamondsoperating.onrender.com/api/employees/${id}`,
+        form
+      );
 
       setEmployee((prev) => ({ ...prev, ...form }));
       setIsEditing(false);

@@ -57,7 +57,7 @@ const EmpTaskCard = ({ task, status, updateTaskStatus }) => {
       const token = localStorage.getItem("authToken");
 
       const response = await fetch(
-        `http://localhost:5023/api/tasks/${task._id}/update-status`,
+        `https://diamondsoperating.onrender.com/api/tasks/${task._id}/update-status`,
         {
           method: "PUT",
           headers: {

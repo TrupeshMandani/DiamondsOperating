@@ -1,6 +1,11 @@
 "use client";
 import { useState } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Button } from "./ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -22,7 +27,11 @@ export const UpdatePasswordModal = ({ employee, onClose }) => {
     setError("");
     setSuccess("");
 
-    if (!passwordData.oldPassword || !passwordData.newPassword || !passwordData.confirmPassword) {
+    if (
+      !passwordData.oldPassword ||
+      !passwordData.newPassword ||
+      !passwordData.confirmPassword
+    ) {
       setError("All fields are required.");
       return;
     }
@@ -40,15 +49,18 @@ export const UpdatePasswordModal = ({ employee, onClose }) => {
     try {
       setLoading(true);
 
-      const response = await fetch("http://localhost:5023/api/auth/update-password", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          email: employee.email,
-          oldPassword: passwordData.oldPassword,
-          newPassword: passwordData.newPassword,
-        }),
-      });
+      const response = await fetch(
+        "https://diamondsoperating.onrender.com/api/auth/update-password",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            email: employee.email,
+            oldPassword: passwordData.oldPassword,
+            newPassword: passwordData.newPassword,
+          }),
+        }
+      );
 
       if (!response.ok) {
         const errorResponse = await response.json();
@@ -56,7 +68,11 @@ export const UpdatePasswordModal = ({ employee, onClose }) => {
       }
 
       setSuccess("Password updated successfully!");
-      setPasswordData({ oldPassword: "", newPassword: "", confirmPassword: "" });
+      setPasswordData({
+        oldPassword: "",
+        newPassword: "",
+        confirmPassword: "",
+      });
       setTimeout(onClose, 2000); // Close modal after success
     } catch (error) {
       setError(error.message);
@@ -84,7 +100,12 @@ export const UpdatePasswordModal = ({ employee, onClose }) => {
               type="password"
               placeholder="Enter old password"
               value={passwordData.oldPassword}
-              onChange={(e) => setPasswordData({ ...passwordData, oldPassword: e.target.value })}
+              onChange={(e) =>
+                setPasswordData({
+                  ...passwordData,
+                  oldPassword: e.target.value,
+                })
+              }
               className="border-[#e2f0f9] focus:border-[#64b5f6] focus:ring-[#64b5f6]"
               disabled={loading}
             />
@@ -96,7 +117,12 @@ export const UpdatePasswordModal = ({ employee, onClose }) => {
               type="password"
               placeholder="Enter new password"
               value={passwordData.newPassword}
-              onChange={(e) => setPasswordData({ ...passwordData, newPassword: e.target.value })}
+              onChange={(e) =>
+                setPasswordData({
+                  ...passwordData,
+                  newPassword: e.target.value,
+                })
+              }
               className="border-[#e2f0f9] focus:border-[#64b5f6] focus:ring-[#64b5f6]"
               disabled={loading}
             />
@@ -108,7 +134,12 @@ export const UpdatePasswordModal = ({ employee, onClose }) => {
               type="password"
               placeholder="Confirm new password"
               value={passwordData.confirmPassword}
-              onChange={(e) => setPasswordData({ ...passwordData, confirmPassword: e.target.value })}
+              onChange={(e) =>
+                setPasswordData({
+                  ...passwordData,
+                  confirmPassword: e.target.value,
+                })
+              }
               className="border-[#e2f0f9] focus:border-[#64b5f6] focus:ring-[#64b5f6]"
               disabled={loading}
             />
@@ -126,7 +157,9 @@ export const UpdatePasswordModal = ({ employee, onClose }) => {
           </Button>
 
           <Button
-            className={`bg-[#4caf50] text-white hover:bg-[#43a047] ${loading || error ? "opacity-50 cursor-not-allowed" : ""}`}
+            className={`bg-[#4caf50] text-white hover:bg-[#43a047] ${
+              loading || error ? "opacity-50 cursor-not-allowed" : ""
+            }`}
             onClick={handleUpdatePassword}
             disabled={loading || error}
           >

@@ -17,7 +17,9 @@ export default function BatchReport() {
       try {
         setLoading(true);
         setError(null);
-        const res = await fetch("http://localhost:5023/api/batches");
+        const res = await fetch(
+          "https://diamondsoperating.onrender.com/api/batches"
+        );
         if (!res.ok) throw new Error("Failed to fetch batches");
         const data = await res.json();
         const recent = data
@@ -45,7 +47,7 @@ export default function BatchReport() {
         setLoading(true);
         setError(null);
         const res = await fetch(
-          `http://localhost:5023/api/batches/${selectedBatchId}`
+          `https://diamondsoperating.onrender.com/api/batches/${selectedBatchId}`
         );
         if (!res.ok) throw new Error("Failed to fetch batch data");
         const data = await res.json();
@@ -61,7 +63,7 @@ export default function BatchReport() {
     const fetchTasks = async () => {
       try {
         const res = await fetch(
-          `http://localhost:5023/api/tasks/title/${selectedBatchId}`
+          `https://diamondsoperating.onrender.com/api/tasks/title/${selectedBatchId}`
         );
         if (!res.ok) throw new Error("Failed to fetch tasks");
         const taskData = await res.json();

@@ -76,7 +76,10 @@ export default function BatchCreationForm() {
     };
 
     try {
-      await axios.post("http://localhost:5023/api/batches/create", payload);
+      await axios.post(
+        "https://diamondsoperating.onrender.com/api/batches/create",
+        payload
+      );
       toast.success("Batch Created Successfully!");
       alert("Batch Created successfully");
     } catch (error) {
@@ -125,11 +128,21 @@ export default function BatchCreationForm() {
                       <SelectValue placeholder="Select Material Type" />
                     </SelectTrigger>
                     <SelectContent className="z-50 text-black bg-white">
-                      <SelectItem value="Rough Diamond">Rough Diamond</SelectItem>
-                      <SelectItem value="Graphite Powder">Graphite Powder</SelectItem>
-                      <SelectItem value="Diamond Paste">Diamond Paste</SelectItem>
-                      <SelectItem value="Diamond Blades">Diamond Blades</SelectItem>
-                      <SelectItem value="Cutting Fluids">Cutting Fluids</SelectItem>
+                      <SelectItem value="Rough Diamond">
+                        Rough Diamond
+                      </SelectItem>
+                      <SelectItem value="Graphite Powder">
+                        Graphite Powder
+                      </SelectItem>
+                      <SelectItem value="Diamond Paste">
+                        Diamond Paste
+                      </SelectItem>
+                      <SelectItem value="Diamond Blades">
+                        Diamond Blades
+                      </SelectItem>
+                      <SelectItem value="Cutting Fluids">
+                        Cutting Fluids
+                      </SelectItem>
                     </SelectContent>
                   </Select>
                 </div>

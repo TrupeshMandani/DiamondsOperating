@@ -29,7 +29,7 @@ export default function BatchCard({ batch, onSelect, category }) {
         setLoading(true);
         try {
           const response = await fetch(
-            `http://localhost:5023/api/tasks/title/${encodeURIComponent(
+            `https://diamondsoperating.onrender.com/api/tasks/title/${encodeURIComponent(
               batch.batchId
             )}`
           );

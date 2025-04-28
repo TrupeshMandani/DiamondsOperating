@@ -27,7 +27,7 @@ import { useTaskManagement } from "./use-task-management";
 import { useBatchManagement } from "./use-batch-management";
 
 const PROCESS_TYPES = ["Sarin", "Stitching", "4P Cutting"];
-const socket = io("http://localhost:5023");
+const socket = io("https://diamondsoperating.onrender.com");
 const ITEMS_PER_PAGE = 6;
 
 export default function TaskAssignment({ selectedBatchId }) {
@@ -132,7 +132,7 @@ export default function TaskAssignment({ selectedBatchId }) {
       if (!token) throw new Error("No authentication token found");
 
       const response = await fetch(
-        `http://localhost:5023/api/tasks/${taskId}`,
+        `https://diamondsoperating.onrender.com/api/tasks/${taskId}`,
         {
           method: "DELETE",
           headers: {

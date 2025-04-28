@@ -23,7 +23,9 @@ const EmployeeReport = () => {
   useEffect(() => {
     const fetchEmployees = async () => {
       try {
-        const res = await fetch("http://localhost:5023/api/employees");
+        const res = await fetch(
+          "https://diamondsoperating.onrender.com/api/employees"
+        );
         if (!res.ok) throw new Error("Failed to fetch employees");
         const data = await res.json();
         setEmployees(data);
@@ -43,7 +45,7 @@ const EmployeeReport = () => {
         setLoading(true);
         setError("");
         const res = await fetch(
-          `http://localhost:5023/api/employees/${selectedEmpId}/tasks`
+          `https://diamondsoperating.onrender.com/api/employees/${selectedEmpId}/tasks`
         );
         if (!res.ok) throw new Error("Failed to fetch tasks");
         const data = await res.json();

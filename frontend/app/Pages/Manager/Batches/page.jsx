@@ -7,7 +7,7 @@ import TaskAssignment from "../../../component/task-assignment/task-assignment";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 // Initialize socket connection
-const socket = io("http://localhost:5023");
+const socket = io("https://diamondsoperating.onrender.com");
 
 export default function BatchesPage() {
   const [batches, setBatches] = useState([]);
@@ -20,7 +20,9 @@ export default function BatchesPage() {
     const fetchBatches = async () => {
       try {
         setLoading(true);
-        const response = await fetch("http://localhost:5023/api/batches");
+        const response = await fetch(
+          "https://diamondsoperating.onrender.com/api/batches"
+        );
 
         if (!response.ok) {
           throw new Error("Failed to fetch batches");

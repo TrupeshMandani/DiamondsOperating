@@ -13,10 +13,14 @@ const QRCodeBatch = ({ batchId }) => {
       return;
     }
 
-    fetch(`http://localhost:5023/api/batches/${batchId}/generate-label`)
+    fetch(
+      `https://diamondsoperating.onrender.com/api/batches/${batchId}/generate-label`
+    )
       .then((res) => {
         if (!res.ok) {
-          throw new Error(`Failed to fetch QR code: ${res.status} ${res.statusText}`);
+          throw new Error(
+            `Failed to fetch QR code: ${res.status} ${res.statusText}`
+          );
         }
         return res.json();
       })

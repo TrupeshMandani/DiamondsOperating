@@ -20,7 +20,9 @@ const Dashboard = () => {
   // Fetch batch data
   const fetchBatches = async () => {
     try {
-      const response = await fetch("http://localhost:5023/api/batches");
+      const response = await fetch(
+        "https://diamondsoperating.onrender.com/api/batches"
+      );
       if (!response.ok) throw new Error("Failed to fetch batches");
 
       const data = await response.json();

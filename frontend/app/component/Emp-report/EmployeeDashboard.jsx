@@ -34,14 +34,14 @@ const EmployeeDashboard = () => {
 
         // Fetch tasks
         const tasksResponse = await axios.get(
-          `http://localhost:5023/api/employees/${employeeId}/tasks`
+          `https://diamondsoperating.onrender.com/api/employees/${employeeId}/tasks`
         );
         const tasksData = tasksResponse.data;
         setTasks(tasksData);
 
         // Fetch earnings
         const earningsResponse = await axios.get(
-          `http://localhost:5023/api/earnings/${employeeId}`
+          `https://diamondsoperating.onrender.com/api/earnings/${employeeId}`
         );
         const earningsData = earningsResponse.data?.monthlyEarnings;
 
@@ -104,7 +104,6 @@ const EmployeeDashboard = () => {
 
         {/* Tabs */}
         <div className="flex mb-6 border-b">
-         
           <button
             className={`px-4 py-2 font-medium ${
               activeTab === "earnings"
@@ -128,7 +127,6 @@ const EmployeeDashboard = () => {
         </div>
 
         {/* Tabs Content */}
-       
 
         {activeTab === "earnings" && (
           <EarningsReport

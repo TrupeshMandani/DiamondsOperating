@@ -10,7 +10,7 @@ import { Calendar, Clock } from "lucide-react";
 import TaskCardWithTimer from "./EmpTaskCardWithTimer";
 import { io } from "socket.io-client";
 
-const socket = io("http://localhost:5023");
+const socket = io("https://diamondsoperating.onrender.com");
 
 const EmpTaskList = () => {
   const [tasks, setTasks] = useState({
@@ -37,7 +37,7 @@ const EmpTaskList = () => {
         throw new Error("Employee ID or token not found. Please log in again.");
 
       const response = await fetch(
-        `http://localhost:5023/api/employees/${employeeId}/tasks`,
+        `https://diamondsoperating.onrender.com/api/employees/${employeeId}/tasks`,
         {
           headers: { Authorization: `Bearer ${token}` },
         }
@@ -103,7 +103,7 @@ const EmpTaskList = () => {
       setUpdatingTasks((prev) => new Set([...prev, taskId]));
 
       const token = localStorage.getItem("authToken");
-      const url = `http://localhost:5023/api/tasks/${taskId}/update-status`;
+      const url = `https://diamondsoperating.onrender.com/api/tasks/${taskId}/update-status`;
 
       const response = await fetch(url, {
         method: "PUT",

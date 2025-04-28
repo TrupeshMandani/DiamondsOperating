@@ -35,7 +35,9 @@ export function useBatchManagement(socket) {
   const fetchBatches = useCallback(async () => {
     try {
       setLoading(true);
-      const res = await fetch("http://localhost:5023/api/batches");
+      const res = await fetch(
+        "https://diamondsoperating.onrender.com/api/batches"
+      );
       if (!res.ok) throw new Error("Failed to fetch batches");
       const data = await res.json();
 
@@ -60,7 +62,9 @@ export function useBatchManagement(socket) {
   // 👥 Fetch employee list
   const fetchEmployees = useCallback(async () => {
     try {
-      const res = await fetch("http://localhost:5023/api/employees");
+      const res = await fetch(
+        "https://diamondsoperating.onrender.com/api/employees"
+      );
       if (!res.ok) throw new Error("Failed to fetch employees");
       const data = await res.json();
       setEmployees(data);
@@ -96,7 +100,9 @@ export function useBatchManagement(socket) {
   // 🔁 Fetch updated batch
   const fetchUpdatedBatch = useCallback(async (batchId) => {
     try {
-      const res = await fetch(`http://localhost:5023/api/batches/${batchId}`);
+      const res = await fetch(
+        `https://diamondsoperating.onrender.com/api/batches/${batchId}`
+      );
       if (!res.ok) throw new Error("Failed to fetch updated batch");
 
       const updatedBatch = await res.json();

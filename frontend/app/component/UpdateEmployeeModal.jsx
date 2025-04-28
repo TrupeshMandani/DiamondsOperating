@@ -1,6 +1,11 @@
 "use client";
 import { useState } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Button } from "./ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -31,11 +36,14 @@ export const UpdateEmployeeModal = ({ employee, onClose }) => {
     try {
       setLoading(true);
 
-      const response = await fetch(`http://localhost:5023/api/employees/${employee._id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData),
-      });
+      const response = await fetch(
+        `https://diamondsoperating.onrender.com/api/employees/${employee._id}`,
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(formData),
+        }
+      );
 
       if (!response.ok) {
         const errorResponse = await response.json();
@@ -66,7 +74,9 @@ export const UpdateEmployeeModal = ({ employee, onClose }) => {
 
           {Object.keys(formData).map((key) => (
             <div key={key} className="grid gap-2">
-              <Label className="text-[#5a6a7e] capitalize">{key.replace(/([A-Z])/g, " $1")}</Label>
+              <Label className="text-[#5a6a7e] capitalize">
+                {key.replace(/([A-Z])/g, " $1")}
+              </Label>
               <Input
                 type="text"
                 name={key}
@@ -80,7 +90,11 @@ export const UpdateEmployeeModal = ({ employee, onClose }) => {
           ))}
         </div>
 
-        <Button onClick={handleUpdateEmployee} disabled={loading} className="bg-[#4caf50] text-white hover:bg-[#43a047]">
+        <Button
+          onClick={handleUpdateEmployee}
+          disabled={loading}
+          className="bg-[#4caf50] text-white hover:bg-[#43a047]"
+        >
           {loading ? "Updating..." : "Update Employee"}
         </Button>
       </DialogContent>

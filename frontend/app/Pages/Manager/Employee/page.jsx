@@ -44,12 +44,15 @@ export default function EmployeeDashboard() {
   useEffect(() => {
     const fetchEmployees = async () => {
       try {
-        const response = await fetch("http://localhost:5023/api/employees", {
-          method: "GET",
-          headers: {
-            "Content-Type": "application/json",
-          },
-        });
+        const response = await fetch(
+          "https://diamondsoperating.onrender.com/api/employees",
+          {
+            method: "GET",
+            headers: {
+              "Content-Type": "application/json",
+            },
+          }
+        );
 
         if (!response.ok) {
           throw new Error("Failed to fetch employees data");
@@ -77,7 +80,7 @@ export default function EmployeeDashboard() {
 
     try {
       const response = await fetch(
-        `http://localhost:5023/api/employees/${id}`,
+        `https://diamondsoperating.onrender.com/api/employees/${id}`,
         {
           method: "DELETE",
         }
